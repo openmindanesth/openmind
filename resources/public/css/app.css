@@ -1,0 +1,47 @@
+.hspacer {
+		padding: 5%;
+}
+
+.vspacer {
+		padding-top: 2em;
+}
+
+.bp-input {
+		width: 40%;
+}
+
+input[type="number"].invalid {
+		border: 1px solid red;
+}
+
+input[type="number"].incomplete, select.incomplete {
+		border: 2px solid #D5C0C0;
+}
+
+input[type="number"]:focus.incomplete, select:focus.incomplete {
+		border: 2px solid #33C3F0
+}
+
+label.incomplete {
+		text-decoration: underline solid #D5C0C0;;
+}
+
+.slash {
+		font-weight: bolder;
+		font-size: 2em;
+		vertical-align: sub;
+}
+
+.alarm {
+		background: hotpink;
+}
+
+.centre {
+		text-align: center;
+}
+
+.warning {
+		text-transform: capitalize;
+		font-size: 1.2em;
+		color: orangered;
+}
