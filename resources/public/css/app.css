@@ -45,3 +45,7 @@ label.incomplete {
 		font-size: 1.2em;
 		color: orangered;
 }
+
+.inline {
+		white-space: nowrap;
+}
