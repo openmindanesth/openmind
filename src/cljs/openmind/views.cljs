@@ -1,32 +1,31 @@
 (ns openmind.views
-	(:require
-	 [re-frame.core :as re-frame]
-	 [openmind.subs :as subs]
-	 ))
+  (:require
+   [re-frame.core :as re-frame]
+   [openmind.subs :as subs]))
 
 
 (defn title-bar []
-	[:div
-	 [:div.columns.five [:span "open" [:span.darker "mind"] ".org"]]
-	 [:div.columns.three "widgets go here"]
-	 [:div.columns.three [:input {:type :text
-																:placeholder "specific term"}]]])
+  [:div
+   [:div.columns.five [:span "open" [:span.darker "mind"] ".org"]]
+   [:div.columns.three "widgets go here"]
+   [:div.columns.three [:input {:type :text
+                                :placeholder "specific term"}]]])
 
 (defn search []
-	[:div "Search stuff"])
+  [:div "Search more"])
 
 (defn results []
-	[:div "Results!"])
+  [:div "Results!"])
 
 (defn main-panel []
-	[:div
-	 [:div.row [title-bar]]
-	 [:div.row [search]]
-	 [:div.row [results]]])
+  [:div
+   [:div.row [title-bar]]
+   [:div.row [search]]
+   [:div.row [results]]])
 
 (defn pass-off [k]
   (fn [ev]
-    (re-frame/dispatch [(events-key k) (-> ev .-target .-value)]))) 
+    (re-frame/dispatch [k (-> ev .-target .-value)])))
 
 (defn text-box
   [k label & [{:keys [placeholder class]}]]
@@ -38,7 +37,7 @@
                                              :type      :text
                                              :class     class
                                              :on-change (pass-off k)}]]])
- 
+
 (defn editor-panel []
   [:div
    [:div.row [:h2 "Add a new extract"]]
