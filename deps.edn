@@ -1,11 +1,12 @@
 {:deps
  {clj-http                  {:mvn/version "3.10.0"}
-	compojure                 {:mvn/version "1.6.1"}
-	com.taoensso/sente        {:mvn/version "1.14.0-RC2"}
-	org.clojure/core.async    {:mvn/version "0.4.490"}
-	org.clojure/clojurescript {:mvn/version "1.10.520"}
-	reagent                   {:mvn/version "0.8.1"}
-	re-frame                  {:mvn/version "0.10.6"}
-	ring/ring-core                 {:mvn/version "1.7.1"}
-	}
+  clojurewerkz/elastisch    {:mvn/version "3.0.1"}
+  compojure                 {:mvn/version "1.6.1"}
+  com.taoensso/sente        {:mvn/version "1.14.0-RC2"}
+  http-kit                  {:mvn/version "2.3.0"}
+  org.clojure/core.async    {:mvn/version "0.4.490"}
+  org.clojure/clojurescript {:mvn/version "1.10.520"}
+  reagent                   {:mvn/version "0.8.1"}
+  re-frame                  {:mvn/version "0.10.6"}
+  ring/ring-core            {:mvn/version "1.7.1"}}
  :paths ["src/clj" "src/cljs" "target" "resources" ]}

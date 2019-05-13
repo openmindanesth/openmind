@@ -1,10 +1,31 @@
 (ns openmind.server
-	(:require [clj-http.client :as http]
-						))
+  (:require [compojure.core :as c]
+            [compojure.route :as route]
+            [org.httpkit.server :as http]
+            [taoensso.sente :as sente]
+            [taoensso.sente.server-adapters.http-kit :as sente-http-kit]))
 
-(defn handler [req]
-	(println req)
-	)
+
+(def socket
+  (sente/make-channel-socket! (sente-http-kit/get-sch-adapter) {}))
+
+(c/defroutes routes
+  (c/GET "/chsk" req (-> socket :ajax-get-or-ws-handshake-fn req))
+  (c/POST "/chsk" req (-> socket :ajax-post-fn req))
+  (route/resources "/")
+
+  )
+
+(def app
+  (-> routes
+
+      ring.middleware.keyword-params/wrap-keyword-params
+      ring.middleware.params/wrap-params))
+
+
+(defonce ^:private stop-server! (atom nil))
 
 (defn start-server! []
-	#_(jetty/run-jetty handler {:port 3003} ))
+  (when (fn? @stop-server!)
+    (@stop-server!))
+  (reset! stop-server! (http/run-server #'app {:port 3003})))
