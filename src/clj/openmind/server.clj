@@ -1,7 +1,10 @@
 (ns openmind.server
   (:require [compojure.core :as c]
             [compojure.route :as route]
+            [openmind.env :as env]
             [org.httpkit.server :as http]
+            ring.middleware.keyword-params
+            ring.middleware.params
             [taoensso.sente :as sente]
             [taoensso.sente.server-adapters.http-kit :as sente-http-kit]))
 
@@ -18,7 +21,6 @@
 
 (def app
   (-> routes
-
       ring.middleware.keyword-params/wrap-keyword-params
       ring.middleware.params/wrap-params))
 
@@ -28,4 +30,4 @@
 (defn start-server! []
   (when (fn? @stop-server!)
     (@stop-server!))
-  (reset! stop-server! (http/run-server #'app {:port 3003})))
+  (reset! stop-server! (http/run-server #'app (env/read :port))))

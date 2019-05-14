@@ -11,7 +11,7 @@
    :dev?             "DEV_MODE"
    :port             "PORT"})
 
-(defn read-co []
+(defn read-config []
   (try
     (read-string (slurp "conf.edn"))
     (catch Exception e nil)))
