@@ -30,4 +30,4 @@
 (defn start-server! []
   (when (fn? @stop-server!)
     (@stop-server!))
-  (reset! stop-server! (http/run-server #'app (env/read :port))))
+  (reset! stop-server! (http/run-server #'app {:port (env/read :port)})))
