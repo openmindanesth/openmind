@@ -6,7 +6,6 @@
    :elastic-username "ELASTIC_USERNAME"
    :elastic-password "ELASTIC_PASSWORD"
    :elastic-hostname "ELASTIC_HOSTNAME"
-   :elastic-url      "ELASTIC_URL"
    :elastic-port     "ELASTIC_PORT"
    :dev?             "DEV_MODE"
    :port             "PORT"})
