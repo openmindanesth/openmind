@@ -16,9 +16,9 @@
        (env/read :elastic-port)))
 
 (def cluster-settings
-  {:method :get
-   :url (str base-url "/_cluster/settings")
-   :basic-auth auth})
+  (merge base-req
+         {:method :get
+          :url (str base-url "/_cluster/settings")}))
 
 (defn index [index doc]
   (merge base-req
