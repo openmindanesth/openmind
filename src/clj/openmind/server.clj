@@ -3,8 +3,10 @@
             [compojure.route :as route]
             [openmind.env :as env]
             [org.httpkit.server :as http]
+            ring.middleware.anti-forgery
             ring.middleware.keyword-params
             ring.middleware.params
+            ring.middleware.session
             [taoensso.sente :as sente]
             [taoensso.sente.server-adapters.http-kit :as sente-http-kit]))
 
@@ -13,14 +15,17 @@
   (sente/make-channel-socket! (sente-http-kit/get-sch-adapter) {}))
 
 (c/defroutes routes
-  (c/GET "/chsk" req (-> socket :ajax-get-or-ws-handshake-fn req))
-  (c/POST "/chsk" req (-> socket :ajax-post-fn req))
-  (route/resources "/")
-
-  )
+  (c/GET "/" req (slurp "resources/public/index.html"))
+  (c/GET "/elmyr" req (force ring.middleware.anti-forgery/*anti-forgery-token*))
+  (c/GET "/chsk" req (do (println req) (-> socket :ajax-get-or-ws-handshake-fn req)))
+  (c/POST "/chsk" req (do (println :post req)) (-> socket :ajax-post-fn req))
+  (route/resources "/"))
 
 (def app
   (-> routes
+      ;; TODO: login
+      ring.middleware.session
+      ring.middleware.anti-forgery/wrap-anti-forgery
       ring.middleware.keyword-params/wrap-keyword-params
       ring.middleware.params/wrap-params))
 
