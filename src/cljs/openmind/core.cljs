@@ -11,6 +11,8 @@
 
 (defn connect-chsk []
   (let [csrf-ch (async/promise-chan)]
+    ;; TODO: This gets the wrong token (throwaway session). Need to set client
+    ;; ID correctl
     (goog.net.XhrIo/send "/elmyr"
                          (fn [e]
                            (->> e

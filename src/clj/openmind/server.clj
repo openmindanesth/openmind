@@ -17,14 +17,15 @@
 (c/defroutes routes
   (c/GET "/" req (slurp "resources/public/index.html"))
   (c/GET "/elmyr" req (force ring.middleware.anti-forgery/*anti-forgery-token*))
-  (c/GET "/chsk" req (do (println req) (-> socket :ajax-get-or-ws-handshake-fn req)))
-  (c/POST "/chsk" req (do (println :post req)) (-> socket :ajax-post-fn req))
+  (c/GET "/chsk" req (do (println (force ring.middleware.anti-forgery/*anti-forgery-token*))
+                       (clojure.pprint/pprint req) (-> socket :ajax-get-or-ws-handshake-fn req)))
+  (c/POST "/chsk" req (-> socket :ajax-post-fn req))
   (route/resources "/"))
 
 (def app
   (-> routes
       ;; TODO: login
-      ring.middleware.session
+      ring.middleware.session/wrap-session
       ring.middleware.anti-forgery/wrap-anti-forgery
       ring.middleware.keyword-params/wrap-keyword-params
       ring.middleware.params/wrap-params))
