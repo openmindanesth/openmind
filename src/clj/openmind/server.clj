@@ -59,3 +59,6 @@
 (defn init! []
   (start-server!)
   (start-router!))
+
+(defn -main [& args]
+  (init!))
