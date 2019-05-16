@@ -1,4 +1,4 @@
-FROM clojure
+FROM clojure:tools-deps
 
 # Build cljs
 
