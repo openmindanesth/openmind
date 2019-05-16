@@ -3,6 +3,21 @@
    [re-frame.core :as re-frame]))
 
 (re-frame/reg-sub
- ::name
+ ::filters
  (fn [db]
-   (:name db)))
+   (:filters db)))
+
+(re-frame/reg-sub
+ ::search
+ (fn [db]
+   (:search db)))
+
+(re-frame/reg-sub
+ ::send-fn
+ (fn [db]
+   (:send-fn db)))
+
+(re-frame/reg-sub
+ ::extracts
+ (fn [db]
+   (:results db)))

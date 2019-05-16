@@ -1,9 +1,23 @@
 .hspacer {
-		padding: 5%;
+		padding-left: 0.5em;
+		padding-right: 0.5em;
+}
+
+.padded {
+		padding: 0.5em;
+}
+
+.search-result {
+		border: 0.1rem;
+		border-spacing: 0;
+		border-style: outset;
+		border-radius: 0.5rem;
+		border-color: rgba(100,100,100,0.5);
+		margin-bottom: 0.5rem;
 }
 
 .vspacer {
-		padding-top: 2em;
+		padding-top: 1em;
 }
 
 .bp-input {

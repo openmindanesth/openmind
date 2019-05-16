@@ -1,4 +1,4 @@
-(ns openmind.core
+(ns ^:figwheel-hooks openmind.core
   (:require-macros [cljs.core.async.macros :refer [go go-loop]])
   (:require [cljs.core.async :as async]
             [goog.net.XhrIo]
@@ -27,9 +27,8 @@
 
 (defmethod ch-handler :chsk/recv
   [e]
+  (println e)
   (re-frame/dispatch [::events/server-message e]))
-
-
 
 (defn connect-chsk []
   (let [csrf-ch (async/promise-chan)]
@@ -51,14 +50,13 @@
     (enable-console-print!)
     (println "dev mode")))
 
-(defn mount-root []
+(defn ^:after-load mount-root []
   (re-frame/clear-subscription-cache!)
-  (reagent/render [views/editor-panel]
+  (reagent/render [views/window views/search-results]
                   (.getElementById js/document "app")))
 
 (defn ^:export init []
-  (connect-chsk)
   (re-frame/dispatch-sync [::events/initialize-db])
   (dev-setup)
   (mount-root)
-  )
+  (connect-chsk))
