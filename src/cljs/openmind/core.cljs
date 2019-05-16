@@ -9,10 +9,30 @@
             [reagent.core :as reagent]
             [taoensso.sente :as sente]))
 
+(defmulti ch-handler
+  "Dispatch events from server."
+  :id)
+
+(defmethod ch-handler :default
+  [e]
+  (println "Unknown server event:" e))
+
+(defmethod ch-handler :chsk/state
+  [_]
+  "Connection state change.")
+
+(defmethod ch-handler :chsk/handshake
+  [_]
+  "WS handshake.")
+
+(defmethod ch-handler :chsk/recv
+  [e]
+  (re-frame/dispatch [::events/server-message e]))
+
+
+
 (defn connect-chsk []
   (let [csrf-ch (async/promise-chan)]
-    ;; TODO: This gets the wrong token (throwaway session). Need to set client
-    ;; ID correctl
     (goog.net.XhrIo/send "/elmyr"
                          (fn [e]
                            (->> e
@@ -21,13 +41,10 @@
                                 (async/put! csrf-ch))))
     (go
       (let [token (async/<! csrf-ch)]
-        (println token)
-        (println (js/encodeURIComponent token))
         (let [chsk (sente/make-channel-socket-client!
                     "/chsk" token {:type :auto})]
-          (js/timeout (fn [] (.log js/console @(:state chsk)))
-                      1000)
-          #_(sente/chsk-send! (:chsk chsk) {:data :packet} 1000 js/console.log))))))
+          (sente/start-client-chsk-router! (:ch-recv chsk) ch-handler)
+          (re-frame/dispatch [::events/server-connection (:send-fn chsk)]))))))
 
 (defn dev-setup []
   (when config/debug?
