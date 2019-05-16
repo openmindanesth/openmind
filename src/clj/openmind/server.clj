@@ -9,6 +9,10 @@
             [taoensso.sente :as sente]
             [taoensso.sente.server-adapters.http-kit :as sente-http-kit]))
 
+;; REVIEW: I should disconnect and clean this up on reload?
+(defonce socket
+  (sente/make-channel-socket! (sente-http-kit/get-sch-adapter) {}))
+
 (defmulti dispatch (fn [e] (first (:event e))))
 
 (defmethod dispatch :search
@@ -17,12 +21,10 @@
 
 (defmethod dispatch :default
   [e]
+  (println e)
+  ((:send-fn socket) (:client-id e) [::res "got it"])
   ;; REVIEW: Dropping unhandled messages is suboptimal.
   nil)
-
-;; REVIEW: I should disconnect and clean this up on reload?
-(defonce socket
-  (sente/make-channel-socket! (sente-http-kit/get-sch-adapter) {}))
 
 (c/defroutes routes
   (route/resources "/")
@@ -47,7 +49,7 @@
     (@router))
   (reset! router (sente/start-server-chsk-router!
                   (:ch-recv socket)
-                  #(select-keys % [:event :client-id]))))
+                  #(dispatch (select-keys % [:event :client-id])))))
 
 (defn start-server! []
   (when (fn? @stop-server!)
