@@ -52,7 +52,7 @@
 
 (defn ^:after-load mount-root []
   (re-frame/clear-subscription-cache!)
-  (reagent/render [views/window views/search-results]
+  (reagent/render [views/main-view]
                   (.getElementById js/document "app")))
 
 (defn ^:export init []

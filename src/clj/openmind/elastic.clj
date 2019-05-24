@@ -10,10 +10,7 @@
    :user-agent "Openmind server"})
 
 (def base-url
-  (str "https://"
-       (env/read :elastic-hostname)
-       ":"
-       (env/read :elastic-port)))
+  (str (env/read :elastic-url)))
 
 (def cluster-settings
   (merge base-req

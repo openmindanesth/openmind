@@ -19,3 +19,18 @@
  (fn [db e]
    ;; TODO: re route
    db))
+
+(re-frame/reg-event-db
+ ::set-filter-edit
+ (fn [db [_ sel]]
+   (assoc db :filter sel)))
+
+(re-frame/reg-event-db
+ ::add-filter-feature
+ (fn [db [_ feature value ]]
+   (update-in db [:search :filters feature] conj value)))
+
+(re-frame/reg-event-db
+ ::remove-filter-feature
+ (fn [db [_ feature value]]
+   (update-in db [:search :filters feature] disj value)))

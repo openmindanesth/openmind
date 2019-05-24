@@ -63,3 +63,39 @@ label.incomplete {
 .inline {
 		white-space: nowrap;
 }
+
+.blue {
+		background-color: #1EAEDE;
+		color: white;
+}
+
+.flex-container {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: space-evenly;
+}
+
+.tag {
+		padding-right: 0.1rem;
+}
+
+.filter-choose {
+		border: 0.1rem;
+		border-spacing: 0;
+		border-style: outset;
+		border-radius: 0.5rem;
+		border-color: #1EAEDB;
+		padding-top: 1rem;
+}
+
+button.selected {
+		height: 130%;
+}
+
+.active {
+		background-color: lightgreen;
+}
+
+.filter-set {
+		margin-bottom: 1rem;
+}

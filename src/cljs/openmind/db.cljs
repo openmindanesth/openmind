@@ -1,4 +1,5 @@
-(ns openmind.db)
+(ns openmind.db
+  (:require [openmind.search :as search]))
 
 (def dummy-results
   [{:text "Medetomidine has no dose-dependent effect on the BOLD response to subcutaneous electrostimulation (0.5, 0.7, 1 mA) in mice for doses of 0.1, 0.3, 0.7, 1.0, 2.0 mg/kg/h."
@@ -23,6 +24,11 @@
      :modality :cortex
      :depth :moderate}}])
 
+(def empty-filters
+  (into {} (map (fn [[k v]] [k #{}])) search/filters))
+
 (def default-db
-  {:filters {}
+  {:search {:term nil
+            :filters empty-filters}
+   :route :openmind.views/search
    :results dummy-results})
