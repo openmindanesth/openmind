@@ -39,11 +39,11 @@
                                 .getResponseText
                                 (async/put! csrf-ch))))
     (go
-      (let [token (async/<! csrf-ch)]
-        (let [chsk (sente/make-channel-socket-client!
-                    "/chsk" token {:type :auto})]
-          (sente/start-client-chsk-router! (:ch-recv chsk) ch-handler)
-          (re-frame/dispatch [::events/server-connection (:send-fn chsk)]))))))
+      (let [token (async/<! csrf-ch)
+            chsk (sente/make-channel-socket-client!
+                  "/chsk" token {:type :auto})]
+        (sente/start-client-chsk-router! (:ch-recv chsk) ch-handler)
+        (re-frame/dispatch [::events/server-connection (:send-fn chsk)])))))
 
 (defn dev-setup []
   (when config/debug?
