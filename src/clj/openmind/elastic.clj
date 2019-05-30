@@ -1,8 +1,40 @@
 (ns openmind.elastic
   (:require [clojure.core.async :as async]
             [clojure.data.json :as json]
+            [clojure.pprint :refer [pprint]]
             [openmind.env :as env]
             [org.httpkit.client :as http]))
+
+;;;;; Translation from client to Elastic Search
+
+(defn tag-name [k]
+  (str "tags." (name k)))
+
+(defn build-filter-query [filters]
+  (into []
+        (comp (map (fn [[k v]]
+                     (when (seq v)
+                       (if (= 1 (count v))
+                         {:term {(tag-name k) (first v)}}
+                         {:terms_set {(tag-name k)
+                                      {:terms (into [] v)
+                                       ;; FIXME: This is positively
+                                       ;; idiotic... but it works!
+                                       :minimum_should_match_script
+                                       {:source "1"}}}}))))
+              (remove nil?))
+        filters))
+
+(defn search->elastic [{:keys [term filters]}]
+  {:query
+   {:bool
+    (merge {}
+           (when (seq filters)
+             {:filter (build-filter-query filters)})
+           (when (seq term)
+             {:must {:match {:text term}}}))}})
+
+;;;;; REST API wrapping
 
 (def base-req
   {:basic-auth [(env/read :elastic-username) (env/read :elastic-password)]
@@ -23,14 +55,14 @@
           :url (str base-url "/" (name index) "/_doc/")
           :body (json/write-str doc)}))
 
-(defn search [index filters]
-  (let [qbody (json/write-str {:query
-                               {:term {:search.species :mouse
-                                       :search.method :awesome}}}) ]
+(defn search [index body]
+  (let [qbody (json/write-str body)]
     (merge base-req
            {:method :get
             :url (str base-url "/" (name index) "/_search")
             :body qbody})))
+
+;;;;; Wheel #6371
 
 (defn send-off!
   "Sends HTTP request req and returns a core.async promise channel which will
@@ -40,9 +72,15 @@
     (http/request
      req
      (fn [{:keys [status body] :as res}]
-       (println res)
+       ;; TODO: logging
+       (pprint res)
        ;; TODO: Basic resiliency...
        (if (<= 200 status 299)
          (async/put! out-ch (json/read-str body :key-fn keyword))
          (async/close! out-ch))))
     out-ch))
+
+;;;;; Testing helpers
+
+(def tx (atom nil))
+(defn t [q] (async/go (reset! tx (async/<! (send-off! q)))))
