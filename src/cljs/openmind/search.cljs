@@ -9,7 +9,7 @@
                  :ensemble    "ensemble (LFP)"
                  :cortex      "cortex (EEG)"
                  :large-scale "large scale (fMRI)"}
-   :application {}
+   :application {:some "Some" :none "None"}
    :depth       {:light    "light"
                  :moderate "moderate"
                  :deep     "deep"}
