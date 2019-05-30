@@ -54,7 +54,9 @@
 (defn start-server! []
   (when (fn? @stop-server!)
     (@stop-server!))
-  (reset! stop-server! (http/run-server #'app {:port (env/read :port)})))
+  (let [port (env/read :port)]
+    (reset! stop-server! (http/run-server #'app {:port port}))
+    (println "Server listening on port:" port)))
 
 (defn init! []
   (start-server!)
