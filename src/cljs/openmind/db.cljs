@@ -13,7 +13,7 @@
     :reference "Another et al., 1996"
     :tags
     {:type :extract
-     :species :human
+     :species :mouse
      :modality :cortex
      :depth :moderate}}
    {:text "BOLD responses under medetomidine are attenuated and onset is delayed in mechanically ventilated mice."
