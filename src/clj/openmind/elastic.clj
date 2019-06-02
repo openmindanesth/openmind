@@ -5,6 +5,13 @@
             [openmind.env :as env]
             [org.httpkit.client :as http]))
 
+(def mapping
+  {:properties {:created {:type :date}}})
+
+(def m2 {:_timestamp
+         {:enabled true
+          :store true}})
+
 ;;;;; Translation from client to Elastic Search
 
 (defn tag-name [k]
@@ -49,6 +56,7 @@
          {:method :get
           :url (str base-url "/_cluster/settings")}))
 
+
 (defn index [index doc]
   (merge base-req
          {:method :post
@@ -61,6 +69,11 @@
            {:method :get
             :url (str base-url "/" (name index) "/_search")
             :body qbody})))
+
+(def most-recent
+  (search :test0 {:sort {:created {:order :desc}}
+                  :from 0
+                  :size 10}))
 
 ;;;;; Wheel #6371
 
