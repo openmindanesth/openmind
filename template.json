@@ -1,8 +1,0 @@
-{"text": "this is an article",
- "author": "Thomas",
- "posted": 1234231212,
- "search": {"species": ["human", "mouse"],
-            "keywords": ["fentanil", "9.4T"],
-            "modalities": ""
-            }
- }
