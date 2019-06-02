@@ -61,3 +61,9 @@
  ::send-search
  (fn [{:keys [send-fn search]}]
    (send-fn [:openmind/search search])))
+
+(defn index-doc [send-fn doc]
+  (send-fn [:openmind/index doc]))
+
+(defn unsafe-index [doc]
+  (index-doc (:send-fn @re-frame.db/app-db) doc))

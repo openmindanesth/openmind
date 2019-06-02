@@ -9,7 +9,12 @@
           :opt-un []#_[::comment ::figure ::history ::related ::details]))
 
 (s/def ::text
-  (s/and string? #(< (count %) 250)))
+  (s/with-gen
+    (s/and string? #(< 0 (count %) 250))
+    (fn []
+      (clojure.test.check.generators/fmap
+       (fn [x] (apply str (interpose " " x)))
+       (gen/vector clojure.test.check.generators/string-alphanumeric 2 10)))))
 
 (s/def ::author string?)
 

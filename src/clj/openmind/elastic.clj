@@ -5,12 +5,11 @@
             [openmind.env :as env]
             [org.httpkit.client :as http]))
 
+;; FIXME:
+(def index :test1)
+
 (def mapping
   {:properties {:created {:type :date}}})
-
-(def m2 {:_timestamp
-         {:enabled true
-          :store true}})
 
 ;;;;; Translation from client to Elastic Search
 
@@ -33,13 +32,15 @@
         filters))
 
 (defn search->elastic [{:keys [term filters]}]
-  {:query
-   {:bool
-    (merge {}
-           (when (seq filters)
-             {:filter (build-filter-query filters)})
-           (when (seq term)
-             {:must {:match {:text term}}}))}})
+  (println term)
+  {:sort  {:created {:order :desc}}
+   :from  0
+   :size  20
+   :query {:bool (merge {}
+                        (when (seq filters)
+                          {:filter (build-filter-query filters)})
+                        (when (seq term)
+                          {:must {:match {:text term}}}))}})
 
 ;;;;; REST API wrapping
 
@@ -57,7 +58,7 @@
           :url (str base-url "/_cluster/settings")}))
 
 
-(defn index [index doc]
+(defn index-req [index doc]
   (merge base-req
          {:method :post
           :url (str base-url "/" (name index) "/_doc/")
@@ -70,10 +71,21 @@
             :url (str base-url "/" (name index) "/_search")
             :body qbody})))
 
+(def set-mapping
+  (merge base-req
+         {:method :put
+          :url (str base-url "/" (name index) "/_mapping")
+          :body (json/write-str mapping)}))
+
 (def most-recent
-  (search :test0 {:sort {:created {:order :desc}}
+  (search index {:sort {:created {:order :desc}}
                   :from 0
                   :size 10}))
+
+(def create-index
+  (assoc base-req
+         :url (str base-url "/" (name index))
+         :method :put))
 
 ;;;;; Wheel #6371
 
