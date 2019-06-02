@@ -64,23 +64,27 @@
 
 ;;;;; Wheel #6371
 
+(defn parse-response
+  "Interpret Elastic Search status codes and parse response appropriately."
+  [{:keys [status body] :as res}]
+  (cond
+    (<= 200 status 299) (json/read-str body :key-fn keyword)
+    (= 404 status)      []
+    :else               (do
+                          (println "Elastic Error:" )
+                          (pprint res))))
+
 (defn send-off!
   "Sends HTTP request req and returns a core.async promise channel which will
-  eventually contain the body of the result."
+  eventually contain the result."
   [req]
   (let [out-ch (async/promise-chan)]
-    (http/request
-     req
-     (fn [{:keys [status body] :as res}]
-       ;; TODO: logging
-       (pprint res)
-       ;; TODO: Basic resiliency...
-       (if (<= 200 status 299)
-         (async/put! out-ch (json/read-str body :key-fn keyword))
-         (async/close! out-ch))))
+    (http/request req #(async/put! out-ch %))
     out-ch))
 
 ;;;;; Testing helpers
 
 (def tx (atom nil))
 (defn t [q] (async/go (reset! tx (async/<! (send-off! q)))))
+
+;; API

@@ -33,10 +33,15 @@
 (defn title-bar []
   [:div
    [:div.row
-    [:div.columns.four [:span "open" [:span.darker "mind"] ".org"]]
+    [:div.columns.one [:button "Ξ"]]
+    [:div.columns.three [:span "open" [:span.darker "mind"]]]
     [:div.columns.two [:button "Login"]]
     [:div.columns.two "widgets go here"]
     [:div.columns.three [:input {:type :text
+                                 :on-change (fn [e]
+                                              (let [v (-> e .-target .-value)]
+                                                (re-frame/dispatch
+                                                 [::events/search v])))
                                  :placeholder "specific term"}]]]])
 (defn window [content]
   [:div.padded

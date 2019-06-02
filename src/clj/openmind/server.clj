@@ -2,7 +2,7 @@
   (:require [compojure.core :as c]
             [compojure.route :as route]
             [openmind.env :as env]
-            [openmind.search :as search]
+            [openmind.routes :as routes]
             [org.httpkit.server :as http]
             ring.middleware.anti-forgery
             ring.middleware.defaults
@@ -12,19 +12,6 @@
 ;; REVIEW: I should disconnect and clean this up on reload?
 (defonce socket
   (sente/make-channel-socket! (sente-http-kit/get-sch-adapter) {}))
-
-(defmulti dispatch (fn [e] (first (:event e))))
-
-(defmethod dispatch :search
-  [e]
-  (search/handle-search e))
-
-(defmethod dispatch :default
-  [e]
-  (println e)
-  ((:send-fn socket) (:client-id e) [::res "got it"])
-  ;; REVIEW: Dropping unhandled messages is suboptimal.
-  nil)
 
 (c/defroutes routes
   (route/resources "/")
@@ -47,9 +34,10 @@
 (defn start-router! []
   (when (fn? @router)
     (@router))
-  (reset! router (sente/start-server-chsk-router!
-                  (:ch-recv socket)
-                  #(dispatch (select-keys % [:event :client-id])))))
+  (reset! router
+          (sente/start-server-chsk-router!
+           (:ch-recv socket)
+           #(routes/dispatch socket (select-keys % [:event :client-id])))))
 
 (defn start-server! []
   (when (fn? @stop-server!)
