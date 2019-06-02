@@ -6,6 +6,7 @@ then
 fi
 
 FILE="conf.edn"
+
 if ! test -e $FILE
 	 then
 		cat << EOF > $FILE
