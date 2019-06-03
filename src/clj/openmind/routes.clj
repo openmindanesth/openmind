@@ -14,21 +14,26 @@
 (defn parse-search-response [res]
   (mapv :_source (:hits (:hits res))))
 
-(defmulti dispatch (fn [socket e] (first (:event e))))
+(defmulti dispatch (fn [e] (first (:event e))))
+
+(defmethod dispatch :chsk/ws-ping
+  [_])
+
+(defmethod dispatch :chsk/uidport-open
+  [_])
 
 (defmethod dispatch :default
-  [socket e]
+  [e]
   (println "Unhandled client event:" e)
   ;; REVIEW: Dropping unhandled messages is suboptimal.
   nil)
 
 (defmethod dispatch :openmind/search
-  [{:keys [send-fn]} {id :client-id [_ query] :event :as x}]
+  [{[_ {:keys [user query]}] :event send-fn :send-fn}]
   (let [nonce (:nonce query)]
     (async/go
       (let [res (parse-search-response (async/<! (launch-search query)))]
-        (send-fn id [:chsk/recv {}])
-        (send-fn id [:openmind/search-response {:results res :nonce nonce}])))))
+        (send-fn user [:openmind/search-response {:results res :nonce nonce}])))))
 
 (defn prepare-doc [doc]
   (let [formatter (java.text.SimpleDateFormat. "YYYY-MM-dd'T'HH:mm:ss.SSSXXX")]
@@ -37,6 +42,6 @@
      doc)))
 
 (defmethod dispatch :openmind/index
-  [{:keys [send-fn]} {:keys [client-id] [_ doc] :event}]
+  [{:keys [client-id send-fn] [_ doc] :event}]
   (async/go
     (async/<! (es/send-off! (es/index-req es/index (prepare-doc doc))))))

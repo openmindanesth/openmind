@@ -11,7 +11,9 @@
 
 ;; REVIEW: I should disconnect and clean this up on reload?
 (defonce socket
-  (sente/make-channel-socket! (sente-http-kit/get-sch-adapter) {}))
+  (sente/make-channel-socket! (sente-http-kit/get-sch-adapter)
+                              {:user-id-fn (fn [req]
+                                             (:user (:event req)))}))
 
 (c/defroutes routes
   (route/resources "/")
@@ -37,7 +39,7 @@
   (reset! router
           (sente/start-server-chsk-router!
            (:ch-recv socket)
-           #(routes/dispatch socket (select-keys % [:event :client-id])))))
+           #(routes/dispatch (select-keys % [:client-id :event :send-fn])))))
 
 (defn start-server! []
   (when (fn? @stop-server!)
@@ -49,6 +51,12 @@
 (defn init! []
   (start-server!)
   (start-router!))
+
+(defn stop! []
+  (when @router
+    (@router))
+  (when @stop-server!
+    (@stop-server!)))
 
 (defn -main [& args]
   (init!))

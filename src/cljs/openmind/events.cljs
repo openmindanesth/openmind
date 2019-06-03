@@ -1,8 +1,7 @@
 (ns openmind.events
   (:require
    [re-frame.core :as re-frame]
-   [openmind.db :as db]
-   ))
+   [openmind.db :as db]))
 
 (re-frame/reg-event-db
  ::initialize-db
@@ -14,12 +13,12 @@
  (fn [db [_ send]]
    (assoc db :send-fn send)))
 
-#_(re-frame/reg-event-fx
+(re-frame/reg-event-fx
  ::server-message
- (fn [cofx e]
-   (println e)
-
-   ))
+ (fn [cofx [t & args]]
+   (cond
+     (= t :chsk/ws-ping) (println "ping!:")
+     :else (println t args))))
 
 (re-frame/reg-event-db
  ::set-filter-edit
@@ -53,14 +52,15 @@
  (fn [cofx _]
    (let [search  (get-in cofx [:db :search])
          search  (update search :nonce inc)
-         send-fn (get-in cofx [:db :send-fn])]
+         send-fn (get-in cofx [:db :send-fn])
+         user    (get-in cofx [:db :user])]
      {:db           (assoc (:db cofx) :search search)
-      ::send-search {:search search :send-fn send-fn}})))
+      ::send-search {:search search :send-fn send-fn :user user}})))
 
 (re-frame/reg-fx
  ::send-search
- (fn [{:keys [send-fn search]}]
-   (send-fn [:openmind/search search])))
+ (fn [{:keys [send-fn] :as req}]
+   (send-fn [:openmind/search (dissoc req :send-fn) ])))
 
 (defn index-doc [send-fn doc]
   (send-fn [:openmind/index doc]))

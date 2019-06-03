@@ -28,7 +28,9 @@
   (into {} (map (fn [[k v]] [k #{}])) search/filters))
 
 (def default-db
-  {:search {:term nil
-            :filters empty-filters}
-   :route :openmind.views/search
+  {:search  {:term    nil
+             :filters empty-filters}
+   :route   :openmind.views/search
+   ;; TODO: FIXME:
+   :user    (gensym)
    :results dummy-results})
