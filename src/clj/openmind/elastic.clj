@@ -39,7 +39,13 @@
                         (when (seq filters)
                           {:filter (build-filter-query filters)})
                         (when (seq term)
-                          {:must {:match {:text term}}}))}})
+                          ;; TODO: Better prefix search:
+                          ;; https://www.elastic.co/guide/en/elasticsearch/guide/master/_index_time_search_as_you_type.html
+                          ;; or
+                          ;; https://www.elastic.co/guide/en/elasticsearch/reference/current/search-suggesters-completion.html
+                          ;; or
+                          ;; https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-edgengram-tokenizer.html
+                          {:must {:match_phrase_prefix {:text term}}}))}})
 
 ;;;;; REST API wrapping
 

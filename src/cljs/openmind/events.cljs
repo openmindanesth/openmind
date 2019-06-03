@@ -13,7 +13,7 @@
  (fn [db [_ send]]
    (assoc db :send-fn send)))
 
-(re-frame/reg-event-fx
+#_(re-frame/reg-event-fx
  ::server-message
  (fn [cofx [t & args]]
    (cond
@@ -71,6 +71,9 @@
  (fn [{:keys [send-fn] :as req}]
    (send-fn [:openmind/search (dissoc req :send-fn)]
             10000
+            ;; TODO: When we have logged in users, we should use their user
+            ;; ids. I don't know how to do that for anonymous users though
+            ;; (random IDs, I suppose, but this is just as good).'
             (fn [[_ res]]
               (re-frame/dispatch [::results res])))))
 
