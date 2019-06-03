@@ -35,6 +35,15 @@
  (fn [db [_ feature value]]
    (update-in db [:search :filters feature] disj value)))
 
+(re-frame/reg-event-db
+ ::results
+ (fn [db [_ {:keys [results nonce] :as e}]]
+   (if (< (get-in db [:search :response-number]) nonce)
+     (-> db
+         (assoc-in [:search :response-number] nonce)
+         (assoc :results results))
+     db)))
+
 (defn reg-search-updater [key update-fn]
   (re-frame/reg-event-fx
    key
@@ -60,7 +69,10 @@
 (re-frame/reg-fx
  ::send-search
  (fn [{:keys [send-fn] :as req}]
-   (send-fn [:openmind/search (dissoc req :send-fn) ])))
+   (send-fn [:openmind/search (dissoc req :send-fn)]
+            10000
+            (fn [[_ res]]
+              (re-frame/dispatch [::results res])))))
 
 (defn index-doc [send-fn doc]
   (send-fn [:openmind/index doc]))

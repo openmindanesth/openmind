@@ -29,11 +29,17 @@
   nil)
 
 (defmethod dispatch :openmind/search
-  [{[_ {:keys [user query]}] :event send-fn :send-fn}]
-  (let [nonce (:nonce query)]
+  [{[_  {:keys [user search]}] :event :keys [send-fn ?reply-fn uid]}]
+  (let [nonce (:nonce search)]
     (async/go
-      (let [res (parse-search-response (async/<! (launch-search query)))]
-        (send-fn user [:openmind/search-response {:results res :nonce nonce}])))))
+      (let [res   (parse-search-response (async/<! (launch-search search)))
+            event [:openmind/search-response {:results res :nonce nonce}]]
+        (cond
+          (fn? ?reply-fn)                    (?reply-fn event)
+          (not= :taoensso.sente/nil-uid uid) (send-fn uid event)
+
+          ;; TODO: Logging
+          :else (println "No way to return response to sender."))))))
 
 (defn prepare-doc [doc]
   (let [formatter (java.text.SimpleDateFormat. "YYYY-MM-dd'T'HH:mm:ss.SSSXXX")]

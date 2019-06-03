@@ -39,7 +39,7 @@
   (reset! router
           (sente/start-server-chsk-router!
            (:ch-recv socket)
-           #(routes/dispatch (select-keys % [:client-id :event :send-fn])))))
+           #(routes/dispatch (dissoc % :ring-req :ch-recv)))))
 
 (defn start-server! []
   (when (fn? @stop-server!)
