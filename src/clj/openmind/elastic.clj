@@ -32,7 +32,6 @@
         filters))
 
 (defn search->elastic [{:keys [term filters]}]
-  (println term)
   {:sort  {:created {:order :desc}}
    :from  0
    :size  20

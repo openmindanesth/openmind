@@ -23,11 +23,11 @@
   nil)
 
 (defmethod dispatch :openmind/search
-  [{:keys [send-fn]} {id :client-id [_ query] :event}]
+  [{:keys [send-fn]} {id :client-id [_ query] :event :as x}]
   (let [nonce (:nonce query)]
     (async/go
       (let [res (parse-search-response (async/<! (launch-search query)))]
-        (clojure.pprint/pprint res)
+        (send-fn id [:chsk/recv {}])
         (send-fn id [:openmind/search-response {:results res :nonce nonce}])))))
 
 (defn prepare-doc [doc]
@@ -38,7 +38,5 @@
 
 (defmethod dispatch :openmind/index
   [{:keys [send-fn]} {:keys [client-id] [_ doc] :event}]
-  (clojure.pprint/pprint (prepare-doc doc))
   (async/go
-    (clojure.pprint/pprint
-     (async/<! (es/send-off! (es/index-req es/index (prepare-doc doc)))))))
+    (async/<! (es/send-off! (es/index-req es/index (prepare-doc doc))))))

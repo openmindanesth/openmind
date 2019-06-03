@@ -27,7 +27,6 @@
 
 (defmethod ch-handler :chsk/recv
   [e]
-  (println e)
   (re-frame/dispatch [::events/server-message e]))
 
 (defn connect-chsk []
