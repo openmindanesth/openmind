@@ -33,7 +33,10 @@
 (defn title-bar []
   [:div
    [:div.row
-    [:div.columns.one [:button "Ξ"]]
+    [:div.columns.one
+     [:button
+      {:on-click #(re-frame/dispatch [::events/toggle-edit])}
+      "Ξ"]]
     [:div.columns.three [:span "open" [:span.darker "mind"]]]
     [:div.columns.two [:button "Login"]]
     [:div.columns.two "widgets go here"]

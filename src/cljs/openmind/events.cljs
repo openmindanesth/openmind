@@ -13,6 +13,15 @@
  (fn [db [_ send]]
    (assoc db :send-fn send)))
 
+(re-frame/reg-event-db
+ ::toggle-edit
+ (fn [db _]
+   (update db :route
+           #(if (= % :openmind.views/search)
+              :openmind.views/create
+              :openmind.views/search))))
+
+;; TODO: Logged in usage will not work without this.
 #_(re-frame/reg-event-fx
  ::server-message
  (fn [cofx [t & args]]
@@ -73,7 +82,7 @@
             10000
             ;; TODO: When we have logged in users, we should use their user
             ;; ids. I don't know how to do that for anonymous users though
-            ;; (random IDs, I suppose, but this is just as good).'
+            ;; (random IDs, I suppose, but this is just as good).
             (fn [[_ res]]
               (re-frame/dispatch [::results res])))))
 
