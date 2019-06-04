@@ -26,16 +26,6 @@
    (assoc db :filter sel)))
 
 (re-frame/reg-event-db
- ::add-filter-feature
- (fn [db [_ feature value ]]
-   (update-in db [:search :filters feature] conj value)))
-
-(re-frame/reg-event-db
- ::remove-filter-feature
- (fn [db [_ feature value]]
-   (update-in db [:search :filters feature] disj value)))
-
-(re-frame/reg-event-db
  ::results
  (fn [db [_ {:keys [results nonce] :as e}]]
    (if (< (get-in db [:search :response-number]) nonce)
@@ -55,6 +45,16 @@
  ::search
  (fn [db [_ term]]
    (assoc-in db [:search :term] term)))
+
+(reg-search-updater
+ ::add-filter-feature
+ (fn [db [_ feature value]]
+   (update-in db [:search :filters feature] conj value)))
+
+(reg-search-updater
+ ::remove-filter-feature
+ (fn [db [_ feature value]]
+   (update-in db [:search :filters feature] disj value)))
 
 (re-frame/reg-event-fx
  ::server-search-request
