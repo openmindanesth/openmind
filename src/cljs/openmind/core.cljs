@@ -55,7 +55,8 @@
                   (.getElementById js/document "app")))
 
 (defn ^:export init []
-  (re-frame/dispatch-sync [::events/initialize-db])
+  (re-frame/dispatch-sync [::events/initialise-db])
   (dev-setup)
   (mount-root)
-  (connect-chsk))
+  (connect-chsk)
+  (re-frame/dispatch [::events/initialise-app]))

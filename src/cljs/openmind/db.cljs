@@ -33,4 +33,4 @@
    :route   :openmind.views/search
    ;; TODO: FIXME:
    :user    (gensym)
-   :results dummy-results})
+   :results []})

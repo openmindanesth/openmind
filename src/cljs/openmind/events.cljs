@@ -4,9 +4,18 @@
    [openmind.db :as db]))
 
 (re-frame/reg-event-db
- ::initialize-db
+ ::initialise-db
  (fn [_ _]
    db/default-db))
+
+(re-frame/reg-event-fx
+ ::initialise-app
+ (fn [cofx _]
+   (let [user    (get-in cofx [:db :user])
+         send-fn (get-in cofx [:db :send-fn])]
+     (if (fn? send-fn)
+       {:dispatch [::server-search-request]}
+       {:dispatch-later [{:ms 100 :dispatch [::initialise-app]}]}))))
 
 (re-frame/reg-event-db
  ::server-connection
