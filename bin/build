@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+clojure -m cljs.main --optimizations advanced --output-to "resources/public/cljs-out/dev-main.js" -c openmind.core
