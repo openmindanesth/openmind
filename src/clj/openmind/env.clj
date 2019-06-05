@@ -30,3 +30,12 @@
   [key]
   (when (contains? config key)
     (get config key)))
+
+(defn port
+  "Special case: port needs to be a number."
+  []
+  (let [p (read :port)]
+    (cond
+      (number? p) p
+      (string? p) (Integer/parseInt p)
+      :else       (throw (Exception. "Invalid port specified.")))))
