@@ -1,3 +1,0 @@
-#!/usr/env/bash
-
-clojure -m openmind.server
