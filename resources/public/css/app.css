@@ -1,3 +1,13 @@
+/* Is this the best way to hide scrollbars? */
+
+html::-webkit-scrollbar {
+		display: none;
+}
+
+html {
+		scrollbar-width: none;
+}
+
 .hspacer {
 		padding-left: 0.5em;
 		padding-right: 0.5em;
@@ -89,9 +99,6 @@ label.incomplete {
 		padding-top: 1rem;
 }
 
-button.selected {
-		height: 130%;
-}
 
 .active {
 		background-color: lightgreen;
@@ -99,4 +106,34 @@ button.selected {
 
 .filter-set {
 		margin-bottom: 1rem;
+}
+
+span.ham {
+		padding-top: 0.4rem;
+		font-size: 2.5rem;
+}
+
+button.narrow {
+}
+
+button.filter-button {
+		height: auto;
+		line-height: 2.4rem;
+		min-height: 48px;
+}
+
+button.filter-button:focus {
+		color: white;
+}
+
+button.filter-button.selected {
+		color: #333;
+		border-color: #777;
+		outline: 0;
+}
+
+button.filter-button.selected:focus {
+		color: #333;
+		border-color: #777;
+		outline: 0;
 }

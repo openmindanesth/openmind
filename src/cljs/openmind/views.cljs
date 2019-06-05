@@ -34,9 +34,9 @@
   [:div
    [:div.row
     [:div.columns.one
-     [:button
+     [:button.narrow
       {:on-click #(re-frame/dispatch [::events/toggle-edit])}
-      "Ξ"]]
+      [:span.ham "Ξ"]]]
     [:div.columns.three [:span "open" [:span.darker "mind"]]]
     [:div.columns.two [:button "Login"]]
     [:div.columns.two "widgets go here"]
@@ -97,7 +97,7 @@
           (map result results))))
 
 (defn feature [feat [value display] selected?]
-  [:button.filter-button
+  [:button.feature-button
    {:class (when selected? "active")
     :on-click #(re-frame/dispatch [(if selected?
                                      ::events/remove-filter-feature
@@ -110,20 +110,24 @@
         (map (fn [feat] [feature sel feat (contains? current (key feat))]))
         (get search/filters sel)))
 
-(defn filter-button [n sel]
+(defn filter-button [n v sel]
   [:button.blue.filter-button
    {:on-click (fn [_]
                 (re-frame/dispatch [::events/set-filter-edit (when-not (= n sel)
                                                                n)]))
-    :class (when (= n sel) "selected")}
-   (name n)])
+    :class    (when (= n sel) "selected")}
+   [:span (name n)
+    (when (seq v)
+      [:span
+       [:br]
+       (str "(" (apply str (interpose ", " (map name v))) ")")])]])
 
 (defn display-filters [fs]
   (let [selection @(re-frame/subscribe [::subs/current-filter-edit])]
     [:div
      [:div.row
       (into [:div.flex-container]
-            (map (fn [[k _]] [filter-button k selection]))
+            (map (fn [[k v]] [filter-button k (get fs k) selection]))
             search/filters)]
      (when selection
        [filter-chooser selection (get fs selection)])]))
