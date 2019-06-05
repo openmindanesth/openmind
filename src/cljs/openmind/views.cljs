@@ -37,9 +37,9 @@
      [:button.narrow
       {:on-click #(re-frame/dispatch [::events/toggle-edit])}
       [:span.ham "Ξ"]]]
-    [:div.columns.three [:span "open" [:span.darker "mind"]]]
+    [:div.columns.one [:span "open" [:span.darker "mind"]]]
     [:div.columns.two [:button "Login"]]
-    [:div.columns.two "widgets go here"]
+    [:div.columns.four [:b "N.B.: if it isn't obvious, the data below is garbage. For test purposes only."]]
     [:div.columns.three [:input {:type :text
                                  :on-change (fn [e]
                                               (let [v (-> e .-target .-value)]
@@ -78,6 +78,16 @@
 (defn reference-tag [ref]
   [tag ref])
 
+(defn format-tags [tags]
+  (apply str
+         (interpose ", \n"
+                    (map (fn [[k v]]
+                           (when k
+                             (str (name k) "=["
+                                  (apply str (interpose ", " (map name v)))
+                                  "]")))
+                         tags))))
+
 (defn result [{:keys [text reference tags]}]
   [:div.row.search-result.padded
    [:div.row.extract text]
@@ -87,14 +97,14 @@
      [history-tag]
      [tag "related"]
      [tag "details"]
-     [tag "tags"]
+     [:a.tag.tooltip {:data-tooltip (format-tags tags)} "tags"]
      [tag "figure"]
      [reference-tag reference]]]])
 
 (defn search-results []
   (let [results @(re-frame/subscribe [::subs/extracts])]
     (into [:div.row]
-          (map result results))))
+          (map (fn [r] [result r]) results))))
 
 (defn feature [feat [value display] selected?]
   [:button.feature-button
