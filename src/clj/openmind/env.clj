@@ -2,11 +2,9 @@
   (:refer-clojure :exclude [read]))
 
 (def env-keys
-  {:elastic-cluster  "ELASTIC_CLUSTER"
-   :elastic-username "ELASTIC_USERNAME"
+  {:elastic-username "ELASTIC_USERNAME"
    :elastic-password "ELASTIC_PASSWORD"
-   :elastic-hostname "ELASTIC_HOSTNAME"
-   :elastic-port     "ELASTIC_PORT"
+   :elastic-hostname "ELASTIC_URL"
    :dev?             "DEV_MODE"
    :port             "PORT"})
 
