@@ -88,7 +88,6 @@
             ;; ids. I don't know how to do that for anonymous users though
             ;; (random IDs, I suppose, but this is just as good).
             (fn [[_ res]]
-              (println res)
               (re-frame/dispatch [::results res])))))
 
 (defn index-doc [send-fn doc]
