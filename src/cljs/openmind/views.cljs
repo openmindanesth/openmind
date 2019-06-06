@@ -130,7 +130,7 @@
     (when (seq v)
       [:span
        [:br]
-       (str "(" (apply str (interpose ", " (map name v))) ")")])]])
+       (str "(" (apply str (interpose " or " (map name v))) ")")])]])
 
 (defn display-filters [fs]
   (let [selection @(re-frame/subscribe [::subs/current-filter-edit])]
