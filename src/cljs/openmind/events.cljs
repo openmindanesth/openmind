@@ -31,7 +31,7 @@
               :openmind.views/search))))
 
 ;; TODO: Logged in usage will not work without this.
-#_(re-frame/reg-event-fx
+(re-frame/reg-event-fx
  ::server-message
  (fn [cofx [t & args]]
    (cond
