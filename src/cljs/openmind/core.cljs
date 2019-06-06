@@ -42,7 +42,7 @@
             chsk (sente/make-channel-socket-client!
                   "/chsk" token {:type :auto})]
         (sente/start-client-chsk-router! (:ch-recv chsk) ch-handler)
-        (re-frame/dispatch [::events/server-connection (:send-fn chsk)])))))
+        (re-frame/dispatch [::events/server-connection chsk])))))
 
 (defn dev-setup []
   (when config/debug?
@@ -59,4 +59,4 @@
   (dev-setup)
   (mount-root)
   (connect-chsk)
-  (re-frame/dispatch [::events/initialise-app]))
+  (re-frame/dispatch [::events/server-search-request]))

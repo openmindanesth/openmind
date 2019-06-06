@@ -8,19 +8,10 @@
  (fn [_ _]
    db/default-db))
 
-(re-frame/reg-event-fx
- ::initialise-app
- (fn [cofx _]
-   (let [user    (get-in cofx [:db :user])
-         send-fn (get-in cofx [:db :send-fn])]
-     (if (fn? send-fn)
-       {:dispatch [::server-search-request]}
-       {:dispatch-later [{:ms 100 :dispatch [::initialise-app]}]}))))
-
 (re-frame/reg-event-db
  ::server-connection
- (fn [db [_ send]]
-   (assoc db :send-fn send)))
+ (fn [db [_ chsk]]
+   (assoc db :chsk chsk)))
 
 (re-frame/reg-event-db
  ::toggle-edit
@@ -79,10 +70,14 @@
  (fn [cofx _]
    (let [search  (get-in cofx [:db :search])
          search  (update search :nonce inc)
-         send-fn (get-in cofx [:db :send-fn])
+         chsk    (get-in cofx [:db :chsk])
+         send-fn (:send-fn chsk)
+         open?   (when-let [s (:state chsk)] (:open? @s))
          user    (get-in cofx [:db :user])]
-     {:db           (assoc (:db cofx) :search search)
-      ::send-search {:search search :send-fn send-fn :user user}})))
+     (if open?
+       {:db           (assoc (:db cofx) :search search)
+        ::send-search {:search search :send-fn send-fn :user user}}
+       {:dispatch-later [{:ms 100 :dispatch [::server-search-request]}]}))))
 
 (re-frame/reg-fx
  ::send-search
@@ -93,6 +88,7 @@
             ;; ids. I don't know how to do that for anonymous users though
             ;; (random IDs, I suppose, but this is just as good).
             (fn [[_ res]]
+              (println res)
               (re-frame/dispatch [::results res])))))
 
 (defn index-doc [send-fn doc]
