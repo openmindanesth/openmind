@@ -1,33 +1,29 @@
 (ns openmind.env
-  (:refer-clojure :exclude [read]))
+  (:refer-clojure :exclude [read])
+  (:require [clojure.string :as string]))
 
-(def env-keys
-  {:elastic-username "ELASTIC_USERNAME"
-   :elastic-password "ELASTIC_PASSWORD"
-   :elastic-hostname "ELASTIC_URL"
-   :dev?             "DEV_MODE"
-   :port             "PORT"})
+(defn var-name [key]
+  (-> key
+      name
+      (string/split #"-")
+      (->> (map string/upper-case)
+           (interpose "_")
+           (apply str))))
 
 (defn read-config []
   (try
     (read-string (slurp "conf.edn"))
     (catch Exception e nil)))
 
-(defn read-env []
-  (into {} (comp (map (fn [[k v]] [k (System/getenv v)]))
-                 (remove (fn [[k v]] (nil? v))))
-        env-keys))
-
-;;;; Env vars override config file.
 (def ^:private config
-  (merge (read-config) (read-env)))
+  (read-config))
 
 (defn read
-  "Read key from environment. key must be defined either in conf.end in the
-  project root or as an env var according to env-keys."
+  "Read key from environment. key must be defined either in conf.edn in the
+  project root or as an env var. Env var wins if both are defined."
   [key]
-  (when (contains? config key)
-    (get config key)))
+  (or (System/getenv (var-name key))
+      (get config key)))
 
 (defn port
   "Special case: port needs to be a number."

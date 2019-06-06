@@ -12,7 +12,7 @@ if ! test -e $FILE
 		cat << EOF > $FILE
 {:elastic-url "http://localhost:9200"
  :port        3003
- :dev?        true}
+ :dev-mode    true}
 EOF
 fi
 
