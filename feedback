@@ -1,4 +1,4 @@
 - search bar works with pressing ‚return‘ on laptop, but may require search button (or alternative) for mobile version
 
-Q: what do you think about a third level of categories, e.g. application > sensory > visual?
+- originally it was planned to have a third level of categories, e.g. application > sensory > visual. Alternatively we can go with only two levels (as you have implemented it now). Sub-categories could be provided in different colors then, e.g. all sensory modalities (visual, auditory, olfactory, somatosensory, nociceptive) in green; line break: resting state in blue; line break: all brain stimulations (deep brain, optogentics, chemogentics) in yellow.
 
