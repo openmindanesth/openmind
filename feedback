@@ -2,3 +2,4 @@
 
 - originally it was planned to have a third level of categories, e.g. application > sensory > visual. Alternatively we can go with only two levels (as you have implemented it now). Sub-categories could be provided in different colors then, e.g. all sensory modalities (visual, auditory, olfactory, somatosensory, nociceptive) in green; line break: resting state in blue; line break: all brain stimulations (deep brain, optogentics, chemogentics) in yellow.
 
+Q: when the page is open for a while in the browser and I want to search something it doesn’t work. I have to refresh the page then it works again. Is this the „sleeping mode“ you mentioned that we can switch off for money?
