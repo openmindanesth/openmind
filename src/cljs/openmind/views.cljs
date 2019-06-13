@@ -6,22 +6,20 @@
    [openmind.search :as search]
    [openmind.subs :as subs]))
 
+;; TODO: Look into tailwind
+
 (defn pass-off [k]
   (fn [ev]
     (re-frame/dispatch [k (-> ev .-target .-value)])))
 
 (defn text-box
   [k label & [{:keys [placeholder class]}]]
-  [:div.row
-   [:div.columns.one]
-   (when label
-     [:div.columns.two [:label {:for (name k)} label]])
-   [:div.columns.seven [:input.u-full-width {:id        (name k)
-                                             :type      :text
-                                             :class     class
-                                             :on-change (pass-off k)}]]])
-
-
+  [:div.flex
+   [:label.basis-12 {:for (name k)} label]
+   [:input.grow-4 {:id        (name k)
+                   :type      :text
+                   :class     class
+                   :on-change (pass-off k)}]])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Shared
@@ -31,24 +29,22 @@
   [:h2 "You're in a bad place."])
 
 (defn title-bar []
-  [:div
-   [:div.row
-    [:div.columns.one
-     [:button.narrow
-      {:on-click #(re-frame/dispatch [::events/toggle-edit])}
-      [:span.ham "Ξ"]]]
-    [:div.columns.one [:span "open" [:span.darker "mind"]]]
-    [:div.columns.two [:button "Login"]]
-    [:div.columns.four [:b "N.B.: if it isn't obvious, the data below is garbage. For test purposes only."]]
-    [:div.columns.three [:input {:type :text
-                                 :on-change (fn [e]
-                                              (let [v (-> e .-target .-value)]
-                                                (re-frame/dispatch
-                                                 [::events/search v])))
-                                 :placeholder "specific term"}]]]])
+  [:div.flex.space-between
+   [:button
+    {:on-click #(re-frame/dispatch [::events/toggle-edit])}
+    [:span.ham "Ξ"]]
+   [:div.ctext.grow-1.pl1.pr1 "open" [:b "mind"]]
+   [:input.grow-2 {:type :text
+            :on-change (fn [e]
+                         (let [v (-> e .-target .-value)]
+                           (re-frame/dispatch
+                            [::events/search v])))
+            :placeholder "specific term"}]])
+
 (defn window [content]
   [:div.padded
    [title-bar]
+   [:div.vspacer]
    [content]])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -56,11 +52,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn editor-panel []
-  [:div
-   [:div.row [:h2 "Add a new extract"]]
-   [:div.row [text-box :extract "Extract"]]
-   [:div.row [text-box :author "Author"]]
-   [:div.row [text-box :reference "Reference"]]])
+  [:div.flex.flex-column.flex-start.pl2.pr2
+   [:h2 "new extract"]
+   [text-box :extract "extract"]
+   [text-box :figure "figure link"]
+   [text-box :pubmed "pubmed link"]
+   ])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Search
@@ -90,9 +87,9 @@
 
 (defn result [{:keys [text reference tags]}]
   [:div.row.search-result.padded
-   [:div.row.extract text]
+   [:div.row.extract.break-wrap text]
    [:div.row.vspacer
-    [:div.flex-container
+    [:div.flex.flex-wrap.space-evenly
      [comments-tag (:comments tags)]
      [history-tag]
      [tag "related"]
@@ -116,7 +113,7 @@
    display])
 
 (defn filter-chooser [sel current]
-  (into [:div.flex-container.filter-choose]
+  (into [:div.flex.flex-wrap.space-evenly.filter-choose]
         (map (fn [feat] [feature sel feat (contains? current (key feat))]))
         (get search/filters sel)))
 
@@ -136,7 +133,7 @@
   (let [selection @(re-frame/subscribe [::subs/current-filter-edit])]
     [:div
      [:div.row
-      (into [:div.flex-container]
+      (into [:div.flex.flex-wrap.space-evenly]
             (map (fn [[k v]] [filter-button k (get fs k) selection]))
             search/filters)]
      (when selection
@@ -148,8 +145,8 @@
 
 (defn search-view []
   (let [current-search @(re-frame/subscribe [::subs/search])]
-    [:div.row
-     [:div [filter-view (:filters current-search)]]
+    [:div
+     [filter-view (:filters current-search)]
      [search-results]]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

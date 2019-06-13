@@ -8,13 +8,16 @@ html {
 		scrollbar-width: none;
 }
 
-.hspacer {
-		padding-left: 0.5em;
-		padding-right: 0.5em;
-}
-
 .padded {
 		padding: 0.5em;
+}
+
+.break-wrap {
+		word-wrap: break-word;
+}
+
+.ctext {
+		text-align: center;
 }
 
 .search-result {
@@ -30,59 +33,57 @@ html {
 		padding-top: 1em;
 }
 
-.bp-input {
-		width: 40%;
-}
-
-input[type="number"].invalid {
-		border: 1px solid red;
-}
-
-input[type="number"].incomplete, select.incomplete {
-		border: 2px solid #D5C0C0;
-}
-
-input[type="number"]:focus.incomplete, select:focus.incomplete {
-		border: 2px solid #33C3F0
-}
-
-label.incomplete {
-		text-decoration: underline solid #D5C0C0;;
-}
-
-.slash {
-		font-weight: bolder;
-		font-size: 2em;
-		vertical-align: sub;
-}
-
-.alarm {
-		background: hotpink;
-}
-
-.centre {
-		text-align: center;
-}
-
-.warning {
-		text-transform: capitalize;
-		font-size: 1.2em;
-		color: orangered;
-}
-
-.inline {
-		white-space: nowrap;
-}
 
 .blue {
 		background-color: #1EAEDE;
 		color: white;
 }
 
-.flex-container {
+.flex {
 		display: flex;
+}
+
+.flex-wrap {
 		flex-wrap: wrap;
+}
+
+.space-evenly {
 		justify-content: space-evenly;
+}
+
+.space-between {
+		justify-content: space-between;
+}
+
+.stretch {
+		align-items: stretch;
+}
+
+.flex-start {
+		justify-content: flex-start;
+}
+
+.flex-column {
+		flex-direction: column;
+}
+
+.grow-1 {
+		flex-grow: 1;
+}
+.grow-2 {
+		flex-grow: 2;
+}
+
+.grow-4 {
+		flex-grow: 4;
+}
+
+.shrink-2 {
+		flex-shrink: 2;
+}
+
+.basis-12 {
+		flex-basis: 12rem;
 }
 
 .tag {
@@ -99,6 +100,21 @@ label.incomplete {
 		padding-top: 1rem;
 }
 
+.pl1 {
+		padding-left: 1rem;
+}
+
+.pl2 {
+		padding-left: 2rem;
+}
+
+.pr1 {
+		padding-right: 1rem;
+}
+
+.pr2 {
+		padding-right: 2rem;
+}
 
 .active {
 		background-color: lightgreen;
