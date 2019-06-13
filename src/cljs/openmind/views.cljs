@@ -44,11 +44,11 @@
     [:span.ham "Ξ"]]
    [:div.ctext.grow-1.pl1.pr1 "open" [:b "mind"]]
    [:input.grow-2 {:type :text
-            :on-change (fn [e]
-                         (let [v (-> e .-target .-value)]
-                           (re-frame/dispatch
-                            [::events/search v])))
-            :placeholder "specific term"}]])
+                   :on-change (fn [e]
+                                (let [v (-> e .-target .-value)]
+                                  (re-frame/dispatch
+                                   [::events/search v])))
+                   :placeholder "specific term"}]])
 
 (defn window [content]
   [:div.padded
@@ -103,8 +103,16 @@
 ;;;;; Search
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn hlink [text]
-  [:a.tag {:on-click (constantly nil)} text])
+(defn hlink [text float-content]
+  (let [hover? (reagent/atom false)]
+    (fn [text float-content]
+      [:div
+       [:a.tag {:on-mouse-over #(reset! hover? true)
+                :on-mouse-out  #(reset! hover? false)}
+        text]
+       (when @hover?
+         [:div.absolute.absolute-c
+          float-content])])))
 
 (defn comments-link []
   [hlink "comments"])
@@ -116,14 +124,18 @@
   [hlink ref])
 
 (defn format-tags [tags]
-  (apply str
-         (interpose ", \n"
-                    (map (fn [[k v]]
-                           (when k
-                             (str (name k) "=["
-                                  (apply str (interpose ", " (map name v)))
-                                  "]")))
-                         tags))))
+  ;; FIXME: flex isn't the right solution here.
+  (into [:div.flex.flex-column.bg-white.p1.border-round]
+        (comp (remove nil?)
+              (map (fn [[k v]]
+                     (when (and k (seq v))
+                       [:div
+                        (into
+                         [:div.flex.space-between
+                          [:span.basis-12 (str (name k) ":")]]
+                         (interpose [:span.pl1.shrink-2 ","]
+                                    (map (fn [x] [:span.pl1 (name x)]) v)))]))))
+        tags))
 
 (defn result [{:keys [text reference tags]}]
   [:div.search-result.padded
@@ -134,13 +146,13 @@
      [history-link]
      [hlink "related"]
      [hlink "details"]
-     [:a.tag.tooltip {:data-tooltip (format-tags tags)} "tags"]
+     [hlink "tags" (format-tags tags)]
      [hlink "figure"]
      [reference-link reference]]]])
 
 (defn search-results []
   (let [results @(re-frame/subscribe [::subs/extracts])]
-    (into [:div.row]
+    (into [:div]
           (map (fn [r] [result r]) results))))
 
 (defn search-view []
