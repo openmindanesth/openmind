@@ -31,3 +31,21 @@
  ::current-filter-edit
  (fn [db]
    (:filter db)))
+
+(re-frame/reg-sub
+ ::new-extract
+ (fn [db]
+   (:create-extract db)))
+
+(def extract-data
+  [:extract :figure :link :comments])
+
+(run!
+ (fn [k]
+   (re-frame/reg-sub
+    k
+    (fn [_ _]
+      (re-frame/subscribe [::new-extract]))
+    (fn [extract _]
+      (get extract k))))
+ extract-data)

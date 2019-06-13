@@ -10,19 +10,28 @@
 
 (defn pass-off [k]
   (fn [ev]
-    (re-frame/dispatch [k (-> ev .-target .-value)])))
+    (re-frame/dispatch [::events/form-data k (-> ev .-target .-value)])))
 
 (defn text-box
   [k label & [{:keys [placeholder class]}]]
-  [:div.flex
-   [:label.basis-12 {:for (name k)} label]
-   [:input.grow-4 {:id        (name k)
-                   :type      :text
-                   :class     class
-                   :on-change (pass-off k)}]])
+  (let [content @(re-frame/subscribe [k])]
+    [:div.flex
+     [:label.basis-12 {:for (name k)} label]
+     [:input.grow-4 (merge {:id        (name k)
+                            :type      :text
+                            :on-change (pass-off k)}
+                           (cond
+                             content     {:value content}
+                             placeholder {:placeholder placeholder})
+                           (when class
+                             {:class class}))]]))
+
+(defn addable-list
+  [k label & [opts]]
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;; Shared
+;;;;; Page Level
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn four-o-four []
@@ -46,18 +55,6 @@
    [title-bar]
    [:div.vspacer]
    [content]])
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;; Editor
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defn editor-panel []
-  [:div.flex.flex-column.flex-start.pl2.pr2
-   [:h2 "new extract"]
-   [text-box :extract "extract"]
-   [text-box :figure "figure link"]
-   [text-box :pubmed "pubmed link"]
-   ])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Search
@@ -132,15 +129,14 @@
 (defn display-filters [fs]
   (let [selection @(re-frame/subscribe [::subs/current-filter-edit])]
     [:div
-     [:div.row
-      (into [:div.flex.flex-wrap.space-evenly]
-            (map (fn [[k v]] [filter-button k (get fs k) selection]))
-            search/filters)]
+     (into [:div.flex.flex-wrap.space-evenly]
+           (map (fn [[k v]] [filter-button k (get fs k) selection]))
+           search/filters)
      (when selection
        [filter-chooser selection (get fs selection)])]))
 
 (defn filter-view [fs]
-  [:div.row.filter-set
+  [:div.filter-set
    [display-filters fs]])
 
 (defn search-view []
@@ -148,6 +144,27 @@
     [:div
      [filter-view (:filters current-search)]
      [search-results]]))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;; Editor
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn editor-panel []
+  [:div.flex.flex-column.flex-start.pl2.pr2
+   [:h2 "new extract"]
+   [text-box :extract "extract"
+    {:placeholder "an insight or takeaway from the paper"}]
+   [text-box :link "source article"
+    {:placeholder "https://www.ncbi.nlm.nih.gov/pubmed/..."}]
+   [text-box :figure "figure link"
+    {:placeholder "link to a figure that demonstrates your point"}]
+   [text-box :comments "comments"
+    {:placeholder "anything you think is important"}]
+   [addable-list :confirmed "confirmed by"]
+   [addable-list :contrast "in contrast to"]
+   [addable-list :related "related results"]
+   [:h4.ctext "add filter tags"]
+   [filter-view {}]])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Entry
