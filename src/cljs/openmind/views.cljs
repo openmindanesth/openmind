@@ -103,17 +103,17 @@
 ;;;;; Search
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn tag [text]
+(defn hlink [text]
   [:a.tag {:on-click (constantly nil)} text])
 
-(defn comments-tag []
-  [tag "comments"])
+(defn comments-link []
+  [hlink "comments"])
 
-(defn history-tag []
-  [tag "history"])
+(defn history-link []
+  [hlink "history"])
 
-(defn reference-tag [ref]
-  [tag ref])
+(defn reference-link [ref]
+  [hlink ref])
 
 (defn format-tags [tags]
   (apply str
@@ -126,17 +126,17 @@
                          tags))))
 
 (defn result [{:keys [text reference tags]}]
-  [:div.row.search-result.padded
-   [:div.row.extract.break-wrap text]
-   [:div.row.vspacer
+  [:div.search-result.padded
+   [:div.extract.break-wrap text]
+   [:div.vspacer
     [:div.flex.flex-wrap.space-evenly
-     [comments-tag (:comments tags)]
-     [history-tag]
-     [tag "related"]
-     [tag "details"]
+     [comments-link (:comments tags)]
+     [history-link]
+     [hlink "related"]
+     [hlink "details"]
      [:a.tag.tooltip {:data-tooltip (format-tags tags)} "tags"]
-     [tag "figure"]
-     [reference-tag reference]]]])
+     [hlink "figure"]
+     [reference-link reference]]]])
 
 (defn search-results []
   (let [results @(re-frame/subscribe [::subs/extracts])]
