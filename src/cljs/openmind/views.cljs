@@ -15,8 +15,8 @@
 (defn text-box
   [k label & [{:keys [placeholder class]}]]
   (let [content @(re-frame/subscribe [k])]
-    [:div.flex
-     [:label.basis-12 {:for (name k)} label]
+    [:div.flex.vcenter.mb1
+     [:span.basis-12  [:b label]]
      [:input.grow-4 (merge {:id        (name k)
                             :type      :text
                             :on-change (pass-off k)}
@@ -26,9 +26,17 @@
                            (when class
                              {:class class}))]]))
 
+(defn pass-edit [k]
+  (fn [ev]))
+
 (defn addable-list
   [k label & [opts]]
-  )
+  [:div.flex.vcenter.mb1
+   [:span.basis-12 [:b label]]
+   [:input (merge {:type :text
+                   :placeholder "link to paper"
+                   :on-change (pass-edit k)})]
+   [:a.pl1 "[+]"]])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Page Level
@@ -167,7 +175,7 @@
 
 (defn editor-panel []
   [:div.flex.flex-column.flex-start.pl2.pr2
-   [:h2 "new extract"]
+   [:h2 "create a new extract"]
    [text-box :extract "extract"
     {:placeholder "an insight or takeaway from the paper"}]
    [text-box :link "source article"

@@ -50,6 +50,10 @@ html {
 		color: white;
 }
 
+.vcenter {
+		align-items: center;
+}
+
 .flex {
 		display: flex;
 }
@@ -123,6 +127,10 @@ html {
 }
 
 
+.mb1 {
+		margin-bottom: 1.5rem;
+}
+
 .p1 {
 		padding: 1rem;
 }
@@ -149,6 +157,10 @@ html {
 
 .filter-set {
 		margin-bottom: 1rem;
+}
+
+input {
+		margin-bottom: 0;
 }
 
 span.ham {
