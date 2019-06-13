@@ -1,5 +1,7 @@
 # Openmind
 
+See the [mockups](idea.pdf).
+
 ## Development Mode
 
 The script `bin/dev-setup.sh` will start docker containers for web containers
