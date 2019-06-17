@@ -111,7 +111,9 @@
   eventually contain the result."
   [req]
   (let [out-ch (async/promise-chan)]
-    (http/request req #(do (pprint %) (async/put! out-ch %)))
+    (http/request req (fn [res]
+                        ;; TODO: Logging
+                        (async/put! out-ch res)))
     out-ch))
 
 ;;;;; Testing helpers
