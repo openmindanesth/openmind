@@ -3,10 +3,12 @@
             [clojure.data.json :as json]
             [clojure.pprint :refer [pprint]]
             [openmind.env :as env]
+            [openmind.tags :refer [tag-tree]]
             [org.httpkit.client :as http]))
 
 ;; FIXME:
 (def index :test1)
+(def tag-index :tag-test)
 
 (def mapping
   {:properties {:created {:type :date}}})
@@ -92,6 +94,32 @@
          :url (str base-url "/" (name index))
          :method :put))
 
+;;;;; Tags in elastic
+
+(defn get-doc [index id]
+  (assoc base-req
+         :method :get
+         :url (str base-url "/" (name index) "/_doc/" id)))
+
+(defn find-id [res]
+  (when (:body res)
+    (when-let [body (json/read-str (:body res))]
+      (when (= "created" (get body "result"))
+        (get body "_id")))))
+
+(defn index-tag [index tag-data]
+  (assoc base-req
+         :url (str base-url "/" (name index) "/_doc/")
+         :method :post
+         :body (json/write-str tag-data)))
+
+(defn subtag-lookup [index root]
+  (let [query {:size 1000 :query {:match {:parents root}}}]
+    (search index query)))
+
+(defn top-level-tags [index]
+  (search index {:query {:bool {:must_not {:exists {:field :parents}}}}}))
+
 ;;;;; Wheel #6371
 
 (defn parse-response
@@ -116,9 +144,30 @@
                         (async/put! out-ch res)))
     out-ch))
 
+(defmacro request<!
+  "Must be called inside a go block. Sends request, and returns processed result
+  list into current context."
+  [req]
+  `(-> ~req
+       send-off!
+       async/<!
+       parse-response
+       :hits
+       :hits))
+
 ;;;;; Testing helpers
 
 (def tx (atom nil))
 (defn t [q] (async/go (reset! tx (async/<! (send-off! q)))))
 
-;; API
+;; hacks
+
+(defn index-tag-tree [index tree parents]
+  (run! (fn [[k v]]
+          (async/go
+            (let [tag-data {:tag-name k
+                            :parents parents}
+                  id (find-id (async/<! (send-off! (index-tag index tag-data))))]
+              (tap> [k id parents])
+              (index-tag-tree index v (conj parents id)))))
+        tree))

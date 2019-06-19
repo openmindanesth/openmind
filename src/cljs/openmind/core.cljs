@@ -17,6 +17,7 @@
 
 (defn ^:export init []
   (re-frame/dispatch-sync [::events/initialise-db])
+  (re-frame/dispatch [::events/update-tag-tree])
   (re-frame/dispatch [::events/search-request])
   (dev-setup)
   (mount-root))
