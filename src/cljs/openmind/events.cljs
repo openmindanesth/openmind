@@ -96,15 +96,20 @@
  (fn [db [_ term]]
    (assoc-in db [:search :term] term)))
 
+(defn apply-to-last [m [id & path] f]
+  (if path
+    (update m id apply-to-last path f)
+    (f m id)))
+
 (reg-search-updater
  ::add-filter-feature
- (fn [db [_ feature value]]
-   (update-in db [:search :filters feature] conj value)))
+ (fn [db [_ path]]
+   (update-in db [:search :filters] apply-to-last path #(assoc %1 %2 {}))))
 
 (reg-search-updater
  ::remove-filter-feature
- (fn [db [_ feature value]]
-   (update-in db [:search :filters feature] disj value)))
+ (fn [db [_ path]]
+   (update-in db [:search :filters] apply-to-last path dissoc)))
 
 (re-frame/reg-event-fx
  ::search-request
@@ -132,11 +137,17 @@
  (fn [{{:keys [chsk domain]} :db} _]
    {:dispatch [::try-send [:openmind/tag-tree domain]]}))
 
+(defn id->name [{:keys [tag-name id children]}]
+  (when id
+    (into {id tag-name} (map id->name) children)))
+
 (re-frame/reg-event-db
  :openmind/tag-tree
  (fn [db [_ tree]]
-   (assoc db :tag-tree tree)))
-
+   (let [])
+   (assoc db
+          :tag-tree tree
+          :tag-lookup (id->name tree))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Connection management

@@ -14,7 +14,7 @@
 (defn text-box
   [k label & [{:keys [placeholder class]}]]
   (let [content @(re-frame/subscribe [k])]
-    [:div.flex.vcenter.mb1
+    [:div.flex.vcenter.mb1h
      [:span.basis-12  [:b label]]
      [:input.grow-4 (merge {:id        (name k)
                             :type      :text
@@ -31,7 +31,7 @@
 
 (defn addable-list
   [k label & [opts]]
-  [:div.flex.vcenter.mb1
+  [:div.flex.vcenter.mb1h
    [:span.basis-12 [:b label]]
    [:input (merge {:type :text
                    :placeholder "link to paper"
@@ -68,39 +68,59 @@
 ;;;;; Filter tag selector
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn feature [feat [value display] selected?]
-  [:button.feature-button
-   {:class (when selected? "active")
-    :on-click #(re-frame/dispatch [(if selected?
+(defn feature [path display toggled?]
+  [:button.feature-button.border-round.mb1
+   {:class (when toggled? "active")
+    :on-click #(re-frame/dispatch [(if toggled?
                                      ::events/remove-filter-feature
                                      ::events/add-filter-feature)
-                                   feat value])}
+                                   path])}
    display])
 
-(defn filter-chooser [tag-tree sel current]
-  (into [:div.flex.flex-wrap.space-evenly.filter-choose]
-        (map (fn [feat] [feature sel feat (contains? current (key feat))]))
-        (get tag-tree sel)))
+(defn nested-filter [{:keys [tag-name id children]} activity selected? path]
+  (let [activity (get activity id)
+        tag-lookup @(re-frame/subscribe [::subs/tag-lookup])
+        cset (into #{} (comp (filter #(seq (:children %))) (map :id)) children)]
+    [:button.blue.filter-button.border-round.mb1
+     {:on-click (fn [_]
+                  (re-frame/dispatch [::events/set-filter-edit
+                                      path
+                                      (not selected?)]))
+      :class    (when selected? "selected")}
+     [:div
+      [:span [:span.prh tag-name]
+       (when (seq activity)
+         [:a.border-circle.plh.prh.bg-dull
+          {:on-click (fn [e]
+                       (.stopPropagation e)
+                       (.preventDefault e)
+                       (re-frame/dispatch
+                        [::events/remove-filter-feature
+                         path])
+                       (re-frame/dispatch
+                        [::events/set-filter-edit
+                         path false]))}
+          "remove"])]
+      (when (seq activity)
+        [:div
+         [:span
+          (str "(" (apply
+                    str (interpose
+                         " OR " (->> activity
+                                     (remove (fn [[k v]]
+                                               (and (empty? v)
+                                                    (contains? cset k))))
+                                     (map key)
+                                     (map #(get tag-lookup %))
+                                )))")")]])]]))
 
-(defn tag-name [[id tag]]
-  (:tag-name tag))
+(defn leaf-filter [{:keys [tag-name id]} activity path]
+  [feature path tag-name (contains? activity id)])
 
-(defn filter-button [{:keys [tag-name id children]} activity selected? path]
-  [:button.blue.filter-button
-   {:on-click (fn [_]
-                (re-frame/dispatch [::events/set-filter-edit
-                                    path
-                                    (not selected?)]))
-    :class    (when selected? "selected")}
-   [:span tag-name
-    (when (seq children)
-      (if (seq activity)
-        [:span
-         [:br]
-         (str "(" (apply
-                   str (interpose
-                        " or " (map tag-name activity))) ")")]
-        [:span [:br] "(all)"]))]])
+(defn filter-button [tag activity selected? path]
+  (if (seq (:children tag))
+    [nested-filter tag activity selected? path]
+    [leaf-filter tag activity path]))
 
 (defn tag-child
   "Returns the child of the given tag which has the provided id. Returns nil if
@@ -118,7 +138,7 @@
            (map (fn [{:keys [id] :as sub-tag}]
                   [filter-button
                    sub-tag
-                   (get active-filters id)
+                   active-filters
                    (= id next)
                    (conj current-path id)]))
            (:children tag))

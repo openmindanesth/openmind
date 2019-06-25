@@ -42,6 +42,11 @@
  (fn [db]
    (:tag-tree db)))
 
+(re-frame/reg-sub
+ ::tag-lookup
+ (fn [db]
+   (:tag-lookup db)))
+
 (def extract-data
   [:extract :figure :link :comments])
 
