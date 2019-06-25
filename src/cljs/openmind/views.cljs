@@ -68,16 +68,19 @@
 ;;;;; Filter tag selector
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn feature [path display toggled?]
-  [:button.feature-button.border-round.mb1
-   {:class (when toggled? "active")
-    :on-click #(re-frame/dispatch [(if toggled?
-                                     ::events/remove-filter-feature
-                                     ::events/add-filter-feature)
-                                   path])}
-   display])
+(defn cancel-button [path]
+  [:a.border-circle.plh.prh.bg-dull
+   {:on-click (fn [e]
+                (.stopPropagation e)
+                (.preventDefault e)
+                (re-frame/dispatch [::events/remove-filter-feature path])
+                (re-frame/dispatch [::events/set-filter-edit path false]))}
+   "remove"])
 
-(defn nested-filter [{:keys [tag-name id children]} activity selected? path]
+(defn nested-filter
+  "Defines the view component for a filter that has subcategories that can be
+  navigated."
+  [{:keys [tag-name id children]} activity selected? path]
   (let [activity (get activity id)
         tag-lookup @(re-frame/subscribe [::subs/tag-lookup])
         cset (into #{} (comp (filter #(seq (:children %))) (map :id)) children)]
@@ -88,19 +91,9 @@
                                       (not selected?)]))
       :class    (when selected? "selected")}
      [:div
-      [:span [:span.prh tag-name]
-       (when (seq activity)
-         [:a.border-circle.plh.prh.bg-dull
-          {:on-click (fn [e]
-                       (.stopPropagation e)
-                       (.preventDefault e)
-                       (re-frame/dispatch
-                        [::events/remove-filter-feature
-                         path])
-                       (re-frame/dispatch
-                        [::events/set-filter-edit
-                         path false]))}
-          "remove"])]
+      [:span.prh tag-name]
+      (when (seq activity)
+        [cancel-button path])
       (when (seq activity)
         [:div
          [:span
@@ -115,7 +108,14 @@
                                 )))")")]])]]))
 
 (defn leaf-filter [{:keys [tag-name id]} activity path]
-  [feature path tag-name (contains? activity id)])
+  (let [active? (contains? activity id)]
+    [:button.feature-button.border-round.mb1
+     {:class (when active? "active")
+      :on-click #(re-frame/dispatch [(if active?
+                                       ::events/remove-filter-feature
+                                       ::events/add-filter-feature)
+                                     path])}
+     tag-name]))
 
 (defn filter-button [tag activity selected? path]
   (if (seq (:children tag))
@@ -128,7 +128,11 @@
   [tag id]
   (first (filter (fn [x] (= (:id x) id)) (:children tag))))
 
-(defn filter-view [tag active-filters display-path current-path]
+(defn filter-view
+  "The taxonomy of tags forms a tree, but from that tree, only one thread of
+  nodes can be visible at a time in the interface. Given that display-path,
+  recursively render the appropriate nodes."
+  [tag active-filters display-path current-path]
   {:pre [(= (:id tag) (first display-path))]}
   (let [[current & tail] display-path
         next (first tail)
@@ -207,9 +211,9 @@
   (let [current-search @(re-frame/subscribe [::subs/search])
         tag-tree @(re-frame/subscribe [::subs/tags])
         selection @(re-frame/subscribe [::subs/current-filter-edit])
+        ;; HACK: Automatically select anaesthesia for now.
         selection (or selection [(:id tag-tree)])]
     [:div
-     ;; HACK: Automatically select anaesthesia for now.
      [filter-view tag-tree (:filters current-search) selection [(:id tag-tree)]]
      [search-results]]))
 
