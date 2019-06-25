@@ -3,7 +3,6 @@
    [reagent.core :as reagent]
    [re-frame.core :as re-frame]
    [openmind.events :as events]
-   [openmind.search :as search]
    [openmind.subs :as subs]))
 
 ;; TODO: Look into tailwind
@@ -26,6 +25,7 @@
                            (when class
                              {:class class}))]]))
 
+;; FIXME: stub
 (defn pass-edit [k]
   (fn [ev]))
 
@@ -77,38 +77,58 @@
                                    feat value])}
    display])
 
-(defn filter-chooser [sel current]
+(defn filter-chooser [tag-tree sel current]
   (into [:div.flex.flex-wrap.space-evenly.filter-choose]
         (map (fn [feat] [feature sel feat (contains? current (key feat))]))
-        (get search/filters sel)))
+        (get tag-tree sel)))
 
-(defn filter-button [n v sel]
+(defn tag-name [[id tag]]
+  (:tag-name tag))
+
+(defn filter-button [{:keys [tag-name id children]} activity selected? path]
   [:button.blue.filter-button
    {:on-click (fn [_]
-                (re-frame/dispatch [::events/set-filter-edit (when-not (= n sel)
-                                                               n)]))
-    :class    (when (= n sel) "selected")}
-   [:span (name n)
-    (when (seq v)
-      [:span
-       [:br]
-       (str "(" (apply str (interpose " or " (map name v))) ")")])]])
+                (re-frame/dispatch [::events/set-filter-edit
+                                    path
+                                    (not selected?)]))
+    :class    (when selected? "selected")}
+   [:span tag-name
+    (when (seq children)
+      (if (seq activity)
+        [:span
+         [:br]
+         (str "(" (apply
+                   str (interpose
+                        " or " (map tag-name activity))) ")")]
+        [:span [:br] "(all)"]))]])
 
-(defn display-filters [fs]
-  (let [selection @(re-frame/subscribe [::subs/current-filter-edit])]
-    [:div
+(defn tag-child
+  "Returns the child of the given tag which has the provided id. Returns nil if
+  no such tag is found."
+  [tag id]
+  (first (filter (fn [x] (= (:id x) id)) (:children tag))))
+
+(defn filter-view [tag active-filters display-path current-path]
+  {:pre [(= (:id tag) (first display-path))]}
+  (let [[current & tail] display-path
+        next (first tail)
+        active-filters (get active-filters (:id tag))]
+    [:div.bc-dull.border-round.pl2.pr2.pb1.pt2
      (into [:div.flex.flex-wrap.space-evenly]
-           (map (fn [[k v]] [filter-button k (get fs k) selection]))
-           search/filters)
-     (when selection
-       [filter-chooser selection (get fs selection)])]))
-
-(defn filter-view [fs]
-  [:div.filter-set
-   [display-filters fs]])
+           (map (fn [{:keys [id] :as sub-tag}]
+                  [filter-button
+                   sub-tag
+                   (get active-filters id)
+                   (= id next)
+                   (conj current-path id)]))
+           (:children tag))
+     (when next
+       (let [child (tag-child tag next)]
+         (filter-view child active-filters
+                      tail (conj current-path next))))]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;; Search
+;;;;; Extract Display
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn hlink [text float-content]
@@ -164,9 +184,13 @@
           (map (fn [r] [result r]) results))))
 
 (defn search-view []
-  (let [current-search @(re-frame/subscribe [::subs/search])]
+  (let [current-search @(re-frame/subscribe [::subs/search])
+        tag-tree @(re-frame/subscribe [::subs/tags])
+        selection @(re-frame/subscribe [::subs/current-filter-edit])
+        selection (or selection [(:id tag-tree)])]
     [:div
-     [filter-view (:filters current-search)]
+     ;; HACK: Automatically select anaesthesia for now.
+     [filter-view tag-tree (:filters current-search) selection [(:id tag-tree)]]
      [search-results]]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

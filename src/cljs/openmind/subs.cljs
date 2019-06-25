@@ -30,12 +30,17 @@
 (re-frame/reg-sub
  ::current-filter-edit
  (fn [db]
-   (:filter db)))
+   (:filter-selection db)))
 
 (re-frame/reg-sub
  ::new-extract
  (fn [db]
    (:create-extract db)))
+
+(re-frame/reg-sub
+ ::tags
+ (fn [db]
+   (:tag-tree db)))
 
 (def extract-data
   [:extract :figure :link :comments])

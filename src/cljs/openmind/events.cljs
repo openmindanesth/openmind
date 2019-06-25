@@ -57,8 +57,10 @@
 
 (re-frame/reg-event-db
  ::set-filter-edit
- (fn [db [_ sel]]
-   (assoc db :filter sel)))
+ (fn [db [_ path add?]]
+   (if add?
+     (assoc db :filter-selection path)
+     (assoc db :filter-selection (vec (butlast path))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Extract Creation

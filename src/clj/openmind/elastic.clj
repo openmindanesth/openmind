@@ -7,8 +7,8 @@
             [org.httpkit.client :as http]))
 
 ;; FIXME:
-(def index :test1)
-(def tag-index :tag-test)
+(def index :extracts0)
+(def tag-index :tags0)
 
 (def mapping
   {:properties {:created {:type :date}}})
@@ -59,12 +59,6 @@
 (def base-url
   (str (env/read :elastic-url)))
 
-(def cluster-settings
-  (merge base-req
-         {:method :get
-          :url (str base-url "/_cluster/settings")}))
-
-
 (defn index-req [index doc]
   (merge base-req
          {:method :post
@@ -78,16 +72,13 @@
             :url (str base-url "/" (name index) "/_search")
             :body qbody})))
 
+;;;;; Init new index
+
 (def set-mapping
   (merge base-req
          {:method :put
           :url (str base-url "/" (name index) "/_mapping")
           :body (json/write-str mapping)}))
-
-(def most-recent
-  (search index {:sort {:created {:order :desc}}
-                  :from 0
-                  :size 10}))
 
 (def create-index
   (assoc base-req
@@ -160,7 +151,17 @@
 (def tx (atom nil))
 (defn t [q] (async/go (reset! tx (async/<! (send-off! q)))))
 
-;; hacks
+(def cluster-settings
+  (merge base-req
+         {:method :get
+          :url (str base-url "/_cluster/settings")}))
+
+(def most-recent
+  (search index {:sort {:created {:order :desc}}
+                  :from 0
+                  :size 10}))
+
+;;;;; Tag init hack
 
 (defn index-tag-tree [index tree parents]
   (run! (fn [[k v]]

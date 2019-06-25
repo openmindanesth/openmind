@@ -8,5 +8,6 @@
               :filters {}}
    :route    :openmind.views/search
    ;; TODO: FIXME:
+   :filter-selection nil
    :user     (gensym)
    :results  []})

@@ -29,6 +29,10 @@ html {
 		margin-bottom: 0.5rem;
 }
 
+.bc-dull {
+		border-color: rgba(100,100,100,0.5) !important;
+}
+
 .vspacer {
 		padding-top: 1em;
 }
@@ -126,13 +130,32 @@ html {
 		margin-left: -8rem;
 }
 
-
 .mb1 {
 		margin-bottom: 1.5rem;
 }
 
+.mb0 {
+		margin-bottom: 0;
+}
+
 .p1 {
 		padding: 1rem;
+}
+
+.p2 {
+		padding: 2rem;
+}
+
+.pbh {
+		padding-bottom: 0.5rem;
+}
+
+.pb1 {
+		padding-bottom: 1rem;
+}
+
+.pt2 {
+		padding-top:2rem;
 }
 
 .pl1 {
@@ -153,10 +176,6 @@ html {
 
 .active {
 		background-color: lightgreen;
-}
-
-.filter-set {
-		margin-bottom: 1rem;
 }
 
 input {
