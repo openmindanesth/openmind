@@ -1,7 +1,7 @@
 {:deps
  {compojure                 {:mvn/version "1.6.1"}
   com.taoensso/sente        {:mvn/version "1.14.0-RC2"}
-  http-kit                  {:mvn/version "2.3.0"}
+  http-kit                  {:mvn/version "2.4.0-alpha2"}
   org.clojure/core.async    {:mvn/version "0.4.490"}
   org.clojure/clojurescript {:mvn/version "1.10.520"}
   org.clojure/test.check    {:mvn/version "0.9.0"}
