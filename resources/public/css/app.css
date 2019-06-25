@@ -49,6 +49,10 @@ html {
 		background-color: white;
 }
 
+.text-black {
+		color: black;
+}
+
 .blue {
 		background-color: #1EAEDE;
 		color: white;
@@ -110,6 +114,9 @@ html {
 		padding-left: 0.5rem;
 }
 
+.bg-dull {
+		background-color: rgba(0,0,0,0.1);
+}
 
 .filter-choose {
 		border: 0.1rem;
@@ -126,11 +133,28 @@ html {
 		border-radius: 0.5rem;
 }
 
+.border-circle {
+		border: 0.1rem;
+		border-spacing: 0;
+		border-color: white !important;
+		border-style: solid;
+		border-radius: 20rem;
+}
+
 .absolute-c {
 		margin-left: -8rem;
 }
 
+.a-top {
+		margin-top: -3rem;
+}
+
+
 .mb1 {
+		margin-bottom: 1rem;
+}
+
+.mb1h {
 		margin-bottom: 1.5rem;
 }
 
@@ -148,6 +172,14 @@ html {
 
 .pbh {
 		padding-bottom: 0.5rem;
+}
+
+.prh {
+		padding-right: 0.5rem;
+}
+
+.plh {
+		padding-left: 0.5rem;
 }
 
 .pb1 {
