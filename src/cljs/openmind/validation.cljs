@@ -2,7 +2,7 @@
   (:require [cljs.spec.alpha :as s]
             [cljs.spec.gen.alpha :as gen]
             [clojure.test.check.generators]
-            [openmind.search :as search]))
+            ))
 
 (s/def ::extract
   (s/keys :req-un [::text ::reference ::tags ::created ::author]
@@ -23,27 +23,39 @@
 (s/def ::created inst?)
 
 (s/def ::tags
-  (s/keys :req-un [::species ::modality ::depth ::application ::physiology]))
+  (s/coll-of string? :distinct true))
 
-(s/def ::tag
-  (s/coll-of keyword? :kind vector? :distinct true))
+;; (defn gen-vec [tag]
+;;   (fn [] (gen/vector (gen/elements (keys (get search/filters tag))) 0 2)))
 
-(defn gen-vec [tag]
-  (fn [] (gen/vector (gen/elements (keys (get search/filters tag))) 0 2)))
+;; (s/def ::species
+;;   (s/with-gen ::tag
+;;     (gen-vec :species)))
 
-(s/def ::species
-  (s/with-gen ::tag
-    (gen-vec :species)))
+;; (s/def ::modality (s/with-gen ::tag (gen-vec :modality)))
 
-(s/def ::modality (s/with-gen ::tag (gen-vec :modality)))
+;; (s/def ::depth (s/with-gen ::tag (gen-vec :depth)))
 
-(s/def ::depth (s/with-gen ::tag (gen-vec :depth)))
+;; (s/def ::application (s/with-gen ::tag (gen-vec :application)))
 
-(s/def ::application (s/with-gen ::tag (gen-vec :application)))
+;; (s/def ::physiology (s/with-gen ::tag (gen-vec :physiology)))
 
-(s/def ::physiology (s/with-gen ::tag (gen-vec :physiology)))
+(defn rando-tags [& [min max]]
+  (let [min (or min 3)
+        max (or max 10)
+        n (+ 1 min (rand-int (- max min)))
+        ;; HACK: I don't even know what to call this. It's just for
+        ;; testing. Does that make it okay?
+        opts (keys (:tag-lookup @re-frame.db/app-db))]
+    (assert (< n (count opts)))
+    (loop [tags #{}]
+      (if (= (count tags) n)
+        tags
+        (recur (conj tags (rand-nth opts)))))))
 
-
+(defn gen-examples [n]
+  (let [templs (map first (s/exercise ::extract n))]
+    (map (fn [x] (assoc x :tags (rando-tags))) templs )))
 
 (comment
   (def example

@@ -172,3 +172,10 @@
               (tap> [k id parents])
               (index-tag-tree index v (conj parents id)))))
         tree))
+
+(defn create-and-init!
+  "Setup indicies on a blank instance and populate basic tags."
+  []
+  (t create-index)
+  (t set-mapping)
+  (index-tag-tree tag-index tag-tree []))
