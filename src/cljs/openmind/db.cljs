@@ -1,5 +1,4 @@
-(ns openmind.db
-  (:require [openmind.search :as search]))
+(ns openmind.db)
 
 (def default-db
   {:domain   "anaesthesia"
