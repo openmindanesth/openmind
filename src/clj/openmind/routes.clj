@@ -48,16 +48,19 @@
   (mapv :_source res))
 
 (defn reconstruct [root re]
-  (assoc root :children (mapv (fn [c] (reconstruct c re)) (get re (:id root)))))
+  (assoc root :children (into {}
+                              (map (fn [c]
+                                     (let [t (reconstruct c re)]
+                                       [(:id t) t])))
+                              (get re (:id root)))))
 
 (defn invert-tag-tree [tree root-node]
   (let [id->node (into {} tree)
-        parent->children
-        (->> tree
-             (map (fn [[id x]] (assoc x :id id)))
-             (group-by :parents)
-             (map (fn [[k v]] [(last k) (mapv #(dissoc % :parents) v)]))
-             (into {}))]
+        parent->children (->> tree
+                              (map (fn [[id x]] (assoc x :id id)))
+                              (group-by :parents)
+                              (map (fn [[k v]] [(last k) v]))
+                              (into {}))]
     (reconstruct root-node parent->children)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

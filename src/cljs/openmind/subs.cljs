@@ -8,9 +8,10 @@
    (:search db)))
 
 (re-frame/reg-sub
- ::filters
- (fn [db]
-   (:filters (:search db))))
+ ::search-filters
+ :<- [::search]
+ (fn [search _]
+   (:filters search)))
 
 (re-frame/reg-sub
  ::send-fn

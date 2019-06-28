@@ -3,7 +3,8 @@
    [reagent.core :as reagent]
    [re-frame.core :as re-frame]
    [openmind.events :as events]
-   [openmind.subs :as subs]))
+   [openmind.subs :as subs]
+   [openmind.views.tags :as tags]))
 
 ;; TODO: Look into tailwind
 
@@ -68,87 +69,6 @@
 ;;;;; Filter tag selector
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn cancel-button [path]
-  [:a.border-circle.plh.prh.bg-dull
-   {:on-click (fn [e]
-                (.stopPropagation e)
-                (.preventDefault e)
-                (re-frame/dispatch [::events/remove-filter-feature path])
-                (re-frame/dispatch [::events/set-filter-edit path false]))}
-   "remove"])
-
-(defn nested-filter
-  "Defines the view component for a filter that has subcategories that can be
-  navigated."
-  [{:keys [tag-name id children]} activity selected? path]
-  (let [activity (get activity id)
-        tag-lookup @(re-frame/subscribe [::subs/tag-lookup])
-        cset (into #{} (comp (filter #(seq (:children %))) (map :id)) children)]
-    [:button.blue.filter-button.border-round.mb1
-     {:on-click (fn [_]
-                  (re-frame/dispatch [::events/set-filter-edit
-                                      path
-                                      (not selected?)]))
-      :class    (when selected? "selected")}
-     [:div
-      [:span.prh tag-name]
-      (when (seq activity)
-        [cancel-button path])
-      (when (seq activity)
-        [:div
-         [:span
-          (str "(" (apply
-                    str (interpose
-                         " OR " (->> activity
-                                     (remove (fn [[k v]]
-                                               (and (empty? v)
-                                                    (contains? cset k))))
-                                     (map key)
-                                     (map #(get tag-lookup %)))))")")]])]]))
-
-(defn leaf-filter [{:keys [tag-name id]} activity path]
-  (let [active? (contains? activity id)]
-    [:button.feature-button.border-round.mb1
-     {:class (when active? "active")
-      :on-click #(re-frame/dispatch [(if active?
-                                       ::events/remove-filter-feature
-                                       ::events/add-filter-feature)
-                                     path])}
-     tag-name]))
-
-(defn filter-button [tag activity selected? path]
-  (if (seq (:children tag))
-    [nested-filter tag activity selected? path]
-    [leaf-filter tag activity path]))
-
-(defn tag-child
-  "Returns the child of the given tag which has the provided id. Returns nil if
-  no such tag is found."
-  [tag id]
-  (first (filter (fn [x] (= (:id x) id)) (:children tag))))
-
-(defn filter-view
-  "The taxonomy of tags forms a tree, but from that tree, only one thread of
-  nodes can be visible at a time in the interface. Given that display-path,
-  recursively render the appropriate nodes."
-  [tag active-filters display-path current-path]
-  {:pre [(= (:id tag) (first display-path))]}
-  (let [[current & tail] display-path
-        next (first tail)
-        active-filters (get active-filters (:id tag))]
-    [:div.border-blue.border-round.pl2.pr2.pb1.pt2
-     (into [:div.flex.flex-wrap.space-evenly]
-           (map (fn [{:keys [id] :as sub-tag}]
-                  [filter-button
-                   sub-tag
-                   active-filters
-                   (= id next)
-                   (conj current-path id)]))
-           (:children tag))
-     (when next
-       (let [child (tag-child tag next)]
-         (filter-view child active-filters
-                      tail (conj current-path next))))]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Extract Display
@@ -207,15 +127,10 @@
           (map (fn [r] [result r]) results))))
 
 (defn search-view []
-  (let [current-search @(re-frame/subscribe [::subs/search])
-        tag-tree @(re-frame/subscribe [::subs/tags])
-        selection @(re-frame/subscribe [::subs/current-filter-edit])
-        ;; HACK: Automatically select anaesthesia for now.
-        selection (or selection [(:id tag-tree)])]
-    [:div
-     [filter-view tag-tree (:filters current-search) selection [(:id tag-tree)]]
-     [:hr.mb1.mt1]
-     [search-results]]))
+  [:div
+   [tags/search-filter]
+   [:hr.mb1.mt1]
+   [search-results]])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Editor
@@ -236,7 +151,7 @@
    [addable-list :contrast "in contrast to"]
    [addable-list :related "related results"]
    [:h4.ctext "add filter tags"]
-   [filter-view {}]])
+   [tags/tag-selector]])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Entry
