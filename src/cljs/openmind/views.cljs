@@ -50,7 +50,7 @@
    [:button
     {:on-click #(re-frame/dispatch [::events/toggle-edit])}
     [:span.ham "Ξ"]]
-   [:div.ctext.grow-1.pl1.pr1 "open" [:b "mind"]]
+   [:div.ctext.grow-1.pl1.pr1.xxl.pth "open" [:b "mind"]]
    [:input.grow-2 {:type :text
                    :on-change (fn [e]
                                 (let [v (-> e .-target .-value)]
@@ -104,8 +104,7 @@
                                                (and (empty? v)
                                                     (contains? cset k))))
                                      (map key)
-                                     (map #(get tag-lookup %))
-                                )))")")]])]]))
+                                     (map #(get tag-lookup %)))))")")]])]]))
 
 (defn leaf-filter [{:keys [tag-name id]} activity path]
   (let [active? (contains? activity id)]
@@ -137,7 +136,7 @@
   (let [[current & tail] display-path
         next (first tail)
         active-filters (get active-filters (:id tag))]
-    [:div.bc-dull.border-round.pl2.pr2.pb1.pt2
+    [:div.border-blue.border-round.pl2.pr2.pb1.pt2
      (into [:div.flex.flex-wrap.space-evenly]
            (map (fn [{:keys [id] :as sub-tag}]
                   [filter-button
@@ -159,8 +158,8 @@
   (let [hover? (reagent/atom false)]
     (fn [text float-content]
       [:div
-       [:a.tag {:on-mouse-over #(reset! hover? true)
-                :on-mouse-out  #(reset! hover? false)}
+       [:a.plh.prh.link-blue {:on-mouse-over #(reset! hover? true)
+                     :on-mouse-out  #(reset! hover? false)}
         text]
        (when @hover?
          [:div.absolute.absolute-c
@@ -191,8 +190,8 @@
 
 (defn result [{:keys [text reference tags]}]
   [:div.search-result.padded
-   [:div.extract.break-wrap text]
-   [:div.vspacer
+   [:div.break-wrap.ph text]
+   [:div.pth
     [:div.flex.flex-wrap.space-evenly
      [comments-link (:comments tags)]
      [history-link]
@@ -215,6 +214,7 @@
         selection (or selection [(:id tag-tree)])]
     [:div
      [filter-view tag-tree (:filters current-search) selection [(:id tag-tree)]]
+     [:hr.mb1.mt1]
      [search-results]]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

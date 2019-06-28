@@ -4,6 +4,10 @@ html::-webkit-scrollbar {
 		display: none;
 }
 
+.xxl {
+		font-size: xx-large;
+}
+
 html {
 		scrollbar-width: none;
 }
@@ -58,6 +62,10 @@ html {
 		color: white;
 }
 
+.border-blue {
+		border-color: #1EAEDE !important;
+}
+
 .vcenter {
 		align-items: center;
 }
@@ -109,13 +117,12 @@ html {
 		flex-basis: 12rem;
 }
 
-.tag {
-		padding-right: 0.5rem;
-		padding-left: 0.5rem;
-}
-
 .bg-dull {
 		background-color: rgba(0,0,0,0.1);
+}
+
+a.link-blue {
+		color: #1EAEDB;
 }
 
 .filter-choose {
@@ -123,7 +130,6 @@ html {
 		border-spacing: 0;
 		border-style: outset;
 		border-radius: 0.5rem;
-		border-color: #1EAEDB;
 		padding-top: 1rem;
 }
 
@@ -150,6 +156,10 @@ html {
 }
 
 
+.mt1 {
+		margin-top: 1rem;
+}
+
 .mb1 {
 		margin-bottom: 1rem;
 }
@@ -158,8 +168,16 @@ html {
 		margin-bottom: 1.5rem;
 }
 
+.mb2 {
+		margin-bottom: 2rem;
+}
+
 .mb0 {
 		margin-bottom: 0;
+}
+
+.ph {
+		padding: 0.5rem;
 }
 
 .p1 {
@@ -184,6 +202,10 @@ html {
 
 .pb1 {
 		padding-bottom: 1rem;
+}
+
+.pth {
+		padding-top: 0.5rem;
 }
 
 .pt2 {
