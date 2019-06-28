@@ -82,7 +82,7 @@
   (send-fn [:openmind/index doc]))
 
 (defn unsafe-index [doc]
-  (index-doc (:send-fn @re-frame.db/app-db) doc))
+  (index-doc (:send-fn (:chsk @re-frame.db/app-db)) doc))
 
 (defn reg-search-updater [key update-fn]
   (re-frame/reg-event-fx

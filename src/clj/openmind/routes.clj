@@ -1,5 +1,6 @@
 (ns openmind.routes
   (:require [clojure.core.async :as async]
+            [clojure.pprint]
             [clojure.walk :as walk]
             [openmind.elastic :as es]))
 
@@ -44,7 +45,7 @@
         v))))
 
 (defn parse-search-response [res]
-  (mapv :_source (:hits (:hits res))))
+  (mapv :_source res))
 
 (defn reconstruct [root re]
   (assoc root :children (mapv (fn [c] (reconstruct c re)) (get re (:id root)))))
@@ -73,13 +74,17 @@
 
 (defmethod dispatch :default
   [e]
-  (println "Unhandled client event:" e)
+  (println "Unhandled client event:")
+  (clojure.pprint/pprint e)
   ;; REVIEW: Dropping unhandled messages is suboptimal.
   nil)
+
+(def gt (atom nil))
 
 (defmethod dispatch :openmind/search
   [{[_  {:keys [user search]}] :event :keys [send-fn ?reply-fn uid]}]
   (let [nonce (:nonce search)]
+    (reset! gt search)
     (async/go
       (let [res   (parse-search-response (es/request<! (search-req search)))
             event [:openmind/search-response {:results res :nonce nonce}]]
