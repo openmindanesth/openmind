@@ -55,7 +55,7 @@
 
 (defn gen-examples [n]
   (let [templs (map first (s/exercise ::extract n))]
-    (map (fn [x] (assoc x :tags (rando-tags))) templs )))
+    (map (fn [x] (assoc x :tags [] #_(rando-tags))) templs )))
 
 (comment
   (def example

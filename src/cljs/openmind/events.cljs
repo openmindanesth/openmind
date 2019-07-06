@@ -69,6 +69,15 @@
  (fn [db [_ k i v]]
    (assoc-in db [:create k i] v)))
 
+(re-frame/reg-event-fx
+ ::create-extract
+ (fn [cofx _]
+   (let [extract (-> cofx
+                     (get-in [:db :create])
+                     (dissoc :selection)
+                     (update :tags #(mapv :id %)))]
+     {:dispatch [::try-send [:openmind/index extract]]})))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Extract Creation
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

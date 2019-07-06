@@ -44,11 +44,17 @@
           ;; TODO: Logging
           :else (println "No way to return response to sender."))))))
 
-(defn prepare-doc [doc]
+(defn parse-dates [doc]
   (let [formatter (java.text.SimpleDateFormat. "YYYY-MM-dd'T'HH:mm:ss.SSSXXX")]
     (walk/prewalk
      (fn [x] (if (inst? x) (.format formatter x) x))
      doc)))
+
+(defn prepare-doc [doc]
+  (-> doc
+      (assoc :text (:extract doc))
+      (dissoc :extract)
+      parse-dates))
 
 (defmethod dispatch :openmind/index
   [{:keys [client-id send-fn] [_ doc] :event}]

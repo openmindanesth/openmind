@@ -123,7 +123,6 @@
     (re-frame/dispatch [::events/nested-form k i (-> ev .-target .-value)])))
 
 (defn list-element [k i c]
-  (println (seq c))
   [:input (merge {:type :text
                   :on-change (pass-edit k i)}
                  (if (seq c)
@@ -147,7 +146,12 @@
 
 (defn editor-panel []
   [:div.flex.flex-column.flex-start.pl2.pr2
-   [:h2 "create a new extract"]
+   [:div.flex.pb1.space-between
+    [:h2 "create a new extract"]
+    [:button.blue.border-round.wide
+     {:on-click (fn [_]
+                  (re-frame/dispatch [::events/create-extract]))}
+     "CREATE"]]
    [text-box :extract "extract"
     {:placeholder "an insight or takeaway from the paper"}]
    [text-box :link "source article"
