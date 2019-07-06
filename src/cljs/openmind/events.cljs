@@ -66,6 +66,28 @@
      (assoc-in db (into [:create-extract] k) v))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;; Extract Creation
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(re-frame/reg-event-db
+ ::set-editor-selection
+ (fn [db [_ path add?]]
+   (println path)
+   (if add?
+     (assoc-in db [:create :selection] path)
+     (assoc-in db [:create :selection] (vec (butlast path))))))
+
+(re-frame/reg-event-db
+ ::add-editor-tag
+ (fn [db [_ tag]]
+   (update-in db [:create :tags] conj tag)))
+
+(re-frame/reg-event-db
+ ::remove-editor-tag
+ (fn [db [_ tag]]
+   (update-in db [:create :tags] disj tag)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Server Comms
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -112,10 +134,6 @@
          (assoc :results results))
      db)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;; Tags
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 (re-frame/reg-event-db
  ::set-filter-edit
  (fn [db [_ path add?]]
@@ -133,24 +151,21 @@
  (fn [db [_ tag]]
    (update-in db [:search :filters] disj tag)))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Tag tree (taxonomy)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 (re-frame/reg-event-fx
  ::update-tag-tree
  (fn [{{:keys [chsk domain]} :db} _]
    {:dispatch [::try-send [:openmind/tag-tree domain]]}))
 
-(defn id->name [{:keys [tag-name id children]}]
-  (when id
-    (into {id tag-name} (map id->name) children)))
-
 (re-frame/reg-event-db
  :openmind/tag-tree
  (fn [db [_ tree]]
    (let [])
-   (assoc db
-          :tag-tree tree
-          :tag-lookup (id->name tree))))
+   (assoc db :tag-tree tree)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Connection management

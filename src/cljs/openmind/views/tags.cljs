@@ -34,7 +34,6 @@
   "Defines the view component for a filter that has subcategories that can be
   navigated."
   [{:keys [tag-name id children] :as tag} display data]
-  (println children)
   (let [selected? (contains? data tag)]
     [:button.blue.filter-button.border-round.mb1
      {:on-click (fn [_]
@@ -43,7 +42,7 @@
                     (open-path display tag))
                   (when-not selected?
                     (select data tag)))
-      :class    (when selected? "selected")}
+      :class    (when (contains? display tag) "selected")}
      [:div
       [:span.prh tag-name]
       (when selected?
@@ -105,16 +104,16 @@
 ;;;;; Search screen
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def search-tag-display
+(defn create-display [sub event]
   (reify TagDisplay
     (get-path [_]
-      @(re-frame/subscribe [::subs/current-filter-edit]))
+      @(re-frame/subscribe [sub]))
     (open-path [_ tag]
       (let [path (conj (:parents tag) (:id tag))]
-        (re-frame/dispatch [::events/set-filter-edit path true])))
+        (re-frame/dispatch [event path true])))
     (close-path [_ tag]
       (let [path (conj (:parents tag) (:id tag))]
-        (re-frame/dispatch [::events/set-filter-edit path false])))
+        (re-frame/dispatch [event path false])))
 
     ILookup
     (-lookup [this tag]
@@ -124,14 +123,14 @@
         (:id tag)
         not-found))))
 
-(def search-tag-data
+(defn create-data-manager [sub add remove]
   (reify TagSet
     (tags [_]
-      @(re-frame/subscribe [::subs/search-filters]))
+      @(re-frame/subscribe [sub]))
     (select [_ tag]
-      (re-frame/dispatch [::events/add-filter-feature tag]))
+      (re-frame/dispatch [add tag]))
     (unselect [_ tag]
-       (re-frame/dispatch [::events/remove-filter-feature tag]))
+       (re-frame/dispatch [remove tag]))
 
     ILookup
     (-lookup [this tag]
@@ -139,16 +138,37 @@
     (-lookup [this tag not-found]
       (get (tags this) tag not-found))))
 
-(defn search-filter []
+(def search-tag-display
+  (create-display ::subs/current-filter-edit
+                  ::events/set-filter-edit))
+
+(def search-tag-data
+  (create-data-manager ::subs/search-filters
+                       ::events/add-filter-feature
+                       ::events/remove-filter-feature))
+
+(defn tag-view [display data]
   (let [tag-tree @(re-frame/subscribe [::subs/tags])]
     ;; HACK: Select anaesthesia automatically.
-    (when (empty? (get-path search-tag-display))
-      (open-path search-tag-display [(:id tag-tree)]))
-    [filter-view tag-tree search-tag-display search-tag-data]))
+    (when (empty? (get-path display))
+      (open-path display [(:id tag-tree)]))
+    [filter-view tag-tree display data]))
+
+(defn search-filter []
+  [tag-view search-tag-display search-tag-data])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Extract Creation
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(def edit-display
+  (create-display ::subs/editor-tag-view-selection
+                  ::events/set-editor-selection))
+
+(def edit-data
+  (create-data-manager ::subs/editor-selected-tags
+                       ::events/add-editor-tag
+                       ::events/remove-editor-tag))
+
 (defn tag-selector []
-  [:div])
+  [tag-view edit-display edit-data])

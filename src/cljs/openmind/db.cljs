@@ -8,5 +8,7 @@
    :route            :openmind.views/search
    ;; TODO: FIXME:
    :filter-selection []
+   :create           {:selection []
+                      :tags      #{}}
    :user             (gensym)
    :results          []})

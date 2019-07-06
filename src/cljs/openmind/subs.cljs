@@ -14,6 +14,23 @@
    (:filters search)))
 
 (re-frame/reg-sub
+ ::create
+ (fn [db]
+   (:create db)))
+
+(re-frame/reg-sub
+ ::editor-tag-view-selection
+ :<- [::create]
+ (fn [create _]
+   (:selection create)))
+
+(re-frame/reg-sub
+ ::editor-selected-tags
+ :<- [::create]
+ (fn [create _]
+   (:tags create)))
+
+(re-frame/reg-sub
  ::send-fn
  (fn [db]
    (:send-fn db)))
