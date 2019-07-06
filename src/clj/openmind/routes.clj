@@ -8,60 +8,6 @@
 (defn search-req [query]
   (es/search es/index (es/search->elastic query)))
 
-(def ^:private top-level-tags (atom nil))
-
-(defn get-top-level-tags []
-  (async/go
-    (if @top-level-tags
-      @top-level-tags
-      (let [t (into {}
-                    (map
-                     (fn [{id :_id {tag :tag-name} :_source}]
-                       [tag id]))
-                    (-> (es/top-level-tags es/tag-index)
-                        es/request<!))]
-        (reset! top-level-tags t)
-        t))))
-
-(def ^:private tags
-  "Tag cache (this is going to be looked up a lot)."
-  (atom {}))
-
-(defn lookup-tags [root]
-  (async/go
-    (->> (es/subtag-lookup es/tag-index root)
-         es/request<!
-         (map (fn [{:keys [_id _source]}]
-                [_id _source]))
-         (into {}))))
-
-(defn get-tag-tree [root]
-  (async/go
-    (if (contains? @tags root)
-      (get @tags root)
-      ;; Wasteful, but at least it's consistent
-      (let [v (async/<! (lookup-tags root))]
-        (swap! tags assoc root v)
-        v))))
-
-(defn parse-search-response [res]
-  (mapv :_source res))
-
-(defn reconstruct [root re]
-  (assoc root :children (into {}
-                              (map (fn [c]
-                                     (let [t (reconstruct c re)]
-                                       [(:id t) t])))
-                              (get re (:id root)))))
-
-(defn invert-tag-tree [tree root-node]
-  (let [id->node (into {} tree)
-        parent->children (->> tree
-                              (map (fn [[id x]] (assoc x :id id)))
-                              (group-by :parents)
-                              (map (fn [[k v]] [(last k) v]))
-                              (into {}))]
-    (reconstruct root-node parent->children)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; routing table
@@ -109,12 +55,75 @@
   (async/go
     (async/<! (es/send-off! (es/index-req es/index (prepare-doc doc))))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;; Tag Hierarchy
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def ^:private top-level-tags
+  "Top level tag domains. These are presently invisible to the client since the
+  only option is anaesthesia."
+  (atom nil))
+
+(def ^:private tags
+  "Tag cache (this is going to be looked up a lot)."
+  (atom {}))
+
+(defn get-top-level-tags []
+  (async/go
+    (if @top-level-tags
+      @top-level-tags
+      (let [t (into {}
+                    (map
+                     (fn [{id :_id {tag :tag-name} :_source}]
+                       [tag id]))
+                    (-> (es/top-level-tags es/tag-index)
+                        es/request<!))]
+        (reset! top-level-tags t)
+        t))))
+
+(defn lookup-tags [root]
+  (async/go
+    (->> (es/subtag-lookup es/tag-index root)
+         es/request<!
+         (map (fn [{:keys [_id _source]}]
+                [_id _source]))
+         (into {}))))
+
+(defn get-tag-tree [root]
+  (async/go
+    (if (contains? @tags root)
+      (get @tags root)
+      ;; Wasteful, but at least it's consistent
+      (let [v (async/<! (lookup-tags root))]
+        (swap! tags assoc root v)
+        v))))
+
+(defn parse-search-response [res]
+  (mapv :_source res))
+
+(defn reconstruct [root re]
+  (assoc root :children (into {}
+                              (map (fn [c]
+                                     (let [t (reconstruct c re)]
+                                       [(:id t) t])))
+                              (get re (:id root)))))
+
+(defn invert-tag-tree [tree root-node]
+  (let [id->node (into {} tree)
+        parent->children (->> tree
+                              (map (fn [[id x]] (assoc x :id id)))
+                              (group-by :parents)
+                              (map (fn [[k v]] [(last k) v]))
+                              (into {}))]
+    (reconstruct root-node parent->children)))
+
 (defmethod dispatch :openmind/tag-tree
   [{:keys [send-fn ?reply-fn] [_ root] :event}]
   (async/go
-    (let [root-id (get (async/<! (get-top-level-tags)) root)
-          tree    (async/<! (get-tag-tree root-id))
-          event   [:openmind/tag-tree (invert-tag-tree tree {:tag-name root
-                                                             :id       root-id})]]
-      (when ?reply-fn
-        (?reply-fn event)))))
+    (when-let [root-id (get (async/<! (get-top-level-tags)) root)]
+      (let [tree    (async/<! (get-tag-tree root-id))
+            event   [:openmind/tag-tree (invert-tag-tree
+                                         tree
+                                         {:tag-name root :id root-id})]]
+        (when ?reply-fn
+          (?reply-fn event))))))
