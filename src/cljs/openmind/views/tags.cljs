@@ -74,7 +74,7 @@
       :on-click #(if active?
                    (unselect data tag)
                    (select data tag))}
-     tag-name]))
+     [:span.p2 tag-name]]))
 
 (defn filter-button [tag display data]
   (if (seq (:children tag))
