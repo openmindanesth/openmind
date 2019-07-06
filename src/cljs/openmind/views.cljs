@@ -6,39 +6,6 @@
    [openmind.subs :as subs]
    [openmind.views.tags :as tags]))
 
-;; TODO: Look into tailwind
-
-(defn pass-off [k]
-  (fn [ev]
-    (re-frame/dispatch [::events/form-data k (-> ev .-target .-value)])))
-
-(defn text-box
-  [k label & [{:keys [placeholder class]}]]
-  (let [content @(re-frame/subscribe [k])]
-    [:div.flex.vcenter.mb1h
-     [:span.basis-12  [:b label]]
-     [:input.grow-4 (merge {:id        (name k)
-                            :type      :text
-                            :on-change (pass-off k)}
-                           (cond
-                             content     {:value content}
-                             placeholder {:placeholder placeholder})
-                           (when class
-                             {:class class}))]]))
-
-;; FIXME: stub
-(defn pass-edit [k]
-  (fn [ev]))
-
-(defn addable-list
-  [k label & [opts]]
-  [:div.flex.vcenter.mb1h
-   [:span.basis-12 [:b label]]
-   [:input (merge {:type :text
-                   :placeholder "link to paper"
-                   :on-change (pass-edit k)})]
-   [:a.pl1 "[+]"]])
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Page Level
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -64,11 +31,6 @@
    [title-bar]
    [:div.vspacer]
    [content]])
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;; Filter tag selector
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Extract Display
@@ -133,8 +95,55 @@
    [search-results]])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;; Editor
+;;;;; New Extract Authoring
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn pass-off [k]
+  (fn [ev]
+    (re-frame/dispatch [::events/form-data k (-> ev .-target .-value)])))
+
+(defn text-box
+  [k label & [{:keys [placeholder class]}]]
+  (let [content @(re-frame/subscribe [k])]
+    [:div.flex.vcenter.mb1h
+     [:span.basis-12  [:b label]]
+     [:input.grow-4 (merge {:id        (name k)
+                            :type      :text
+                            :on-change (pass-off k)}
+                           (cond
+                             (seq content) {:value content}
+                             placeholder   {:value       nil
+                                            :placeholder placeholder})
+                           (when class
+                             {:class class}))]]))
+
+;; FIXME: stub
+(defn pass-edit [k i]
+  (fn [ev]
+    (re-frame/dispatch [::events/nested-form k i (-> ev .-target .-value)])))
+
+(defn list-element [k i c]
+  (println (seq c))
+  [:input (merge {:type :text
+                  :on-change (pass-edit k i)}
+                 (if (seq c)
+                   {:value c}
+                   {:value nil
+                    :placeholder "link to paper"}))])
+
+(defn addable-list
+  [k label & [opts]]
+  (let [content @(re-frame/subscribe [k])]
+    [:div.flex.vcenter.mb1h
+     [:span.basis-12 [:b label]]
+     (into [:div]
+        (map (fn [[i c]]
+               [list-element k i c]))
+        content)
+     [:a.plh {:on-click (fn [_]
+                          (re-frame/dispatch
+                           [::events/nested-form k (count content) ""]))}
+      "[+]"]]))
 
 (defn editor-panel []
   [:div.flex.flex-column.flex-start.pl2.pr2

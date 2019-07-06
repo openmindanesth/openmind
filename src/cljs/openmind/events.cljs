@@ -62,8 +62,12 @@
 (re-frame/reg-event-db
  ::form-data
  (fn [db [_ k v]]
-   (let [k (if (vector? k) k [k])]
-     (assoc-in db (into [:create-extract] k) v))))
+   (assoc-in db [:create k] v)))
+
+(re-frame/reg-event-db
+ ::nested-form
+ (fn [db [_ k i v]]
+   (assoc-in db [:create k i] v)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Extract Creation

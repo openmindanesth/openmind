@@ -53,7 +53,7 @@
 (re-frame/reg-sub
  ::new-extract
  (fn [db]
-   (:create-extract db)))
+   (:create db)))
 
 (re-frame/reg-sub
  ::tags
@@ -65,15 +65,15 @@
  (fn [db]
    (:tag-lookup db)))
 
-(def extract-data
-  [:extract :figure :link :comments])
+(def extract-fields
+  [:extract :figure :link :comments :confirmed :contrast :related])
 
 (run!
  (fn [k]
    (re-frame/reg-sub
-    k
+     k
     (fn [_ _]
       (re-frame/subscribe [::new-extract]))
     (fn [extract _]
       (get extract k))))
- extract-data)
+ extract-fields)
