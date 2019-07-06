@@ -247,10 +247,6 @@ button.filter-button {
 		min-height: 48px;
 }
 
-button.filter-button:focus {
-		color: white;
-}
-
 button.filter-button.selected {
 		color: #333;
 		border-color: #777;
