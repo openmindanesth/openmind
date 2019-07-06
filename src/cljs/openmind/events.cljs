@@ -55,13 +55,6 @@
      (= t :chsk/ws-ping) (println "ping!:")
      :else (println t args))))
 
-(re-frame/reg-event-db
- ::set-filter-edit
- (fn [db [_ path add?]]
-   (if add?
-     (assoc db :filter-selection path)
-     (assoc db :filter-selection (vec (butlast path))))))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Extract Creation
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -84,6 +77,8 @@
 (defn unsafe-index [doc]
   (index-doc (:send-fn (:chsk @re-frame.db/app-db)) doc))
 
+;;;; search
+
 (defn reg-search-updater [key update-fn]
   (re-frame/reg-event-fx
    key
@@ -96,20 +91,8 @@
  (fn [db [_ term]]
    (assoc-in db [:search :term] term)))
 
-(defn apply-to-last [m [id & path] f]
-  (if path
-    (update m id apply-to-last path f)
-    (f m id)))
-
-(reg-search-updater
- ::add-filter-feature
- (fn [db [_ path]]
-   (update-in db [:search :filters] apply-to-last path #(assoc %1 %2 {}))))
-
-(reg-search-updater
- ::remove-filter-feature
- (fn [db [_ path]]
-   (update-in db [:search :filters] apply-to-last path dissoc)))
+(defn format-search [search]
+  (update search :filters #(mapv :id %)))
 
 (re-frame/reg-event-fx
  ::search-request
@@ -117,7 +100,8 @@
    (let [search  (get-in cofx [:db :search])
          search  (update search :nonce inc)]
      {:db        (assoc (:db cofx) :search search)
-      :dispatch [::try-send [:openmind/search {:search search}]]})))
+      :dispatch [::try-send [:openmind/search
+                             {:search (format-search search)}]]})))
 
 (re-frame/reg-event-db
  :openmind/search-response
@@ -131,6 +115,25 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Tags
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(re-frame/reg-event-db
+ ::set-filter-edit
+ (fn [db [_ path add?]]
+   (if add?
+     (assoc db :filter-selection path)
+     (assoc db :filter-selection (vec (butlast path))))))
+
+(reg-search-updater
+ ::add-filter-feature
+ (fn [db [_ tag]]
+   (update-in db [:search :filters] conj tag)))
+
+(reg-search-updater
+ ::remove-filter-feature
+ (fn [db [_ tag]]
+   (update-in db [:search :filters] disj tag)))
+
+;;;; Tag tree (taxonomy)
 
 (re-frame/reg-event-fx
  ::update-tag-tree

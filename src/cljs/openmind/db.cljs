@@ -1,12 +1,12 @@
 (ns openmind.db)
 
 (def default-db
-  {:domain   "anaesthesia"
-   :tag-tree nil
-   :search   {:term    nil
-              :filters {}}
-   :route    :openmind.views/search
+  {:domain           "anaesthesia"
+   :tag-tree         nil
+   :search           {:term    nil
+                      :filters #{}}
+   :route            :openmind.views/search
    ;; TODO: FIXME:
-   :filter-selection nil
-   :user     (gensym)
-   :results  []})
+   :filter-selection []
+   :user             (gensym)
+   :results          []})
