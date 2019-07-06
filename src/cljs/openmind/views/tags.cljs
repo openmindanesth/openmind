@@ -21,13 +21,20 @@
 ;;;;; View code
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defn cancel-descendents [data tag]
+  (when (contains? data tag)
+    (unselect data tag))
+  (run! #(cancel-descendents data %)
+        (vals (:children tag))))
+
 (defn cancel-button [tag display data]
   [:a.border-circle.plh.prh.bg-dull
    {:on-click (fn [e]
                 (.stopPropagation e)
                 (.preventDefault e)
-                (close-path display tag)
-                (unselect data tag))}
+                (when (contains? display tag)
+                  (close-path display tag))
+                (cancel-descendents data tag))}
    "remove"])
 
 (defn nested-filter

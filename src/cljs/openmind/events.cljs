@@ -76,7 +76,6 @@
 (re-frame/reg-event-db
  ::set-editor-selection
  (fn [db [_ path add?]]
-   (println path)
    (if add?
      (assoc-in db [:create :selection] path)
      (assoc-in db [:create :selection] (vec (butlast path))))))
