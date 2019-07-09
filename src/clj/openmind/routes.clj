@@ -31,12 +31,9 @@
   ;; REVIEW: Dropping unhandled messages is suboptimal.
   nil)
 
-(def gt (atom nil))
-
 (defmethod dispatch :openmind/search
   [{[_  {:keys [user search]}] :event :keys [send-fn ?reply-fn uid]}]
   (let [nonce (:nonce search)]
-    (reset! gt search)
     (async/go
       (let [res   (parse-search-response (es/request<! (search-req search)))
             event [:openmind/search-response {:results res :nonce nonce}]]

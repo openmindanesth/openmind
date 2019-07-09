@@ -11,27 +11,21 @@
 (def tag-index :tags0)
 
 (def mapping
-  {:properties {:created {:type :date}}})
+  {:properties {:created {:type :date}
+                :tags {:type :keyword}}})
 
 ;;;;; Translation from client to Elastic Search
 
-(defn tag-name [k]
-  (str "tags." (name k)))
-
-(defn build-filter-query [filters]
-  (into []
-        (comp (map (fn [[k v]]
-                     (when (seq v)
-                       (if (= 1 (count v))
-                         {:term {(tag-name k) (first v)}}
-                         {:terms_set {(tag-name k)
-                                      {:terms (into [] v)
-                                       ;; FIXME: This is positively
-                                       ;; idiotic... but it works!
-                                       :minimum_should_match_script
-                                       {:source "1"}}}}))))
-              (remove nil?))
-        filters))
+(defn build-filter-query [tags]
+  (when (seq tags)
+    (if (= 1 (count tags))
+      {:term {:tags (first tags)}}
+      {:terms {:tags tags
+                   #_{:terms tags
+                    ;; FIXME: This is positively
+                    ;; idiotic... but it works!
+                    :minimum_should_match_script
+                    {:source "1"}}}})))
 
 (defn search->elastic [{:keys [term filters]}]
   {:sort  {:created {:order :desc}}
@@ -39,7 +33,7 @@
    :size  20
    :query {:bool (merge {}
                         (when (seq filters)
-                          {:filter (build-filter-query filters)})
+                          {:filter [(build-filter-query filters)]})
                         (when (seq term)
                           ;; TODO: Better prefix search:
                           ;; https://www.elastic.co/guide/en/elasticsearch/guide/master/_index_time_search_as_you_type.html

@@ -91,8 +91,9 @@
                          :message "Extract Successfully Created!"}
                  :route :openmind.views/search)
 
-      :dispatch       [::search-request]
-     :dispatch-later [{:ms 2000 :dispatch [::clear-modal]}]})))
+      :dispatch-later [{:ms 2000 :dispatch [::clear-modal]}
+                       {:ms 0 :dispatch [::search-request]}]}
+     {:db (assoc db :modal {:status :error :message "Failed to create extract."})})))
 
 (re-frame/reg-event-db
  ::clear-modal
