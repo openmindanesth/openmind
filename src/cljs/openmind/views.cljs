@@ -56,7 +56,7 @@
                      :on-mouse-out  #(reset! hover? false)}
         text]
        (when @hover?
-         [:div.absolute.absolute-c
+         [:div.absolute
           float-content])])))
 
 (defn comments-link []
@@ -70,17 +70,12 @@
 
 (defn format-tags [tags]
   ;; FIXME: flex isn't the right solution here.
-  (into [:div.flex.flex-column.bg-white.p1.border-round]
-        (comp (remove nil?)
-              (map (fn [[k v]]
-                     (when (and k (seq v))
-                       [:div
-                        (into
-                         [:div.flex.space-between
-                          [:span.basis-12 (str (name k) ":")]]
-                         (interpose [:span.pl1.shrink-2 ","]
-                                    (map (fn [x] [:span.pl1 (name x)]) v)))]))))
-        tags))
+  (let [tag-lookup @(re-frame/subscribe [::subs/tag-lookup])]
+    (when (seq tags)
+      (into [:div.flex.flex-column.bg-white.p1.border-round]
+            (map (fn [id]
+                   [:div (get tag-lookup id)]))
+            tags))))
 
 (defn result [{:keys [text reference tags]}]
   [:div.search-result.padded

@@ -186,11 +186,15 @@
  (fn [{{:keys [chsk domain]} :db} _]
    {:dispatch [::try-send [:openmind/tag-tree domain]]}))
 
+(defn build-tag-lookup [{:keys [tag-name id children]}]
+  (into {id tag-name} (map build-tag-lookup) (vals children)))
+
 (re-frame/reg-event-db
  :openmind/tag-tree
  (fn [db [_ tree]]
-   (let [])
-   (assoc db :tag-tree tree)))
+   (assoc db
+          :tag-tree tree
+          :tag-lookup (build-tag-lookup tree))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Connection management
