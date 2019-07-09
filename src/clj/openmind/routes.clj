@@ -8,6 +8,9 @@
 (defn search-req [query]
   (es/search es/index (es/search->elastic query)))
 
+(defn parse-search-response [res]
+  (mapv :_source res))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; routing table
@@ -103,9 +106,6 @@
       (let [v (async/<! (lookup-tags root))]
         (swap! tags assoc root v)
         v))))
-
-(defn parse-search-response [res]
-  (mapv :_source res))
 
 (defn reconstruct [root re]
   (assoc root :children (into {}
