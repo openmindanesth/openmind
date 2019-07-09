@@ -28,14 +28,14 @@
         (vals (:children tag))))
 
 (defn cancel-button [tag display data]
-  [:a.border-circle.plh.prh.bg-dull
+  [:a.border-circle.bg-white.text-red.border-red.mtp2
    {:on-click (fn [e]
                 (.stopPropagation e)
                 (.preventDefault e)
                 (when (contains? display tag)
                   (close-path display tag))
                 (cancel-descendents data tag))}
-   "remove"])
+   [:span.centre "x"]])
 
 (defn nested-filter
   "Defines the view component for a filter that has subcategories that can be
@@ -51,9 +51,10 @@
                     (select data tag)))
       :class    (when (contains? display tag) "selected")}
      [:div
-      [:span.prh tag-name]
-      (when selected?
-        [cancel-button tag display data])
+      [:div.flex.space-between
+       [:span.prh tag-name]
+       (when selected?
+         [cancel-button tag display data])]
       (when selected?
         [:div
          [:span

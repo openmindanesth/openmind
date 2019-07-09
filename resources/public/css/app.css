@@ -57,6 +57,18 @@ html {
 		color: black;
 }
 
+.text-red {
+		color: #BB1212;
+}
+
+.border-red {
+		border-color: #BB1212;
+}
+
+.border-black {
+		border-color: black !important;
+}
+
 .blue {
 		background-color: #1EAEDE;
 		color: white;
@@ -151,10 +163,17 @@ a.link-blue {
 		border-radius: 0.5rem;
 }
 
+.centre {
+		position: relative;
+		top: -0.66rem;
+}
+
 .border-circle {
+		height: 1.1rem;
+		width: 1.1rem;
+		font-weight: bold;
 		border: 0.1rem;
 		border-spacing: 0;
-		border-color: white !important;
 		border-style: solid;
 		border-radius: 20rem;
 }
@@ -167,6 +186,10 @@ a.link-blue {
 		margin-top: -3rem;
 }
 
+
+.mtp2 {
+		margin-top: 0.2rem;
+}
 
 .mt1 {
 		margin-top: 1rem;
