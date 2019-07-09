@@ -65,6 +65,14 @@ html {
 		border-color: #BB1212;
 }
 
+.bg-green {
+		background-color: lightgreen;
+}		
+
+.bg-red {
+		background-color: red;
+}		
+
 .border-black {
 		border-color: black !important;
 }
@@ -241,6 +249,10 @@ a.link-blue {
 
 .pth {
 		padding-top: 0.5rem;
+}
+
+.pt1 {
+		padding-top:1rem;
 }
 
 .pt2 {

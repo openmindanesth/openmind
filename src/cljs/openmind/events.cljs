@@ -78,6 +78,27 @@
                      (update :tags #(mapv :id %)))]
      {:dispatch [::try-send [:openmind/index extract]]})))
 
+(defn success? [status]
+  (<= 200 status 299))
+
+(re-frame/reg-event-fx
+ :openmind/index-result
+ (fn [{:keys [db]} [_ status]]
+   (if (success? status)
+     {:db (assoc db
+                 :create {:selection [] :tags #{}}
+                 :modal {:status  :success
+                         :message "Extract Successfully Created!"}
+                 :route :openmind.views/search)
+
+      :dispatch       [::search-request]
+     :dispatch-later [{:ms 2000 :dispatch [::clear-modal]}]})))
+
+(re-frame/reg-event-db
+ ::clear-modal
+ (fn [db]
+   (dissoc db :modal)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Extract Creation
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -102,14 +123,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Server Comms
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; TODO: real indexing event
-
-(defn index-doc [send-fn doc]
-  (send-fn [:openmind/index doc]))
-
-(defn unsafe-index [doc]
-  (index-doc (:send-fn (:chsk @re-frame.db/app-db)) doc))
 
 ;;;; search
 
@@ -166,7 +179,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Tag tree (taxonomy)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 
 (re-frame/reg-event-fx
  ::update-tag-tree

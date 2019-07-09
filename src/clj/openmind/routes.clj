@@ -54,15 +54,24 @@
      doc)))
 
 (defn prepare-doc [doc]
+  ;; TODO: Add author info
+  ;; TODO: check remaining fields
   (-> doc
       (assoc :text (:extract doc))
+      (assoc :created (java.util.Date.))
       (dissoc :extract)
       parse-dates))
 
 (defmethod dispatch :openmind/index
-  [{:keys [client-id send-fn] [_ doc] :event}]
+  [{:keys [client-id send-fn ?reply-fn] [_ doc] :event}]
   (async/go
-    (async/<! (es/send-off! (es/index-req es/index (prepare-doc doc))))))
+    (let [res (->> doc
+                   prepare-doc
+                   (es/index-req es/index)
+                   es/send-off!
+                   async/<!)]
+      (when ?reply-fn
+        (?reply-fn [:openmind/index-result (:status res)])))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Tag Hierarchy

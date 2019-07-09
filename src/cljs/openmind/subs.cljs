@@ -65,6 +65,11 @@
  (fn [db]
    (:tag-lookup db)))
 
+(re-frame/reg-sub
+ ::modal
+ (fn [db]
+   (:modal db)))
+
 (def extract-fields
   [:extract :figure :link :comments :confirmed :contrast :related])
 

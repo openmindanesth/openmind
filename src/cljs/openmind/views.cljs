@@ -26,11 +26,23 @@
                                    [::events/search v])))
                    :placeholder "specific term"}]])
 
+(defn modal [{:keys [status message]}]
+  ;; FIXME: Not really a modal...
+  [:div.pt1.pb1.pl1
+   {:class (if (= status :success)
+             "bg-green"
+             "bg-red")}
+   [:span message]])
+
 (defn window [content]
-  [:div.padded
-   [title-bar]
-   [:div.vspacer]
-   [content]])
+  (let [modal-state @(re-frame/subscribe [::subs/modal])]
+    [:div.padded
+     [title-bar]
+     (when modal-state
+       [:div.vspacer
+        [modal modal-state]])
+     [:div.vspacer]
+     [content]]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Extract Display
