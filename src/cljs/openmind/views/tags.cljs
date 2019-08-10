@@ -51,7 +51,7 @@
                     (select data tag)))
       :class    (when (contains? display tag) "selected")}
      [:div
-      [:div.flex.space-between
+      [:div.flex.flex-centre
        [:span.prh tag-name]
        (when selected?
          [cancel-button tag display data])]
