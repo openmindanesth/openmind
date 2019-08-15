@@ -220,7 +220,6 @@
    ;; FIXME: For mutli-device logged in users, this will duplicate responses.
    (send-fn ev 10000 re-frame/dispatch)))
 
-
 (re-frame/reg-event-fx
  ::server-connection
  (fn [{:keys [db]} [_ chsk]]
@@ -243,6 +242,7 @@
                                      .-target
                                      .getResponseText
                                      (async/put! csrf-ch))))
+         ;; TODO: timeout, retry, backoff.
          (go
            (let [token (async/<! csrf-ch)
                  chsk  (sente/make-channel-socket-client!
@@ -251,4 +251,4 @@
              (async/<! (:ch-recv chsk))
              (reset! connecting? false)
              (sente/start-client-chsk-router! (:ch-recv chsk) ch-handler)
-             (re-frame/dispatch [::server-connection chsk]))))))))
+             (re-frame/dispatch-sync [::server-connection chsk]))))))))
