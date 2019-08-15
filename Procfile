@@ -1,1 +1,1 @@
-web: clojure -m openmind.server
+web: clojure -J-Xmx500m -m openmind.server
