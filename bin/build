@@ -1,3 +1,7 @@
 #!/usr/bin/env bash
 
+# Grabs deps as part of the slug
+clojure -e '(println "deps")'
+
+# build cljs
 clojure -m cljs.main --optimizations advanced --output-to "resources/public/cljs-out/dev-main.js" -c openmind.core
