@@ -181,6 +181,7 @@
   (let [route @(re-frame/subscribe [::subs/route])]
     [window
      (cond
+       ;; TODO: Link route to URL, ditch stupid tag system
        (= route ::search) search-view
        (= route ::create) editor-panel
        :else              four-o-four)]))
