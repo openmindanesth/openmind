@@ -3,8 +3,8 @@
 
 (def sites
   {:orcid
-   {:authorize-uri    (env/read :orcid-authorize-uri)
-    :access-token-uri (env/read :orcid-access-token-uri)
+   {:authorize-uri    "https://orcid.org/oauth/authorize"
+    :access-token-uri "https://orcid.org/oauth/token"
     :client-id        (env/read :orcid-client-id)
     :client-secret    (env/read :orcid-client-secret)
     :scopes           ["/authenticate"]
