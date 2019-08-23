@@ -61,7 +61,6 @@
 
 (defmethod dispatch :openmind/verify-login
   [{:keys [tokens] :as req}]
-  (println "login check")
   (let [res [:openmind/identity (select-keys (:orcid tokens) [:orcid-id :name])]]
     (respond-with-fallback req res)))
 
