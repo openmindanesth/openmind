@@ -13,18 +13,59 @@
 (defn four-o-four []
   [:h2 "You're in a bad place."])
 
+(defn login-link []
+  [:a {:href "/oauth2/orcid"} "login with Orcid"])
+
+(defn logout-link []
+  [:a "logout"])
+(defn create-extract-link []
+  [:a {:on-click #(do
+                    (re-frame/dispatch [::events/nav-create-extract])
+                    (re-frame/dispatch [::events/toggle-menu]))}
+   "create new extract"])
+
+(defn logged-in-menu-items []
+  (let [route @(re-frame/subscribe [::subs/route])]
+    (if (= route ::create)
+      [[logout-link]]
+      [[create-extract-link]
+       [logout-link]])))
+
+(def anon-menu-items
+  [[login-link]])
+
+(defn menu []
+  (let [login @(re-frame/subscribe [::subs/login-info])]
+    [:div.search-result.padded.absolute.bg-light-grey.translucent-9.wide.pb2.pl1.pr1
+     {:style {:top 5
+              :left 5}}
+     [:div.mt4
+      (when (seq login)
+        [:span "welcome " (:name login)])]
+     [:hr.mb1.mt1]
+     (interpose [:hr.mb1.mt1]
+                (if (seq login)
+                  (logged-in-menu-items)
+                  anon-menu-items))]))
+
 (defn title-bar []
-  [:div.flex.space-between
-   [:button
-    {:on-click #(re-frame/dispatch [::events/toggle-edit])}
-    [:span.ham "Ξ"]]
-   [:div.ctext.grow-1.pl1.pr1.xxl.pth "open" [:b "mind"]]
-   [:input.grow-2 {:type :text
-                   :on-change (fn [e]
-                                (let [v (-> e .-target .-value)]
-                                  (re-frame/dispatch
-                                   [::events/search v])))
-                   :placeholder "specific term"}]])
+  [:div
+   [:div.flex.space-between
+    [:button.z100
+     {:on-click #(re-frame/dispatch [::events/toggle-menu])}
+     [:span.ham "Ξ"]]
+    [:div.ctext.grow-1.pl1.pr1.xxl.pth
+     {:on-click #(re-frame/dispatch [::events/nav-search])
+      :style {:cursor :pointer}}
+     "open" [:b "mind"]]
+    [:input.grow-2 {:type :text
+                    :on-change (fn [e]
+                                 (let [v (-> e .-target .-value)]
+                                   (re-frame/dispatch
+                                    [::events/search v])))
+                    :placeholder "specific term"}]]
+   (when @(re-frame/subscribe [::subs/menu-open?])
+     [menu])])
 
 (defn modal [{:keys [status message]}]
   ;; FIXME: Not really a modal...
@@ -43,6 +84,7 @@
         [modal modal-state]])
      [:div.vspacer]
      [content]]))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Extract Display

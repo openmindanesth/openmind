@@ -49,10 +49,6 @@ html {
 		position: absolute;
 }
 
-.bg-white {
-		background-color: white;
-}
-
 .text-black {
 		color: black;
 }
@@ -63,6 +59,18 @@ html {
 
 .border-red {
 		border-color: #BB1212;
+}
+
+.bg-white {
+		background-color: white;
+}
+
+.translucent-9 {
+		opacity: 0.9;
+}
+
+.bg-light-grey {
+		background-color: lightgrey;
 }
 
 .bg-green {
@@ -199,6 +207,10 @@ a.link-blue {
 }
 
 
+.mt4 {
+		margin-top: 4rem;
+}
+
 .mtp2 {
 		margin-top: 0.2rem;
 }
@@ -249,6 +261,10 @@ a.link-blue {
 
 .pb1 {
 		padding-bottom: 1rem;
+}
+
+.pb2 {
+		padding-bottom: 2rem;
 }
 
 .pth {
@@ -308,4 +324,12 @@ button.filter-button.selected:focus {
 		color: #333;
 		border-color: #777;
 		outline: 0;
+}
+
+.z100 {
+		z-index: 100;
+}
+
+a {
+		text-decoration: underline;
 }

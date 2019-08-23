@@ -19,5 +19,6 @@
   (re-frame/dispatch-sync [::events/initialise-db])
   (re-frame/dispatch [::events/update-tag-tree])
   (re-frame/dispatch [::events/search-request])
+  (re-frame/dispatch [::events/login-check])
   (dev-setup)
   (mount-root))

@@ -26,6 +26,10 @@
   [_]
   "WS handshake.")
 
+(defmethod ch-handler :chsk/timeout
+  [_]
+  (println "Connection timed out."))
+
 (defmethod ch-handler :chsk/recv
   [e]
   (re-frame/dispatch [::server-message e]))
@@ -40,20 +44,27 @@
    db/default-db))
 
 (re-frame/reg-event-db
- ::toggle-edit
+ ::nav-create-extract
  (fn [db _]
-   (update db :route
-           #(if (= % :openmind.views/search)
-              :openmind.views/create
-              :openmind.views/search))))
+   (assoc db :route :openmind.views/create)))
 
-;; TODO: Logged in usage will not work without this.
+(re-frame/reg-event-db
+ ::nav-search
+ (fn [db _]
+   (assoc db :route :openmind.views/search)))
+
+;; TODO: What is this needed for?
 (re-frame/reg-event-fx
  ::server-message
  (fn [cofx [t & args]]
    (cond
      (= t :chsk/ws-ping) (println "ping!:")
      :else (println t args))))
+
+(re-frame/reg-event-db
+ ::toggle-menu
+ (fn [db _]
+   (update db :menu-open? not)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Extract Creation
@@ -177,6 +188,16 @@
  (fn [db [_ tag]]
    (update-in db [:search :filters] disj tag)))
 
+(re-frame/reg-event-fx
+ ::login-check
+ (fn [cofx _]
+   {:dispatch [::try-send [:openmind/verify-login]]}))
+
+(re-frame/reg-event-db
+ :openmind/identity
+ (fn [db [_ id]]
+   (assoc db :login-info id)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Tag tree (taxonomy)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -202,10 +223,10 @@
 
 (re-frame/reg-event-fx
  ::try-send
- (fn [{{:keys [chsk user]} :db} [_ ev]]
+ (fn [{{:keys [chsk]} :db} [_ ev]]
    (if (and (satisfies? IDeref (:state chsk))
             (:open? @(:state chsk)))
-     {::send! {:ev ev :send-fn (:send-fn chsk) :user user}}
+     {::send! {:ev ev :send-fn (:send-fn chsk)}}
      {::connect-chsk! true
       :dispatch       [::enqueue-request ev]})))
 
@@ -216,8 +237,7 @@
 
 (re-frame/reg-fx
  ::send!
- (fn [{:keys [send-fn ev user]}]
-   ;; FIXME: For mutli-device logged in users, this will duplicate responses.
+ (fn [{:keys [send-fn ev]}]
    (send-fn ev 10000 re-frame/dispatch)))
 
 (re-frame/reg-event-fx

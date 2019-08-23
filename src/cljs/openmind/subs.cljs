@@ -70,6 +70,16 @@
  (fn [db]
    (:modal db)))
 
+(re-frame/reg-sub
+ ::login-info
+ (fn [db]
+   (:login-info db)))
+
+(re-frame/reg-sub
+ ::menu-open?
+ (fn [db]
+   (:menu-open? db)))
+
 (def extract-fields
   [:extract :figure :link :comments :confirmed :contrast :related])
 

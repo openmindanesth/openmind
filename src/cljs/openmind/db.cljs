@@ -10,5 +10,4 @@
    :filter-selection []
    :create           {:selection []
                       :tags      #{}}
-   :user             (gensym)
    :results          []})

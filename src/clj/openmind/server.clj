@@ -14,7 +14,6 @@
 (defonce socket
   (sente/make-channel-socket! (sente-http-kit/get-sch-adapter)
                               {:user-id-fn (fn [req]
-                                             (clojure.pprint/pprint req)
                                              (-> req
                                                  :oauth2/access-tokens
                                                  :orcid
@@ -61,8 +60,11 @@
           (sente/start-server-chsk-router!
            (:ch-recv socket)
            (fn [msg]
-             (reset! req msg)
-             (routes/dispatch (dissoc msg :ring-req :ch-recv))))))
+             (let [oauth (-> msg :ring-req :oauth2/access-tokens)]
+               (reset! req msg)
+               (routes/dispatch (-> msg
+                                    (dissoc :ring-req :ch-recv)
+                                    (assoc :tokens oauth))))))))
 
 (defn start-server! []
   (when (fn? @stop-server!)

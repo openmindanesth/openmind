@@ -15,6 +15,23 @@
 ;;;; routing table
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defn- respond-with-fallback
+  "Tries to respond directly to sender, if that fails, tries to respond to all
+  connected devices logged into the account of the sender. If that fails it
+  prints a shitty message to the console."
+  [{:keys [send-fn ?reply-fn uid]} msg]
+  (cond
+    ;; REVIEW: If you're logged in on your phone and your laptop, and you
+    ;; search on your laptop, should the search on your phone change
+    ;; automatically? I don't think so...
+    (fn? ?reply-fn) (?reply-fn msg)
+
+    ;; But if it's the only way to return the result to you...
+    (not= :taoensso.sente/nil-uid uid) (send-fn uid msg)
+
+    ;; TODO: Logging
+    :else (println "No way to return response to sender."))  )
+
 (defmulti dispatch (fn [e] (first (:event e))))
 
 (defmethod dispatch :chsk/ws-ping
@@ -23,25 +40,30 @@
 (defmethod dispatch :chsk/uidport-open
   [_])
 
+(defmethod dispatch :chsk/uidport-close
+  [_])
+
 (defmethod dispatch :default
   [e]
+  ;; TODO: logging
   (println "Unhandled client event:")
   (clojure.pprint/pprint e)
   ;; REVIEW: Dropping unhandled messages is suboptimal.
   nil)
 
 (defmethod dispatch :openmind/search
-  [{[_  {:keys [user search]}] :event :keys [send-fn ?reply-fn uid]}]
+  [{[_  {:keys [search]}] :event :as req}]
   (let [nonce (:nonce search)]
     (async/go
       (let [res   (parse-search-response (es/request<! (search-req search)))
             event [:openmind/search-response {:results res :nonce nonce}]]
-        (cond
-          (fn? ?reply-fn)                    (?reply-fn event)
-          (not= :taoensso.sente/nil-uid uid) (send-fn uid event)
+        (respond-with-fallback req event)))))
 
-          ;; TODO: Logging
-          :else (println "No way to return response to sender."))))))
+(defmethod dispatch :openmind/verify-login
+  [{:keys [tokens] :as req}]
+  (println "login check")
+  (let [res [:openmind/identity (select-keys (:orcid tokens) [:orcid-id :name])]]
+    (respond-with-fallback req res)))
 
 (defn parse-dates [doc]
   (let [formatter (java.text.SimpleDateFormat. "YYYY-MM-dd'T'HH:mm:ss.SSSXXX")]
@@ -59,7 +81,8 @@
       parse-dates))
 
 (defmethod dispatch :openmind/index
-  [{:keys [client-id send-fn ?reply-fn] [_ doc] :event}]
+  [{:keys [client-id send-fn ?reply-fn uid tokens] [_ doc] :event}]
+  ;; TODO: secure against anonymous posting
   (async/go
     (let [res (->> doc
                    prepare-doc
