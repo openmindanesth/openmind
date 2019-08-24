@@ -1,9 +1,20 @@
 #!/usr/bin/env bash
 
+#N.B.: Always use clojure, never clj !!!
+
 # build cljs
+
+echo Building production cljs...
+
 # TODO: using dev-main.js like this is a dirty and misleading hack
 clojure -m cljs.main --optimizations advanced --output-to "resources/public/cljs-out/dev-main.js" -c openmind.core
 
+echo done
+
 # and pack uberjar
 
-clj -Auberjar
+echo building uberjar...
+
+clojure -Auberjar
+
+echo ready to go
