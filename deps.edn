@@ -16,4 +16,4 @@
  :aliases {:dev     {:extra-paths ["target"]
                      :main-opts   ["-m" "openmind.server"]}
            :uberjar {:extra-deps {uberdeps {:mvn/version "0.1.4"}}
-                     :main-opts  ["-m" "uberdeps.uberjar"]}}}
+                     :main-opts  ["-m" "uberdeps.uberjar" "--target" "target/openmind.jar"]}}}
