@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 
+set -e
+
 #N.B.: Always use clojure, never clj !!!
 
 # build cljs
+
+echo `env`
 
 echo Building production cljs...
 
@@ -16,5 +20,14 @@ echo done
 echo building uberjar...
 
 clojure -Auberjar
+
+echo cleanup
+
+mv target/openmind.jar ./.openmind.jar
+
+rm -rf ./*
+
+mkdir target
+mv ./.openmind.jar target/openmind.jar
 
 echo ready to go
