@@ -6,7 +6,7 @@ set -e
 
 # build cljs
 
-echo `env`
+echo `ls $CACHE_DIR`
 
 echo Building production cljs...
 
