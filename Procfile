@@ -1,1 +1,1 @@
-web: clojure -J-Xmx500m -m openmind.server
+web: java -cp target/openmind.jar clojure.main -m openmind.server
