@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 
 # build cljs
+# TODO: using dev-main.js like this is a dirty and misleading hack
 clojure -m cljs.main --optimizations advanced --output-to "resources/public/cljs-out/dev-main.js" -c openmind.core
 
 # and pack uberjar
 
-clojure -Sdeps '{:deps {uberdeps {:mvn/version "0.1.4"}}}' -m uberdeps.uberjar
+clj -Auberjar
