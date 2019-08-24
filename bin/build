@@ -2,17 +2,14 @@
 
 set -e
 
-export MAVEN_OPTS="-Dmaven.repo.local=$CACHE_DIR/.m2"
+mkdir -p $CACHE_DIR/.m2/repository
+mkdir target
+export MAVEN_OPTS="-Dmaven.repo.local=$CACHE_DIR/.m2/repository"
 export LEIN_INCLUDE_IN_SLUG=no
 
 #N.B.: Always use clojure, never clj !!!
 
 # build cljs
-
-ls -a $CACHE_DIR
-echo
-
-echo 
 
 echo Building production cljs...
 echo
@@ -33,10 +30,8 @@ clojure -Auberjar
 echo cleanup
 echo
 
-ls -a $CACHE_DIR
+ls target
 echo
-du -sch $CACHE_DIR
-ls -al $HOME
 
 echo ready to go
 echo
