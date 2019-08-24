@@ -2,32 +2,42 @@
 
 set -e
 
+export MAVEN_OPTS="-Dmaven.repo.local=$CACHE_DIR/.m2"
+export LEIN_INCLUDE_IN_SLUG=no
+
 #N.B.: Always use clojure, never clj !!!
 
 # build cljs
 
-echo `ls $CACHE_DIR`
+ls -a $CACHE_DIR
+echo
+
+echo 
 
 echo Building production cljs...
+echo
 
 # TODO: using dev-main.js like this is a dirty and misleading hack
 clojure -m cljs.main --optimizations advanced --output-to "resources/public/cljs-out/dev-main.js" -c openmind.core
 
 echo done
+echo
 
 # and pack uberjar
 
 echo building uberjar...
+echo
 
 clojure -Auberjar
 
 echo cleanup
+echo
 
-mv target/openmind.jar ./.openmind.jar
+ls -a $CACHE_DIR
+echo
+du -sch $CACHE_DIR
+du -sch $HOME/.*
 
-rm -rf ./*
-
-mkdir target
-mv ./.openmind.jar target/openmind.jar
 
 echo ready to go
+echo
