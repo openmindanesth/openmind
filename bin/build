@@ -1,13 +1,11 @@
 #!/usr/bin/env bash
 
+#N.B.: Always use clojure, never clj !!!
+
 set -e
 
-mkdir -p $CACHE_DIR/.m2/repository
 mkdir target
-export MAVEN_OPTS="-Dmaven.repo.local=$CACHE_DIR/.m2/repository"
 export LEIN_INCLUDE_IN_SLUG=no
-
-#N.B.: Always use clojure, never clj !!!
 
 # build cljs
 
@@ -26,12 +24,6 @@ echo building uberjar...
 echo
 
 clojure -Auberjar
-
-echo cleanup
-echo
-
-ls target
-echo
 
 echo ready to go
 echo
