@@ -36,8 +36,7 @@ echo
 ls -a $CACHE_DIR
 echo
 du -sch $CACHE_DIR
-du -sch $HOME/.*
-
+ls -al $HOME
 
 echo ready to go
 echo
