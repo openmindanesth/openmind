@@ -12,8 +12,6 @@
            ring/ring-core            {:mvn/version "1.7.1"}
            ring/ring-defaults        {:mvn/version "0.3.2"}
            ring-oauth2               {:mvn/version "0.1.4"}}
- :paths   ["src/clj" "src/cljs" "resources"]
- :aliases {:dev     {:extra-paths ["target"]
-                     :main-opts   ["-m" "openmind.server"]}
-           :uberjar {:extra-deps {uberdeps {:mvn/version "0.1.4"}}
+ :paths   ["src/clj" "src/cljs" "resources" "target"]
+ :aliases {:uberjar {:extra-deps {uberdeps {:mvn/version "0.1.4"}}
                      :main-opts  ["-m" "uberdeps.uberjar" "--target" "target/openmind.jar"]}}}
