@@ -17,23 +17,13 @@
 ;;;;; Translation from client to Elastic Search
 
 (defn build-filter-query [tags]
-  (when (seq tags)
-    (if (= 1 (count tags))
-      {:term {:tags (first tags)}}
-      {:terms {:tags tags
-                   #_{:terms tags
-                    ;; FIXME: This is positively
-                    ;; idiotic... but it works!
-                    :minimum_should_match_script
-                    {:source "1"}}}})))
+  (map (fn [t] {:term {:tags t}}) tags))
 
 (defn search->elastic [{:keys [term filters]}]
   {:sort  {:created {:order :desc}}
    :from  0
    :size  20
-   :query {:bool (merge {}
-                        (when (seq filters)
-                          {:filter [(build-filter-query filters)]})
+   :query {:bool (merge {:filter (build-filter-query filters)}
                         (when (seq term)
                           ;; TODO: Better prefix search:
                           ;; https://www.elastic.co/guide/en/elasticsearch/guide/master/_index_time_search_as_you_type.html
