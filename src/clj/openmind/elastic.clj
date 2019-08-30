@@ -3,7 +3,6 @@
             [clojure.data.json :as json]
             [clojure.pprint :refer [pprint]]
             [openmind.env :as env]
-            [openmind.tags :refer [tag-tree]]
             [org.httpkit.client :as http]))
 
 ;; FIXME:
@@ -13,25 +12,6 @@
 (def mapping
   {:properties {:created {:type :date}
                 :tags {:type :keyword}}})
-
-;;;;; Translation from client to Elastic Search
-
-(defn build-filter-query [tags]
-  (map (fn [t] {:term {:tags t}}) tags))
-
-(defn search->elastic [{:keys [term filters]}]
-  {:sort  {:created {:order :desc}}
-   :from  0
-   :size  20
-   :query {:bool (merge {:filter (build-filter-query filters)}
-                        (when (seq term)
-                          ;; TODO: Better prefix search:
-                          ;; https://www.elastic.co/guide/en/elasticsearch/guide/master/_index_time_search_as_you_type.html
-                          ;; or
-                          ;; https://www.elastic.co/guide/en/elasticsearch/reference/current/search-suggesters-completion.html
-                          ;; or
-                          ;; https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-edgengram-tokenizer.html
-                          {:must {:match_phrase_prefix {:text term}}}))}})
 
 ;;;;; REST API wrapping
 
@@ -71,30 +51,12 @@
 
 ;;;;; Tags in elastic
 
-(defn get-doc [index id]
-  (assoc base-req
-         :method :get
-         :url (str base-url "/" (name index) "/_doc/" id)))
-
-(defn find-id [res]
-  (when (:body res)
-    (when-let [body (json/read-str (:body res))]
-      (when (= "created" (get body "result"))
-        (get body "_id")))))
 
 (defn index-tag [index tag-data]
   (assoc base-req
          :url (str base-url "/" (name index) "/_doc/")
          :method :post
          :body (json/write-str tag-data)))
-
-(defn subtag-lookup [index root]
-  (let [query {:size 1000 :query {:match {:parents root}}}]
-    (search index query)))
-
-(defn top-level-tags [index]
-  (search index {:query {:bool {:must_not {:exists {:field :parents}}}}}))
-
 ;;;;; Wheel #6371
 
 (defn parse-response
@@ -147,19 +109,13 @@
 
 ;;;;; Tag init hack
 
-(defn index-tag-tree [index tree parents]
-  (run! (fn [[k v]]
-          (async/go
-            (let [tag-data {:tag-name k
-                            :parents parents}
-                  id (find-id (async/<! (send-off! (index-tag index tag-data))))]
-              (tap> [k id parents])
-              (index-tag-tree index v (conj parents id)))))
-        tree))
-
 (defn create-and-init!
   "Setup indicies on a blank instance and populate basic tags."
   []
-  (t create-index)
-  (t set-mapping)
-  (index-tag-tree tag-index tag-tree []))
+  ;; FIXME: This doesn't work because of timing issues. Figure that out, or
+  ;; write better documentation on how to initialise a new elastic DB.
+
+  ;; (t create-index)
+  ;; (t set-mapping)
+  ;; (index-tag-tree tag-index tag-tree [])
+  )

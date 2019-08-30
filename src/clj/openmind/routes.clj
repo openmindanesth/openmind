@@ -2,14 +2,9 @@
   (:require [clojure.core.async :as async]
             [clojure.pprint]
             [clojure.walk :as walk]
-            [openmind.elastic :as es]))
+            [openmind.elastic :as es]
+            [openmind.tags :as tags]))
 
-
-(defn search-req [query]
-  (es/search es/index (es/search->elastic query)))
-
-(defn parse-search-response [res]
-  (mapv :_source res))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; routing table
@@ -51,18 +46,52 @@
   ;; REVIEW: Dropping unhandled messages is suboptimal.
   nil)
 
+;;;;; Search
+
+(defn search->elastic [{:keys [term filters]}]
+  (async/go
+    {:sort  {:created {:order :desc}}
+     :from  0
+     :size  20
+     :query {:bool (merge {:filter (async/<! (tags/tags-filter-query
+                                              ;; FIXME: Hardcoded anaesthesia
+                                              "anaesthesia" filters))}
+                          (when (seq term)
+                            ;; TODO: Better prefix search:
+                            ;; https://www.elastic.co/guide/en/elasticsearch/guide/master/_index_time_search_as_you_type.html
+                            ;; or
+                            ;; https://www.elastic.co/guide/en/elasticsearch/reference/current/search-suggesters-completion.html
+                            ;; or
+                            ;; https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-edgengram-tokenizer.html
+                            {:must {:match_phrase_prefix {:text term}}}))}}))
+
+(defn search-req [query]
+  (async/go
+    (es/search es/index (async/<! (search->elastic query)))))
+
+(defn parse-search-response [res]
+  (mapv :_source res))
+
 (defmethod dispatch :openmind/search
   [{[_  {:keys [search]}] :event :as req}]
   (let [nonce (:nonce search)]
     (async/go
-      (let [res   (parse-search-response (es/request<! (search-req search)))
+      (let [res   (-> search
+                      search-req
+                      async/<!
+                      es/request<!
+                      parse-search-response)
             event [:openmind/search-response {:results res :nonce nonce}]]
         (respond-with-fallback req event)))))
+
+;;;;; Login
 
 (defmethod dispatch :openmind/verify-login
   [{:keys [tokens] :as req}]
   (let [res [:openmind/identity (select-keys (:orcid tokens) [:orcid-id :name])]]
     (respond-with-fallback req res)))
+
+;;;;; Create extract
 
 (defn parse-dates [doc]
   (let [formatter (java.text.SimpleDateFormat. "YYYY-MM-dd'T'HH:mm:ss.SSSXXX")]
@@ -95,67 +124,12 @@
 ;;;;; Tag Hierarchy
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def ^:private top-level-tags
-  "Top level tag domains. These are presently invisible to the client since the
-  only option is anaesthesia."
-  (atom nil))
-
-(def ^:private tags
-  "Tag cache (this is going to be looked up a lot)."
-  (atom {}))
-
-(defn get-top-level-tags []
-  (async/go
-    (if @top-level-tags
-      @top-level-tags
-      (let [t (into {}
-                    (map
-                     (fn [{id :_id {tag :tag-name} :_source}]
-                       [tag id]))
-                    (-> (es/top-level-tags es/tag-index)
-                        es/request<!))]
-        (reset! top-level-tags t)
-        t))))
-
-(defn lookup-tags [root]
-  (async/go
-    (->> (es/subtag-lookup es/tag-index root)
-         es/request<!
-         (map (fn [{:keys [_id _source]}]
-                [_id _source]))
-         (into {}))))
-
-(defn get-tag-tree [root]
-  (async/go
-    (if (contains? @tags root)
-      (get @tags root)
-      ;; Wasteful, but at least it's consistent
-      (let [v (async/<! (lookup-tags root))]
-        (swap! tags assoc root v)
-        v))))
-
-(defn reconstruct [root re]
-  (assoc root :children (into {}
-                              (map (fn [c]
-                                     (let [t (reconstruct c re)]
-                                       [(:id t) t])))
-                              (get re (:id root)))))
-
-(defn invert-tag-tree [tree root-node]
-  (let [id->node (into {} tree)
-        parent->children (->> tree
-                              (map (fn [[id x]] (assoc x :id id)))
-                              (group-by :parents)
-                              (map (fn [[k v]] [(last k) v]))
-                              (into {}))]
-    (reconstruct root-node parent->children)))
-
 (defmethod dispatch :openmind/tag-tree
   [{:keys [send-fn ?reply-fn] [_ root] :event}]
   (async/go
-    (when-let [root-id (get (async/<! (get-top-level-tags)) root)]
-      (let [tree    (async/<! (get-tag-tree root-id))
-            event   [:openmind/tag-tree (invert-tag-tree
+    (when-let [root-id (get (async/<! (tags/get-top-level-tags)) root)]
+      (let [tree    (async/<! (tags/get-tag-tree root-id))
+            event   [:openmind/tag-tree (tags/invert-tag-tree
                                          tree
                                          {:tag-name root :id root-id})]]
         (when ?reply-fn
