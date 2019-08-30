@@ -67,8 +67,7 @@
    (when @(re-frame/subscribe [::subs/menu-open?])
      [menu])])
 
-(defn modal [{:keys [status message]}]
-  ;; FIXME: Not really a modal...
+(defn status-message-bar [{:keys [status message]}]
   [:div.pt1.pb1.pl1
    {:class (if (= status :success)
              "bg-green"
@@ -76,12 +75,12 @@
    [:span message]])
 
 (defn window [content]
-  (let [modal-state @(re-frame/subscribe [::subs/modal])]
+  (let [status-message @(re-frame/subscribe [::subs/status-message])]
     [:div.padded
      [title-bar]
-     (when modal-state
+     (when status-message
        [:div.vspacer
-        [modal modal-state]])
+        [status-message-bar status-message]])
      [:div.vspacer]
      [content]]))
 

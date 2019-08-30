@@ -6,8 +6,6 @@
    :search           {:term    nil
                       :filters #{}}
    :route            :openmind.views/search
-   ;; TODO: FIXME:
-   :filter-selection []
    :create           {:selection []
                       :tags      #{}}
    :results          []})

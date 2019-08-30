@@ -66,9 +66,9 @@
    (:tag-lookup db)))
 
 (re-frame/reg-sub
- ::modal
+ ::status-message
  (fn [db]
-   (:modal db)))
+   (:status-message db)))
 
 (re-frame/reg-sub
  ::login-info

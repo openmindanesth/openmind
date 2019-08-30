@@ -98,18 +98,19 @@
    (if (success? status)
      {:db (assoc db
                  :create {:selection [] :tags #{}}
-                 :modal {:status  :success
+                 :status-message {:status  :success
                          :message "Extract Successfully Created!"}
                  :route :openmind.views/search)
 
-      :dispatch-later [{:ms 2000 :dispatch [::clear-modal]}
+      :dispatch-later [{:ms 2000 :dispatch [::clear-status-message]}
                        {:ms 0 :dispatch [::search-request]}]}
-     {:db (assoc db :modal {:status :error :message "Failed to create extract."})})))
+     {:db (assoc db :status-message
+                 {:status :error :message "Failed to create extract."})})))
 
 (re-frame/reg-event-db
- ::clear-modal
+ ::clear-status-message
  (fn [db]
-   (dissoc db :modal)))
+   (dissoc db :status-message)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Extract Creation
