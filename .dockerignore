@@ -1,9 +1,0 @@
-/.git
-/*.log
-/target
-/*-init.clj
-/resources/public/js/compiled
-out
-.cpcache
-.nrepl-port
-conf.edn
