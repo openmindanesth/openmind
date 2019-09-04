@@ -80,7 +80,7 @@
     (http/request req (fn [res]
                         (log/trace "Response from elastic: "
                                   (-> res
-                                       (select-keys [:body :opts :status])
+                                       (select-keys [:body :opts :status :error])
                                        (update :opts select-keys
                                                [:method :body :url])))
                         (async/put! out-ch res)))
