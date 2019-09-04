@@ -12,8 +12,7 @@
 
 (defn- respond-with-fallback
   "Tries to respond directly to sender, if that fails, tries to respond to all
-  connected devices logged into the account of the sender. If that fails it
-  prints a shitty message to the console."
+  connected devices logged into the account of the sender."
   [{:keys [send-fn ?reply-fn uid]} msg]
   (cond
     ;; REVIEW: If you're logged in on your phone and your laptop, and you
@@ -24,7 +23,7 @@
     ;; But if it's the only way to return the result to you...
     (not= :taoensso.sente/nil-uid uid) (send-fn uid msg)
 
-    :else (log/warn "No way to return response to sender."))  )
+    :else (log/warn "No way to return response to sender." uid msg))  )
 
 (defmulti dispatch (fn [e] (first (:event e))))
 
