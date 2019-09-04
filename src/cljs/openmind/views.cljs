@@ -18,6 +18,7 @@
 
 (defn logout-link []
   [:a "logout"])
+
 (defn create-extract-link []
   [:a {:on-click #(do
                     (re-frame/dispatch [::events/nav-create-extract])
@@ -165,7 +166,6 @@
                            (when class
                              {:class class}))]]))
 
-;; FIXME: stub
 (defn pass-edit [k i]
   (fn [ev]
     (re-frame/dispatch [::events/nested-form k i (-> ev .-target .-value)])))

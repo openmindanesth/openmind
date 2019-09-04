@@ -40,23 +40,6 @@
 
 ;; (s/def ::physiology (s/with-gen ::tag (gen-vec :physiology)))
 
-(defn rando-tags [& [min max]]
-  (let [min (or min 3)
-        max (or max 10)
-        n (+ 1 min (rand-int (- max min)))
-        ;; HACK: I don't even know what to call this. It's just for
-        ;; testing. Does that make it okay?
-        opts (keys (:tag-lookup @re-frame.db/app-db))]
-    (assert (< n (count opts)))
-    (loop [tags #{}]
-      (if (= (count tags) n)
-        tags
-        (recur (conj tags (rand-nth opts)))))))
-
-(defn gen-examples [n]
-  (let [templs (map first (s/exercise ::extract n))]
-    (map (fn [x] (assoc x :tags [] #_(rando-tags))) templs )))
-
 (comment
   (def example
     {:text      "Medetomidine has no dose-dependent effect on the BOLD response to subcutaneous electrostimulation (0.5, 0.7, 1 mA) in mice for doses of 0.1, 0.3, 0.7, 1.0, 2.0 mg/kg/h."

@@ -83,6 +83,8 @@
 (re-frame/reg-event-fx
  ::create-extract
  (fn [cofx _]
+   ;; TODO: validation and form feedback
+   ;; TODO: incorporate author info
    (let [extract (-> cofx
                      (get-in [:db :create])
                      (dissoc :selection)

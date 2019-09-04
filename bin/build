@@ -12,7 +12,7 @@ export LEIN_INCLUDE_IN_SLUG=no
 echo Building production cljs...
 echo
 
-# TODO: using dev-main.js like this is a dirty and misleading hack
+# TODO: change js artefact name
 clojure -m cljs.main --optimizations advanced --output-to "resources/public/cljs-out/dev-main.js" -c openmind.core
 
 echo done

@@ -3,10 +3,10 @@
             [clojure.data.json :as json]
             [clojure.pprint :refer [pprint]]
             [openmind.env :as env]
-            [org.httpkit.client :as http]))
+            [org.httpkit.client :as http]
+            [taoensso.timbre :as log]))
 
-;; FIXME:
-(def index :extracts0)
+(def index (env/read :elastic-extract-index))
 (def tag-index :tags0)
 
 (def mapping
@@ -76,8 +76,13 @@
   eventually contain the result."
   [req]
   (let [out-ch (async/promise-chan)]
+    (log/trace "Elastic request: " (select-keys req [:method :url :body]))
     (http/request req (fn [res]
-                        ;; TODO: Logging
+                        (log/trace "Response from elastic: "
+                                  (-> res
+                                       (select-keys [:body :opts :status])
+                                       (update :opts select-keys
+                                               [:method :body :url])))
                         (async/put! out-ch res)))
     out-ch))
 

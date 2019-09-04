@@ -3,8 +3,8 @@
             [clojure.pprint]
             [clojure.walk :as walk]
             [openmind.elastic :as es]
-            [openmind.tags :as tags]))
-
+            [openmind.tags :as tags]
+            [taoensso.timbre :as log]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; routing table
@@ -24,8 +24,7 @@
     ;; But if it's the only way to return the result to you...
     (not= :taoensso.sente/nil-uid uid) (send-fn uid msg)
 
-    ;; TODO: Logging
-    :else (println "No way to return response to sender."))  )
+    :else (log/warn "No way to return response to sender."))  )
 
 (defmulti dispatch (fn [e] (first (:event e))))
 
@@ -40,10 +39,7 @@
 
 (defmethod dispatch :default
   [e]
-  ;; TODO: logging
-  (println "Unhandled client event:")
-  (clojure.pprint/pprint e)
-  ;; REVIEW: Dropping unhandled messages is suboptimal.
+  (log/warn "Unhandled client event:" e)
   nil)
 
 ;;;;; Search
@@ -99,10 +95,10 @@
      (fn [x] (if (inst? x) (.format formatter x) x))
      doc)))
 
-(defn prepare-doc [doc]
-  ;; TODO: Add author info
-  ;; TODO: check remaining fields
+(defn prepare-doc [author doc]
+  ;; TODO: validation
   (-> doc
+      (assoc :author author)
       (assoc :text (:extract doc))
       (assoc :created (java.util.Date.))
       (dissoc :extract)
@@ -110,15 +106,15 @@
 
 (defmethod dispatch :openmind/index
   [{:keys [client-id send-fn ?reply-fn uid tokens] [_ doc] :event}]
-  ;; TODO: secure against anonymous posting
-  (async/go
-    (let [res (->> doc
-                   prepare-doc
-                   (es/index-req es/index)
-                   es/send-off!
-                   async/<!)]
-      (when ?reply-fn
-        (?reply-fn [:openmind/index-result (:status res)])))))
+  (when (not= uid :taoensso.sente/nil-uid)
+    (async/go
+      (let [res (->> doc
+                     (prepare-doc (select-keys (:orcid tokens) [:name :orcid-id]))
+                     (es/index-req es/index)
+                     es/send-off!
+                     async/<!)]
+        (when ?reply-fn
+          (?reply-fn [:openmind/index-result (:status res)]))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Tag Hierarchy
