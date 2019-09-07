@@ -28,7 +28,7 @@
         (vals (:children tag))))
 
 (defn cancel-button [tag display data]
-  [:a.border-circle.bg-white.text-red.border-red.mtp2
+  [:a.border-circle.bg-white.text-black.border-black.mtp2
    {:on-click (fn [e]
                 (.stopPropagation e)
                 (.preventDefault e)
@@ -42,14 +42,16 @@
   navigated."
   [{:keys [tag-name id children] :as tag} display data]
   (let [selected? (contains? data tag)]
-    [:button.blue.filter-button.border-round.mb1
+    [:button.filter-button.border-round.mb1.text-white
      {:on-click (fn [_]
                   (if (contains? display tag)
                     (close-path display tag)
                     (open-path display tag))
                   (when-not selected?
                     (select data tag)))
-      :class    (when (contains? display tag) "selected")}
+      :class    (if (contains? display tag)
+                  "bg-dark-blue"
+                  "bg-blue")}
      [:div
       [:div.flex.flex-centre
        [:span.prh tag-name]
@@ -70,8 +72,8 @@
 
 (defn leaf-filter [{:keys [tag-name id] :as tag} display data]
   (let [active? (contains? (tags data) tag)]
-    [:button.feature-button.border-round.mb1.filter-button
-     {:class (when active? "active")
+    [:button.border-round.mb1.filter-button.text-white
+     {:class (if active? "bg-light-blue" "bg-grey")
       :on-click #(if active?
                    (unselect data tag)
                    (select data tag))}
@@ -98,7 +100,7 @@
   (when tag
     (let [path (remove-prefix (:parents tag) (get-path display))
           current (first path)]
-      [:div.border-blue.border-round.pl2.pr2.pb1.pt2
+      [:div.border-round.pl2.pr2.pb1.pt2.border-solid
        (into [:div.flex.flex-wrap.space-evenly]
              (map (fn [{:keys [id] :as sub-tag}]
                     [filter-button sub-tag
