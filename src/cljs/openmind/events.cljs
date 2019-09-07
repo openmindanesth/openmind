@@ -62,9 +62,14 @@
      :else (println t args))))
 
 (re-frame/reg-event-db
- ::toggle-menu
+ ::open-menu
  (fn [db _]
-   (update db :menu-open? not)))
+   (assoc db :menu-open? true)))
+
+(re-frame/reg-event-db
+ ::close-menu
+ (fn [db _]
+   (assoc db :menu-open? false)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Extract Creation

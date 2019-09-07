@@ -17,12 +17,10 @@
   [:a {:href "/oauth2/orcid"} "login with Orcid"])
 
 (defn logout-link []
-  [:a "logout"])
+  [:a {:on-click #(re-frame/dispatch [::events/logout])} "logout"])
 
 (defn create-extract-link []
-  [:a {:on-click #(do
-                    (re-frame/dispatch [::events/nav-create-extract])
-                    (re-frame/dispatch [::events/toggle-menu]))}
+  [:a {:on-click #(re-frame/dispatch [::events/nav-create-extract])}
    "create new extract"])
 
 (defn logged-in-menu-items []
@@ -35,25 +33,35 @@
 (def anon-menu-items
   [[login-link]])
 
+(defn fake-key [xs]
+  (map-indexed (fn [i x]
+                 (with-meta x (assoc (meta x) :key i)))
+               xs))
+
 (defn menu []
   (let [login @(re-frame/subscribe [::subs/login-info])]
     [:div.search-result.padded.absolute.bg-light-grey.translucent-9.wide.pb2.pl1.pr1
      {:style {:top 5
-              :left 5}}
+              :left 5}
+      :id "nav-menu"
+      :on-mouse-leave #(re-frame/dispatch [::events/close-menu])}
      [:div.mt4
       (when (seq login)
         [:span "welcome " (:name login)])]
      [:hr.mb1.mt1]
-     (interpose [:hr.mb1.mt1]
-                (if (seq login)
-                  (logged-in-menu-items)
-                  anon-menu-items))]))
+     (fake-key
+      (interpose [:hr.mb1.mt1]
+                 (if (seq login)
+                   (logged-in-menu-items)
+                   anon-menu-items)))]))
 
 (defn title-bar []
   [:div
    [:div.flex.space-between
     [:button.z100
-     {:on-click #(re-frame/dispatch [::events/toggle-menu])}
+     {:on-click #(re-frame/dispatch (if @(re-frame/subscribe [::subs/menu-open?])
+                                      [::events/close-menu]
+                                      [::events/open-menu]))}
      [:span.ham "Ξ"]]
     [:div.ctext.grow-1.pl1.pr1.xxl.pth
      {:on-click #(re-frame/dispatch [::events/nav-search])
