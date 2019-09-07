@@ -41,6 +41,7 @@
 ;; KLUDGE: monkey patching works, but oh boy...
 (alter-var-root #'ring.middleware.oauth2/format-access-token
                 (constantly my-format-access-token))
+
 (def app
   (-> routes
       (ring.middleware.oauth2/wrap-oauth2 oauth2/sites)
