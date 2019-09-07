@@ -1,6 +1,7 @@
 (ns openmind.events
   (:require-macros [cljs.core.async.macros :refer [go go-loop]])
   (:require [cljs.core.async :as async]
+            [clojure.edn :as edn]
             [goog.net.XhrIo]
             [re-frame.core :as re-frame]
             [openmind.db :as db]
@@ -198,13 +199,60 @@
 
 (re-frame/reg-event-fx
  ::login-check
+ [(re-frame/inject-cofx :storage/get :orcid)]
  (fn [cofx _]
-   {:dispatch [::try-send [:openmind/verify-login]]}))
+   (if-let [login-info (:storage/get cofx)]
+     {:db (assoc (:db cofx) :login-info login-info)}
+     {:dispatch [::try-send [:openmind/verify-login]]})))
+
+(re-frame/reg-event-fx
+ :openmind/identity
+ (fn [cofx [_ id]]
+   (when-not (empty? id)
+     {:storage/set [:orcid id]
+      :db          (assoc (:db cofx) :login-info id)})))
+
+(re-frame/reg-event-fx
+ ::logout
+ (fn [cofx _]
+   {:storage/remove :orcid
+    ::server-logout nil}))
+
+(re-frame/reg-fx
+ ::server-logout
+ (fn [_]
+   (goog.net.XhrIo/send "/logout"
+                        ;; TODO: Timeout and handle failure to logout.
+                        (fn [e]
+                          (when (= 200 (-> e .-target .getStatus))
+                            (re-frame/dispatch [::complete-logout]))))))
 
 (re-frame/reg-event-db
- :openmind/identity
- (fn [db [_ id]]
-   (assoc db :login-info id)))
+ ::complete-logout
+ (fn [db _]
+   (dissoc db :login-info)))
+
+;;;;; sessionStorage
+
+(re-frame/reg-fx
+ :storage/set
+ (fn [[k v]]
+   (.setItem (.-sessionStorage js/window) (str k) (str v))))
+
+(re-frame/reg-fx
+ :storage/remove
+ (fn [k]
+   (.removeItem (.-sessionStorage js/window) (str k)))
+
+ (re-frame/reg-cofx
+  :storage/get
+  (fn [cofx k]
+    (assoc cofx
+           :storage/get
+           (-> js/window
+               .-sessionStorage
+               (.getItem (str k))
+               edn/read-string)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Tag tree (taxonomy)

@@ -19,12 +19,19 @@
                                                  :orcid
                                                  :orcid-id))}))
 
+(def logout-response
+  {:status  200
+   :session nil
+   :headers {"Content-Type" "text/html"}
+   :body    "Goodbye"})
+
 (c/defroutes routes
   (route/resources "/")
   (c/GET "/" req (slurp "resources/public/index.html"))
   (c/GET "/elmyr" req (force ring.middleware.anti-forgery/*anti-forgery-token*))
   (c/GET "/chsk" req ((:ajax-get-or-ws-handshake-fn socket) req))
   (c/POST "/chsk" req ((:ajax-post-fn socket) req))
+  (c/GET "/logout" req  logout-response)
   (route/not-found "This is not a page."))
 
 (defonce
