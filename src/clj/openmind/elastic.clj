@@ -57,6 +57,7 @@
          :url (str base-url "/" (name index) "/_doc/")
          :method :post
          :body (json/write-str tag-data)))
+
 ;;;;; Wheel #6371
 
 (defn parse-response

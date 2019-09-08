@@ -197,6 +197,8 @@
  (fn [db [_ tag]]
    (update-in db [:search :filters] disj tag)))
 
+;;;;; login
+
 (re-frame/reg-event-fx
  ::login-check
  [(re-frame/inject-cofx :storage/get :orcid)]
