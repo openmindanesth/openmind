@@ -31,7 +31,7 @@
   [:a.border-circle.bg-white.text-black.border-black
    {:style    {:position :relative
                :float    :right
-               :top      "-2px"
+               :top      "-1px"
                :right    "-9px"}
     :on-click (fn [e]
                 (.stopPropagation e)
