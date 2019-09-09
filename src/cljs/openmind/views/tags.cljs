@@ -65,7 +65,7 @@
        [:span  tag-name]]
       (when selected?
         [:div
-         [:span
+         [:span {:style {:margin-right "20px"}}
           (let [selected-children (->> children
                                        vals
                                        (filter #(contains? data %))
