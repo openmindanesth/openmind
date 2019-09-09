@@ -3,7 +3,7 @@
             [clojure.data.json :as json]
             [openmind.elastic :as es]))
 
-(def tag-tree
+(def ^:private tag-tree
   "For development purposes, I'm encoding the tress of tags here. Once we've got
   the system up and running it will need to be an interactive search through
   elastic. Something like graphiql (like graphiql) would be great."
@@ -42,14 +42,14 @@
                                  "breathing rate" {}
                                  "other effects"  {}}}})
 
-(defonce
+(def
   ^{:private true
     :doc "Top level tag domains. These are presently invisible to the client since the
   only option is anaesthesia."}
   top-level-tags
   (atom nil))
 
-(defonce
+(def
   ^{:private true
     :doc "Tag cache (this is going to be looked up a lot)."}
   tags
