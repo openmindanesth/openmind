@@ -29,7 +29,11 @@
 
 (defn cancel-button [tag display data]
   [:a.border-circle.bg-white.text-black.border-black.mtp2
-   {:on-click (fn [e]
+   {:style    {:position :relative
+               :float    :right
+               :top      "-4px"
+               :right    "-9px"}
+    :on-click (fn [e]
                 (.stopPropagation e)
                 (.preventDefault e)
                 (when (contains? display tag)
@@ -53,10 +57,10 @@
                   "bg-dark-blue"
                   "bg-blue")}
      [:div
+      (when selected?
+         [cancel-button tag display data])
       [:div.flex.flex-centre
-       [:span.prh tag-name]
-       (when selected?
-         [cancel-button tag display data])]
+       [:span.prh tag-name]]
       (when selected?
         [:div
          [:span
