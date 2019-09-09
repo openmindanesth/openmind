@@ -197,12 +197,13 @@ a.link-blue {
 
 .centre {
 		position: relative;
-		top: -0.66rem;
+		top: -11px;
+		right: 0px;
 }
 
 .border-circle {
-		height: 1.1rem;
-		width: 1.1rem;
+		height: 18px;
+		width: 20px;
 		font-weight: bold;
 		border: 0.1rem;
 		border-spacing: 0;
