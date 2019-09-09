@@ -63,14 +63,12 @@
 (defn parse-response
   "Interpret Elastic Search status codes and parse response appropriately."
   [{:keys [status body] :as res}]
-  (if (seq res)
+  (if status
     (cond
       (<= 200 status 299) (json/read-str body :key-fn keyword)
       (= 404 status)      []
-      :else               (do
-                            (println "Elastic Error:" )
-                            (pprint res)))
-    (println "Error nil response!")))
+      :else               (log/error "Elastic Search error response:" res) )
+    (log/error "No response from Elastic Search:" res)))
 
 (defn send-off!
   "Sends HTTP request req and returns a core.async promise channel which will
