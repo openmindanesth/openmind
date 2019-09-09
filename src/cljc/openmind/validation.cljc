@@ -1,8 +1,11 @@
 (ns openmind.validation
-  (:require [cljs.spec.alpha :as s]
-            [cljs.spec.gen.alpha :as gen]
-            [clojure.test.check.generators]
-            ))
+  #?(:cljs (:require [cljs.spec.alpha :as s]
+                     [cljs.spec.gen.alpha :as gen]
+                     [clojure.test.check.generators])
+     :clj  (:require [clojure.spec.alpha :as s]
+                     [clojure.spec.gen.alpha :as gen]
+                     [clojure.test.check.generators])))
+
 
 (s/def ::extract
   (s/keys :req-un [::text ::reference ::tags ::created ::author]
