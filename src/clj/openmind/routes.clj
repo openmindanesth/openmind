@@ -45,7 +45,7 @@
 
 ;;;;; Search
 
-(defn search->elastic [{:keys [term filters]}]
+(defn search->elastic [{:keys [search/term search/filters]}]
   (async/go
     {:sort  {:created-time {:order :desc}}
      :from  0
