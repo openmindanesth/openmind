@@ -6,6 +6,7 @@
             [expound.alpha :as ex]
             [goog.net.XhrIo]
             [re-frame.core :as re-frame]
+            [openmind.config :refer [debug?]]
             [openmind.db :as db]
             [openmind.spec.extract :as extract-spec]
             [taoensso.sente :as sente]))
@@ -98,7 +99,7 @@
      (if (s/valid? ::extract-spec/extract extract)
        {:dispatch [::try-send [:openmind/index extract]]}
        (do
-         (ex/expound ::extract-spec/extract extract)
+         (when debug? (ex/expound ::extract-spec/extract extract))
          {:db (assoc-in (:db cofx) [:openmind.db/new-extract :errors]
                         (s/explain-data ::extract-spec/extract extract))})))))
 
