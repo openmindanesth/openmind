@@ -6,6 +6,7 @@
            org.clojure/core.async    {:mvn/version "0.4.490"}
            org.clojure/clojure       {:mvn/version "1.10.1"}
            org.clojure/clojurescript {:mvn/version "1.10.520"}
+           org.clojure/spec.alpha    {:mvn/version "0.2.176"}
            org.clojure/test.check    {:mvn/version "0.9.0"}
            reagent                   {:mvn/version "0.8.1"}
            re-frame                  {:mvn/version "0.10.6"}

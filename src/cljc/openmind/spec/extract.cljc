@@ -11,21 +11,26 @@
 ;; https://medium.com/@kirill.ishanov/building-forms-with-re-frame-and-clojure-spec-6cf1df8a114d
 ;; Give it a shot
 
-(s/def ::extract
-  (s/keys :req-un [::text ::source ::tags ::created-time ::author]
-          :opt-un [::comments ::figures ::history ::related ::details]))
+;;;;; General
 
-(s/def ::text
-  (s/with-gen
-    (s/and string? #(< 1 (count %) 500))
-    (fn []
-      (clojure.test.check.generators/fmap
-       (fn [x] (apply str (interpose " " x)))
-       (gen/vector clojure.test.check.generators/string-alphanumeric 2 10)))))
-
+;; TODO: URL spec
 (s/def ::url string?)
 
-(s/def ::source ::url)
+;; TODO: a reference can be a body of text, or a URL. Most of the time it should
+;; be a URL.
+(s/def ::reference ::url)
+
+(s/def ::extract
+  (s/keys :req-un [::text ::source ::tags ::created-time ::author]
+          :opt-un [::comments ::figures ::history ::related ::details
+                   ::confirmed ::contrast]))
+
+;;;;; Required
+
+(s/def ::text
+  (s/and string? not-empty #(< (count %) 500)))
+
+(s/def ::source ::reference)
 
 (s/def ::author
   (s/keys :req-un [:author/name ::orcid-id]))
@@ -33,15 +38,53 @@
 (s/def :author/name string?)
 
 ;; TODO: What makes a valid Orcid ID? Is this the right place to validate it?
-(s/def ::orcid-id string?)
-
-(s/def ::related
-  (s/coll-of ::url :distinct true))
+(s/def ::orcid-id
+  (s/and string? not-empty))
 
 (s/def ::created-time inst?)
 
 (s/def ::tags
   (s/coll-of string? :distinct true))
+
+(s/def ::file-reference
+  ;; REVIEW: S3 object reference. It's more than a string, but is this the place
+  ;; to check that?
+  string?)
+
+;;;; Optional
+
+(s/def ::comments
+  ;; FIXME: This should be a list of comments. Eaxh comment should have data of
+  ;; its own such as author, authoring time, etc..
+  (s/and string? not-empty))
+
+(s/def ::image
+  (s/or :link ::url
+        :upload ::file-reference))
+
+;; FIXME: collection of figures
+(s/def ::figures
+  (s/coll-of ::image :distinct true))
+
+;; TODO: What are details?
+(s/def ::details string?)
+
+(s/def ::history
+  (s/coll-of ::extract))
+
+(s/def ::int int?)
+
+(s/def ::numbered-reference-list
+  (s/and
+   (s/every-kv ::int ::reference)
+   #(let [ks (keys %)]
+      (= (range (count ks)) (sort ks)))))
+
+(s/def ::related ::numbered-reference-list)
+
+(s/def ::confirmed ::numbered-reference-list)
+
+(s/def ::contrast ::numbered-reference-list)
 
 (comment
   (def example
