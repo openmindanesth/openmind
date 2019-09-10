@@ -12,8 +12,10 @@ export LEIN_INCLUDE_IN_SLUG=no
 echo Building production cljs...
 echo
 
+rm -rf resources/public/js
+
 # TODO: change js artefact name
-clojure -m cljs.main --optimizations advanced --output-to "resources/public/cljs-out/dev-main.js" -c openmind.core
+clojure -m cljs.main -O advanced -o "resources/public/js/app.js" -co "{:closure-defines {goog.DEBUG false}}" -c openmind.core
 
 echo done
 echo

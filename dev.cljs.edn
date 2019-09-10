@@ -1,3 +1,5 @@
 ^{:open-url false
-	:css-dirs ["resources/public"]}
-{:main openmind.core}
+  :css-dirs ["resources/public/css"]}
+{:main       openmind.core
+ :output-to  "resources/public/js/app.js"
+ :output-dir "resources/public/js"}
