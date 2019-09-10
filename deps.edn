@@ -3,7 +3,6 @@
            com.taoensso/timbre       {:mvn/version "4.10.0"}
            expound                   {:mvn/version "0.7.2"}
            http-kit                  {:mvn/version "2.4.0-alpha2"}
-           kee-frame                 {:mvn/version "0.3.3"}
            org.clojure/core.async    {:mvn/version "0.4.490"}
            org.clojure/clojure       {:mvn/version "1.10.1"}
            org.clojure/clojurescript {:mvn/version "1.10.520"}
@@ -15,6 +14,6 @@
            ring/ring-core            {:mvn/version "1.7.1"}
            ring/ring-defaults        {:mvn/version "0.3.2"}
            ring-oauth2               {:mvn/version "0.1.4"}}
- :paths   ["src/clj" "src/cljs" "src/cljc" "resources" "target"]
+ :paths   ["src/clj" "src/cljs" "src/cljc" "resources"]
  :aliases {:uberjar {:extra-deps {uberdeps {:mvn/version "0.1.4"}}
                      :main-opts  ["-m" "uberdeps.uberjar" "--target" "target/openmind.jar"]}}}
