@@ -46,7 +46,7 @@
   navigated."
   [{:keys [tag-name id children] :as tag} display data]
   (let [selected? (contains? data tag)]
-    [:button.filter-button.border-round.mb1.text-white
+    [:button.filter-button.border-round.mb1.text-white.mrh.mlh
      {:on-click (fn [_]
                   (if (contains? display tag)
                     (close-path display tag)
@@ -78,8 +78,8 @@
 
 (defn leaf-filter [{:keys [tag-name id] :as tag} display data]
   (let [active? (contains? (tags data) tag)]
-    [:button.border-round.mb1.filter-button.text-white
-     {:class (if active? "bg-light-blue" "bg-grey")
+    [:button.border-round.mb1.filter-button.text-white.mrh.mlh
+     {:class    (if active? "bg-light-blue" "bg-grey")
       :on-click #(if active?
                    (unselect data tag)
                    (select data tag))}

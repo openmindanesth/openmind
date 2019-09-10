@@ -248,6 +248,14 @@ a.link-blue {
 		margin-bottom: 0;
 }
 
+.mlh {
+		margin-left: 0.5rem;
+}
+
+.mrh {
+		margin-right: 0.5rem;
+}
+
 .ph {
 		padding: 0.5rem;
 }
