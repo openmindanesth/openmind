@@ -142,3 +142,10 @@
               (tap> [k id parents])
               (index-tag-tree index v (conj parents id)))))
         tree))
+
+(defn init-elastic [index tag-index]
+  (async/go
+    (async/<! (es/send-off! (es/create-index index)))
+    (async/<! (es/send-off! (es/set-mapping index)))
+    (async/<! (es/send-off! (es/create-index tag-index)))
+    (index-tag-tree tag-index tag-tree [])))

@@ -38,13 +38,13 @@
 
 ;;;;; Init new index
 
-(def set-mapping
+(defn set-mapping [index]
   (merge base-req
          {:method :put
           :url (str base-url "/" (name index) "/_mapping")
           :body (json/write-str mapping)}))
 
-(def create-index
+(defn create-index [index]
   (assoc base-req
          :url (str base-url "/" (name index))
          :method :put))
