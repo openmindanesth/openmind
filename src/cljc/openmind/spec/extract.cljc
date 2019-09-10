@@ -1,4 +1,4 @@
-(ns openmind.validation
+(ns openmind.spec.extract
   #?(:cljs (:require [cljs.spec.alpha :as s]
                      [cljs.spec.gen.alpha :as gen]
                      [clojure.test.check.generators])
@@ -12,16 +12,20 @@
 ;; Give it a shot
 
 (s/def ::extract
-  (s/keys :req-un [:extract/extract ::source ::tags ::created-time ::author]
+  (s/keys :req-un [::text ::source ::tags ::created-time ::author]
           :opt-un [::comments ::figures ::history ::related ::details]))
 
-(s/def :extract/extract
+(s/def ::text
   (s/with-gen
     (s/and string? #(< 1 (count %) 500))
     (fn []
       (clojure.test.check.generators/fmap
        (fn [x] (apply str (interpose " " x)))
        (gen/vector clojure.test.check.generators/string-alphanumeric 2 10)))))
+
+(s/def ::url string?)
+
+(s/def ::source ::url)
 
 (s/def ::author
   (s/keys :req-un [:author/name ::orcid-id]))
