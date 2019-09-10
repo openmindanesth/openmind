@@ -10,7 +10,7 @@
 (def tag-index :tags0)
 
 (def mapping
-  {:properties {:created {:type :date}
+  {:properties {:created-time {:type :date}
                 :tags {:type :keyword}}})
 
 ;;;;; REST API wrapping
@@ -50,7 +50,6 @@
          :method :put))
 
 ;;;;; Tags in elastic
-
 
 (defn index-tag [index tag-data]
   (assoc base-req
@@ -107,9 +106,9 @@
           :url (str base-url "/_cluster/settings")}))
 
 (def most-recent
-  (search index {:sort {:created {:order :desc}}
-                  :from 0
-                  :size 10}))
+  (search index {:sort {:created-time {:order :asc}}
+                 :from 0
+                 :size 10}))
 
 ;;;;; Tag init hack
 

@@ -114,7 +114,7 @@
                  ::db/route :openmind.views/search)
 
       :dispatch-later [{:ms 2000 :dispatch [::clear-status-message]}
-                       {:ms 0 :dispatch [::search-request]}]}
+                       {:ms 500 :dispatch [::search-request]}]}
      {:db (assoc db :status-message
                  {:status :error :message "Failed to create extract."})})))
 

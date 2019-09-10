@@ -45,7 +45,7 @@
 
 (defn search->elastic [{:keys [term filters]}]
   (async/go
-    {:sort  {:created {:order :desc}}
+    {:sort  {:created-time {:order :desc}}
      :from  0
      :size  20
      :query {:bool (merge {:filter (async/<! (tags/tags-filter-query
