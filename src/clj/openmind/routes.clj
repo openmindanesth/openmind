@@ -1,8 +1,10 @@
 (ns openmind.routes
   (:require [clojure.core.async :as async]
+            [clojure.spec.alpha :as s]
             [clojure.pprint]
             [clojure.walk :as walk]
             [openmind.elastic :as es]
+            [openmind.spec.extract :as extract-spec]
             [openmind.tags :as tags]
             [taoensso.timbre :as log]))
 
@@ -94,24 +96,34 @@
      (fn [x] (if (inst? x) (.format formatter x) x))
      doc)))
 
-(defn prepare-doc [author doc]
-  ;; TODO: validation
+(defn validate [author doc]
+  (cond
+    (not= author (:author doc))
+    (log/error "Login mismatch, possible attack:" author doc)
+
+    (not (s/valid? ::extract-spec/extract doc))
+    (log/warn "Invalid extract received from client:"
+              author doc (s/explain-data ::extract-spec/extract doc))
+
+    :else doc))
+
+(defn prepare [doc]
   (-> doc
-      (assoc :author author)
-      (assoc :text (:extract doc))
-      (assoc :created (java.util.Date.))
-      (dissoc :extract)
+      ;; Prefer server timestamp
+      (assoc :created-time (java.util.Date.))
       parse-dates))
 
 (defmethod dispatch :openmind/index
   [{:keys [client-id send-fn ?reply-fn uid tokens] [_ doc] :event}]
   (when (not= uid :taoensso.sente/nil-uid)
     (async/go
-      (let [res (->> doc
-                     (prepare-doc (select-keys (:orcid tokens) [:name :orcid-id]))
-                     (es/index-req es/index)
-                     es/send-off!
-                     async/<!)]
+      (let [res (some->> doc
+                         (validate
+                          (select-keys (:orcid tokens) [:name :orcid-id]))
+                         prepare
+                         (es/index-req es/index)
+                         es/send-off!
+                         async/<!)]
         (when ?reply-fn
           (?reply-fn [:openmind/index-result (:status res)]))))))
 

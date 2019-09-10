@@ -3,10 +3,11 @@
   (:require [cljs.core.async :as async]
             [cljs.spec.alpha :as s]
             [clojure.edn :as edn]
+            [expound.alpha :as ex]
             [goog.net.XhrIo]
             [re-frame.core :as re-frame]
             [openmind.db :as db]
-            [openmind.validation :as specs]
+            [openmind.spec.extract :as extract-spec]
             [taoensso.sente :as sente]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -87,18 +88,19 @@
  ::create-extract
  (fn [cofx _]
    ;; TODO: validation and form feedback
-   ;; TODO: incorporate author info
    (let [author  @(re-frame/subscribe [:openmind.subs/login-info])
          extract (-> cofx
                      (get-in [:db ::db/new-extract :new-extract/content])
                      (assoc :author author
                             :created-time (js/Date.))
                      (update :tags #(mapv :id %)))]
-     (cljs.pprint/pprint (s/explain-data ::specs/extract extract))
-     (if (s/valid? ::specs/extract extract)
+
+     (if (s/valid? ::extract-spec/extract extract)
        {:dispatch [::try-send [:openmind/index extract]]}
-       {:db (assoc-in (:db cofx) [:openmind.db/new-extract :errors]
-                      (s/explain-data ::specs/extract extract))}))))
+       (do
+         (ex/expound ::extract-spec/extract extract)
+         {:db (assoc-in (:db cofx) [:openmind.db/new-extract :errors]
+                        (s/explain-data ::extract-spec/extract extract))})))))
 
 (defn success? [status]
   (<= 200 status 299))
