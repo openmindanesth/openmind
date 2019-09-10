@@ -96,7 +96,7 @@
 ;;;;; HACK: Should pull this out of a spec
 
 (def extract-fields
-  [:extract :figure :source :comments :confirmed :contrast :related])
+  [:text :figure :source :comments :confirmed :contrast :related])
 
 (run!
  (fn [k]

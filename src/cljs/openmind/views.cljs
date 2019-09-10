@@ -209,7 +209,7 @@
      {:on-click (fn [_]
                   (re-frame/dispatch [::events/create-extract]))}
      "CREATE"]]
-   [text-box :extract "extract"
+   [text-box :text "extract"
     {:placeholder "an insight or takeaway from the paper"}]
    [text-box :source "source article"
     {:placeholder "https://www.ncbi.nlm.nih.gov/pubmed/..."}]
