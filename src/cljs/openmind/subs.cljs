@@ -1,34 +1,28 @@
 (ns openmind.subs
   (:require
+   [openmind.db :as db]
    [re-frame.core :as re-frame]))
+
+;;;;; Search
 
 (re-frame/reg-sub
  ::search
  (fn [db]
-   (:search db)))
+   (::db/search db)))
+
+(re-frame/reg-sub
+ ::current-filter-edit
+ :<- [::search]
+ (fn [search]
+   (:search/selection search)))
 
 (re-frame/reg-sub
  ::search-filters
  :<- [::search]
  (fn [search _]
-   (:filters search)))
+   (:search/filters search)))
 
-(re-frame/reg-sub
- ::create
- (fn [db]
-   (:create db)))
-
-(re-frame/reg-sub
- ::editor-tag-view-selection
- :<- [::create]
- (fn [create _]
-   (:selection create)))
-
-(re-frame/reg-sub
- ::editor-selected-tags
- :<- [::create]
- (fn [create _]
-   (:tags create)))
+;;;;; Server comms
 
 (re-frame/reg-sub
  ::send-fn
@@ -38,32 +32,21 @@
 (re-frame/reg-sub
  ::extracts
  (fn [db]
-   (:results db)))
+   (::db/results db)))
 
 (re-frame/reg-sub
  ::route
  (fn [db]
-   (:route db)))
+   (::db/route db)))
 
-(re-frame/reg-sub
- ::current-filter-edit
- (fn [db]
-   (:filter-selection db)))
-
-(re-frame/reg-sub
- ::new-extract
- (fn [db]
-   (:create db)))
+;;;; Tag tree
 
 (re-frame/reg-sub
  ::tags
  (fn [db]
-   (:tag-tree db)))
+   (::db/tag-tree db)))
 
-(re-frame/reg-sub
- ::tag-lookup
- (fn [db]
-   (:tag-lookup db)))
+;;;;; Misc
 
 (re-frame/reg-sub
  ::status-message
@@ -80,15 +63,47 @@
  (fn [db]
    (:menu-open? db)))
 
+;;;;; Extract creation
+
+(re-frame/reg-sub
+ ::new-extract
+ (fn [db]
+   (::db/new-extract db)))
+
+(re-frame/reg-sub
+ ::new-extract-content
+ :<- [::new-extract]
+ (fn [extract _]
+   (:new-extract/content extract)))
+
+(re-frame/reg-sub
+ ::tag-lookup
+ (fn [db]
+   (:tag-lookup db)))
+
+(re-frame/reg-sub
+ ::editor-tag-view-selection
+ :<- [::new-extract]
+ (fn [extract _]
+   (:new-extract/selection extract)))
+
+(re-frame/reg-sub
+ ::editor-selected-tags
+ :<- [::new-extract-content]
+ (fn [content _]
+   (:tags content)))
+
+;;;;; HACK: Should pull this out of a spec
+
 (def extract-fields
-  [:extract :figure :link :comments :confirmed :contrast :related])
+  [:extract :figure :source :comments :confirmed :contrast :related])
 
 (run!
  (fn [k]
    (re-frame/reg-sub
      k
     (fn [_ _]
-      (re-frame/subscribe [::new-extract]))
+      (re-frame/subscribe [::new-extract-content]))
     (fn [extract _]
       (get extract k))))
  extract-fields)

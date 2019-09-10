@@ -7,41 +7,37 @@
                      [clojure.test.check.generators])))
 
 
-(s/def ::extract
-  (s/keys :req-un [::text ::reference ::tags ::created ::author]
-          :opt-un []#_[::comment ::figure ::history ::related ::details]))
+;; Here's an idea of how to use specs to generate form validation:
+;; https://medium.com/@kirill.ishanov/building-forms-with-re-frame-and-clojure-spec-6cf1df8a114d
+;; Give it a shot
 
-(s/def ::text
+(s/def ::extract
+  (s/keys :req-un [:extract/extract ::source ::tags ::created-time ::author]
+          :opt-un [::comments ::figures ::history ::related ::details]))
+
+(s/def :extract/extract
   (s/with-gen
-    (s/and string? #(< 0 (count %) 250))
+    (s/and string? #(< 1 (count %) 500))
     (fn []
       (clojure.test.check.generators/fmap
        (fn [x] (apply str (interpose " " x)))
        (gen/vector clojure.test.check.generators/string-alphanumeric 2 10)))))
 
-(s/def ::author string?)
+(s/def ::author
+  (s/keys :req-un [:author/name ::orcid-id]))
 
-(s/def ::reference string?)
+(s/def :author/name string?)
 
-(s/def ::created inst?)
+;; TODO: What makes a valid Orcid ID? Is this the right place to validate it?
+(s/def ::orcid-id string?)
+
+(s/def ::related
+  (s/coll-of ::url :distinct true))
+
+(s/def ::created-time inst?)
 
 (s/def ::tags
   (s/coll-of string? :distinct true))
-
-;; (defn gen-vec [tag]
-;;   (fn [] (gen/vector (gen/elements (keys (get search/filters tag))) 0 2)))
-
-;; (s/def ::species
-;;   (s/with-gen ::tag
-;;     (gen-vec :species)))
-
-;; (s/def ::modality (s/with-gen ::tag (gen-vec :modality)))
-
-;; (s/def ::depth (s/with-gen ::tag (gen-vec :depth)))
-
-;; (s/def ::application (s/with-gen ::tag (gen-vec :application)))
-
-;; (s/def ::physiology (s/with-gen ::tag (gen-vec :physiology)))
 
 (comment
   (def example

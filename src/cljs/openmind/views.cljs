@@ -40,7 +40,7 @@
 
 (defn menu []
   (let [login @(re-frame/subscribe [::subs/login-info])]
-    [:div.search-result.padded.absolute.bg-light-grey.translucent-9.wide.pb2.pl1.pr1
+    [:div.search-result.padded.absolute.bg-grey.translucent-9.wide.pb2.pl1.pr1
      {:style {:top 5
               :left 5}
       :id "nav-menu"
@@ -127,17 +127,18 @@
                    [:div (get tag-lookup id)]))
             tags))))
 
-(defn result [{:keys [text reference tags]}]
+(defn result [{:keys [text reference]
+               {:keys [comments details related figure] :as tags} :tags}]
   [:div.search-result.padded
    [:div.break-wrap.ph text]
    [:div.pth
     [:div.flex.flex-wrap.space-evenly
      [comments-link (:comments tags)]
      [history-link]
-     [hlink "related"]
-     [hlink "details"]
+     [hlink "related" related]
+     [hlink "details" details]
      [hlink "tags" (format-tags tags)]
-     [hlink "figure"]
+     [hlink "figure" figure]
      [reference-link reference]]]])
 
 (defn search-results []
@@ -157,13 +158,13 @@
 
 (defn pass-off [k]
   (fn [ev]
-    (re-frame/dispatch [::events/form-data k (-> ev .-target .-value)])))
+    (re-frame/dispatch [::events/form-edit [k] (-> ev .-target .-value)])))
 
 (defn text-box
   [k label & [{:keys [placeholder class]}]]
   (let [content @(re-frame/subscribe [k])]
     [:div.flex.vcenter.mb1h
-     [:span.basis-12  [:b label]]
+     [:span.basis-12 [:b label]]
      [:input.grow-4 (merge {:id        (name k)
                             :type      :text
                             :on-change (pass-off k)}
@@ -176,7 +177,7 @@
 
 (defn pass-edit [k i]
   (fn [ev]
-    (re-frame/dispatch [::events/nested-form k i (-> ev .-target .-value)])))
+    (re-frame/dispatch [::events/form-edit [k i] (-> ev .-target .-value)])))
 
 (defn list-element [k i c]
   [:input (merge {:type :text
@@ -197,7 +198,7 @@
         content)
      [:a.plh {:on-click (fn [_]
                           (re-frame/dispatch
-                           [::events/nested-form k (count content) ""]))}
+                           [::events/form-edit [k (count content)] ""]))}
       "[+]"]]))
 
 (defn editor-panel []
@@ -210,7 +211,7 @@
      "CREATE"]]
    [text-box :extract "extract"
     {:placeholder "an insight or takeaway from the paper"}]
-   [text-box :link "source article"
+   [text-box :source "source article"
     {:placeholder "https://www.ncbi.nlm.nih.gov/pubmed/..."}]
    [text-box :figure "figure link"
     {:placeholder "link to a figure that demonstrates your point"}]

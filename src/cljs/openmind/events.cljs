@@ -1,10 +1,12 @@
 (ns openmind.events
   (:require-macros [cljs.core.async.macros :refer [go go-loop]])
   (:require [cljs.core.async :as async]
+            [cljs.spec.alpha :as s]
             [clojure.edn :as edn]
             [goog.net.XhrIo]
             [re-frame.core :as re-frame]
             [openmind.db :as db]
+            [openmind.validation :as specs]
             [taoensso.sente :as sente]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -47,12 +49,12 @@
 (re-frame/reg-event-db
  ::nav-create-extract
  (fn [db _]
-   (assoc db :route :openmind.views/create)))
+   (assoc db ::db/route :openmind.views/create)))
 
 (re-frame/reg-event-db
  ::nav-search
  (fn [db _]
-   (assoc db :route :openmind.views/search)))
+   (assoc db ::db/route :openmind.views/search)))
 
 ;; TODO: What is this needed for?
 (re-frame/reg-event-fx
@@ -77,25 +79,26 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (re-frame/reg-event-db
- ::form-data
+ ::form-edit
  (fn [db [_ k v]]
-   (assoc-in db [:create k] v)))
-
-(re-frame/reg-event-db
- ::nested-form
- (fn [db [_ k i v]]
-   (assoc-in db [:create k i] v)))
+   (assoc-in db (concat [::db/new-extract :new-extract/content] k) v)))
 
 (re-frame/reg-event-fx
  ::create-extract
  (fn [cofx _]
    ;; TODO: validation and form feedback
    ;; TODO: incorporate author info
-   (let [extract (-> cofx
-                     (get-in [:db :create])
-                     (dissoc :selection)
+   (let [author  @(re-frame/subscribe [:openmind.subs/login-info])
+         extract (-> cofx
+                     (get-in [:db ::db/new-extract :new-extract/content])
+                     (assoc :author author
+                            :created-time (js/Date.))
                      (update :tags #(mapv :id %)))]
-     {:dispatch [::try-send [:openmind/index extract]]})))
+     (cljs.pprint/pprint (s/explain-data ::specs/extract extract))
+     (if (s/valid? ::specs/extract extract)
+       {:dispatch [::try-send [:openmind/index extract]]}
+       {:db (assoc-in (:db cofx) [:openmind.db/new-extract :errors]
+                      (s/explain-data ::specs/extract extract))}))))
 
 (defn success? [status]
   (<= 200 status 299))
@@ -105,10 +108,10 @@
  (fn [{:keys [db]} [_ status]]
    (if (success? status)
      {:db (assoc db
-                 :create {:selection [] :tags #{}}
-                 :status-message {:status  :success
-                         :message "Extract Successfully Created!"}
-                 :route :openmind.views/search)
+                 ::db/new-extract db/blank-new-extract
+                 ::db/status-message {:status  :success
+                                  :message "Extract Successfully Created!"}
+                 ::db/route :openmind.views/search)
 
       :dispatch-later [{:ms 2000 :dispatch [::clear-status-message]}
                        {:ms 0 :dispatch [::search-request]}]}
@@ -127,19 +130,20 @@
 (re-frame/reg-event-db
  ::set-editor-selection
  (fn [db [_ path add?]]
-   (if add?
-     (assoc-in db [:create :selection] path)
-     (assoc-in db [:create :selection] (vec (butlast path))))))
+   (assoc-in db [::db/new-extract :new-extract/selection]
+             (if add?
+               path
+               (vec (butlast path))))))
 
 (re-frame/reg-event-db
  ::add-editor-tag
  (fn [db [_ tag]]
-   (update-in db [:create :tags] conj tag)))
+   (update-in db [::db/new-extract :new-extract/content :tags] conj tag)))
 
 (re-frame/reg-event-db
  ::remove-editor-tag
  (fn [db [_ tag]]
-   (update-in db [:create :tags] disj tag)))
+   (update-in db [::db/new-extract :new-extract/content :tags] disj tag)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Server Comms
@@ -157,45 +161,46 @@
 (reg-search-updater
  ::search
  (fn [db [_ term]]
-   (assoc-in db [:search :term] term)))
+   (assoc-in db [::db/search :search/term] term)))
 
 (defn format-search [search]
-  (update search :filters #(mapv :id %)))
+  (update search :search/filters #(mapv :id %)))
 
 (re-frame/reg-event-fx
  ::search-request
  (fn [cofx _]
-   (let [search  (get-in cofx [:db :search])
+   (let [search  (get-in cofx [:db ::db/search])
          search  (update search :nonce inc)]
-     {:db        (assoc (:db cofx) :search search)
+     {:db        (assoc (:db cofx) ::db/search search)
       :dispatch [::try-send [:openmind/search
                              {:search (format-search search)}]]})))
 
 (re-frame/reg-event-db
  :openmind/search-response
  (fn [db [_ {:keys [results nonce] :as e}]]
-   (if (< (get-in db [:search :response-number]) nonce)
+   (if (< (get-in db [::db/search :response-number]) nonce)
      (-> db
-         (assoc-in [:search :response-number] nonce)
-         (assoc :results results))
+         (assoc-in [::db/search :response-number] nonce)
+         (assoc ::db/results results))
      db)))
 
 (re-frame/reg-event-db
  ::set-filter-edit
  (fn [db [_ path add?]]
-   (if add?
-     (assoc db :filter-selection path)
-     (assoc db :filter-selection (vec (butlast path))))))
+   (assoc-in db [::db/search :search/selection]
+             (if add?
+               path
+               (vec (butlast path))))))
 
 (reg-search-updater
  ::add-filter-feature
  (fn [db [_ tag]]
-   (update-in db [:search :filters] conj tag)))
+   (update-in db [::db/search :search/filters] conj tag)))
 
 (reg-search-updater
  ::remove-filter-feature
  (fn [db [_ tag]]
-   (update-in db [:search :filters] disj tag)))
+   (update-in db [::db/search :search/filters] disj tag)))
 
 ;;;;; login
 
@@ -262,7 +267,7 @@
 
 (re-frame/reg-event-fx
  ::update-tag-tree
- (fn [{{:keys [chsk domain]} :db} _]
+ (fn [{{:keys [chsk openmind.db/domain]} :db} _]
    {:dispatch [::try-send [:openmind/tag-tree domain]]}))
 
 (defn build-tag-lookup [{:keys [tag-name id children]}]
@@ -272,8 +277,8 @@
  :openmind/tag-tree
  (fn [db [_ tree]]
    (assoc db
-          :tag-tree tree
-          :tag-lookup (build-tag-lookup tree))))
+          ::db/tag-tree tree
+          ::db/tag-lookup (build-tag-lookup tree))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Connection management
