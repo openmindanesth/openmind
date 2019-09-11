@@ -253,12 +253,24 @@ a.link-blue {
 		margin-top: 0.2rem;
 }
 
+.mth {
+		margin-top: 0.5rem;
+}
+
 .mt1 {
 		margin-top: 1rem;
 }
 
+.mbh {
+		margin-bottom: 0.5rem;
+}
+
 .mb1 {
 		margin-bottom: 1rem;
+}
+
+.mb0 {
+		margin-bottom: 0;
 }
 
 .mb1h {
@@ -403,3 +415,10 @@ button.filter-button {
 		box-sizing: border-box;
 		width: 100%;
 }
+
+.form-error {
+		border-color: red;
+		border-width: 1px;
+}
+
+

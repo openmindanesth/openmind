@@ -13,50 +13,63 @@
 (defn add-form-data [{:keys [key] :as elem}]
   (merge elem @(re-frame/subscribe [::subs/form-input-data key])))
 
+(defn error [text]
+  [:p.text-red.small.pl1.mth.mb0 text])
+
 (defmulti input-component :type)
 
 (defmethod input-component :text
   [{:keys [label key required? placeholder spec errors content]}]
-  [:input (merge {:id        (name key)
-                  :type      :text
-                  :style     {:width      "100%"
-                              :box-sizing "border-box"}
-                  :on-change (pass-edit [key])}
-                 (cond
-                   (seq content) {:value content}
-                   placeholder   {:value       nil
-                                  :placeholder placeholder})
-                 (when errors
-                   {:class "form-error"}))])
-
+  [:div
+   [:input.full-width-textarea
+    (merge {:id        (name key)
+            :type      :text
+            :on-change (pass-edit [key])}
+           (cond
+             (seq content) {:value content}
+             placeholder   {:value       nil
+                            :placeholder placeholder})
+           (when errors
+             {:class "form-error"}))]
+   (when errors
+     [error errors])])
 
 (defmethod input-component :textarea
   [{:keys [label key required? placeholder spec errors content]}]
-  [:textarea.full-width-textarea
-   (merge {:id        (name key)
-           :rows      2
-           :type      :text
-           :on-change (pass-edit [key])}
-          (cond
-            (seq content) {:value content}
-            placeholder   {:value       nil
-                           :placeholder placeholder})
-          (when errors
-            {:class "form-error"}))])
+  [:div
+   [:textarea.full-width-textarea
+    (merge {:id        (name key)
+            :rows      2
+            :style     {:resize :vertical}
+            :type      :text
+            :on-change (pass-edit [key])}
+           (cond
+             (seq content) {:value content}
+             placeholder   {:value       nil
+                            :placeholder placeholder})
+           (when errors
+             {:class "form-error"}))]
+   (when errors
+     [error errors])])
 
 (defmethod input-component :text-input-list
   [{:keys [key placeholder spec errors content]}]
   (conj
    (into [:div.flex.flex-wrap]
          (map (fn [[i c]]
-                [:input (merge {:type      :text
-                                :on-change (pass-edit [key i])}
-                               (when (get errors i)
-                                 {:class "form-error"})
-                               (if (seq c)
-                                 {:value c}
-                                 {:value       nil
-                                  :placeholder placeholder}))]))
+                (let [err (get errors i)]
+                  [:div
+                   [:input.full-width-textarea (merge {:type      :text
+                                   :on-change (pass-edit [key i])}
+                                  (when err
+                                    {:class "form-error"})
+                                  (if (seq c)
+                                    {:value c}
+                                    {:value       nil
+                                     :placeholder placeholder}))]
+                   (when err
+                     [:div.mbh
+                      [error err]])])))
          content)
    [:a.plh.ptp {:on-click (fn [_]
                             (re-frame/dispatch
@@ -68,18 +81,24 @@
   [:div
    (into [:div]
          (map (fn [[i c]]
-                [:textarea.full-width-textarea
-                 (merge {:id        (name key)
-                         :rows      2
-                         :type      :text
-                         :on-change (pass-edit [key])}
-                        (cond
-                          (seq content) {:value c}
-                          placeholder   {:value       nil
-                                         :placeholder placeholder})
-                        (when (get errors i)
-                          {:class "form-error"}))]))
-         content)
+                (let [err (get errors i)]
+                  [:div
+                   [:textarea.full-width-textarea
+                    (merge {:id        (name (str key i))
+                            :style     {:resize :vertical}
+                            :rows      2
+                            :type      :text
+                            :on-change (pass-edit [key i])}
+                           (cond
+                             (seq content) {:value c}
+                             placeholder   {:value       nil
+                                            :placeholder placeholder})
+                           (when err
+                             {:class "form-error"}))]
+                   (when err
+                     [:div.mbh
+                      [error err]])]))
+              content))
    [:a.bottom-right {:on-click
                      (fn [_]
                        (re-frame/dispatch
