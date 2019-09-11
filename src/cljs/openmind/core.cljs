@@ -1,6 +1,7 @@
 (ns ^:figwheel-hooks openmind.core
   (:require [openmind.config :as config]
             [openmind.events :as events]
+            [openmind.router :as router]
             [openmind.views :as views]
             [re-frame.core :as re-frame]
             [reagent.core :as reagent]))
@@ -12,11 +13,13 @@
 
 (defn ^:after-load mount-root []
   (re-frame/clear-subscription-cache!)
+  (router/init!)
   (reagent/render [views/main-view]
                   (.getElementById js/document "app")))
 
 (defn ^:export init []
   (re-frame/dispatch-sync [::events/initialise-db])
+  (re-frame/dispatch [::router/nav-from-url])
   (re-frame/dispatch [::events/update-tag-tree])
   (re-frame/dispatch [::events/search-request])
   (re-frame/dispatch [::events/login-check])

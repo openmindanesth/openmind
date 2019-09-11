@@ -19,7 +19,7 @@
    ::search         {:search/term      nil
                      :search/selection []
                      :search/filters   #{}}
-   ::route          :openmind.views/search
+   ::route          nil
    ::new-extract    blank-new-extract
    ::results        []})
 

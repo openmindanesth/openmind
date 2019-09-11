@@ -1,11 +1,10 @@
 (ns openmind.views
-  (:require [reagent.core :as reagent]
-            [re-frame.core :as re-frame]
-            [openmind.events :as events]
-            [openmind.spec.extract :as exs]
+  (:require [openmind.events :as events]
             [openmind.subs :as subs]
             [openmind.views.extract :as extract]
-            [openmind.views.tags :as tags]))
+            [openmind.views.tags :as tags]
+            [re-frame.core :as re-frame]
+            [reagent.core :as reagent]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Page Level
@@ -155,13 +154,25 @@
    [search-results]])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;; Entry
+;;;;; Routing
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def routes
+  [["/" {:name      ::search
+         :component search-view
+         :controllers {:start cljs.pprint/pprint}}]
+   ["/new" {:name      ::new-extract
+            :component extract/editor-panel
+            :controllers {:start cljs.pprint/pprint}}]])
 
 (defn main-view []
   (let [route @(re-frame/subscribe [::subs/route])]
+    (println route)
     [window
-     (cond
+     (if route
+       (-> route :data :component)
+       [four-o-four])
+     #_(cond
        ;; TODO: Link route to URL, ditch stupid tag system
        (= route ::search) search-view
        (= route ::create) extract/editor-panel

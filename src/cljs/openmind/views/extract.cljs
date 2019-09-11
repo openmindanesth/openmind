@@ -1,10 +1,9 @@
 (ns openmind.views.extract
-  (:require [reagent.core :as reagent]
-            [re-frame.core :as re-frame]
-            [openmind.events :as events]
+  (:require [openmind.events :as events]
             [openmind.spec.extract :as exs]
             [openmind.subs :as subs]
-            [openmind.views.tags :as tags]))
+            [openmind.views.tags :as tags]
+            [re-frame.core :as re-frame]))
 
 (defn pass-edit [ks]
   (fn [ev]
