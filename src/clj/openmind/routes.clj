@@ -107,11 +107,18 @@
 
     :else doc))
 
+(defn collapse-maps [doc]
+  (let [map-keys [:comments :contrast :confirmed :related :figures]]
+    (reduce (fn [doc k]
+              (update doc k #(remove empty? (vals %))))
+            doc map-keys)))
+
 (defn prepare [doc]
   (-> doc
       ;; Prefer server timestamp
       (assoc :created-time (java.util.Date.))
-      parse-dates))
+      parse-dates
+      collapse-maps))
 
 (defmethod dispatch :openmind/index
   [{:keys [client-id send-fn ?reply-fn uid tokens] [_ doc] :event}]
