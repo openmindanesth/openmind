@@ -41,10 +41,11 @@
 
 (defn menu []
   (let [login @(re-frame/subscribe [::subs/login-info])]
-    [:div.search-result.padded.absolute.bg-grey.translucent-9.wide.pb2.pl1.pr1
-     {:style {:top 5
-              :left 5}
-      :id "nav-menu"
+    [:div.search-result.padded.absolute.bg-light-grey.wide.pb2.pl1.pr1
+     {:style          {:top     5
+                       :left    5
+                       :opacity 0.95}
+      :id             "nav-menu"
       :on-mouse-leave #(re-frame/dispatch [::events/close-menu])}
      [:div.mt4
       (when (seq login)
