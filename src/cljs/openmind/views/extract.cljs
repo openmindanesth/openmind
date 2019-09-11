@@ -16,7 +16,7 @@
 (defmulti input-component :type)
 
 (defmethod input-component :text
-  [{:keys [label key required? placeholder spec error content]}]
+  [{:keys [label key required? placeholder spec errors content]}]
   [:input (merge {:id        (name key)
                   :type      :text
                   :style     {:width      "100%"
@@ -26,12 +26,12 @@
                    (seq content) {:value content}
                    placeholder   {:value       nil
                                   :placeholder placeholder})
-                 (when error
+                 (when errors
                    {:class "form-error"}))])
 
 
 (defmethod input-component :textarea
-  [{:keys [label key required? placeholder spec error content]}]
+  [{:keys [label key required? placeholder spec errors content]}]
   [:textarea.full-width-textarea
    (merge {:id        (name key)
            :rows      2
@@ -41,20 +41,22 @@
             (seq content) {:value content}
             placeholder   {:value       nil
                            :placeholder placeholder})
-          (when error
+          (when errors
             {:class "form-error"}))])
 
 (defmethod input-component :text-input-list
-  [{:keys [key placeholder spec error content]}]
+  [{:keys [key placeholder spec errors content]}]
   (conj
    (into [:div.flex.flex-wrap]
          (map (fn [[i c]]
                 [:input (merge {:type      :text
                                 :on-change (pass-edit [key i])}
-                                      (if (seq c)
-                                        {:value c}
-                                        {:value       nil
-                                         :placeholder placeholder}))]))
+                               (when (get errors i)
+                                 {:class "form-error"})
+                               (if (seq c)
+                                 {:value c}
+                                 {:value       nil
+                                  :placeholder placeholder}))]))
          content)
    [:a.plh.ptp {:on-click (fn [_]
                             (re-frame/dispatch
@@ -62,7 +64,7 @@
     "[+]"]))
 
 (defmethod input-component :textarea-list
-  [{:keys [key placeholder spec error content]}]
+  [{:keys [key placeholder spec errors content]}]
   [:div
    (into [:div]
          (map (fn [[i c]]
@@ -75,7 +77,7 @@
                           (seq content) {:value c}
                           placeholder   {:value       nil
                                          :placeholder placeholder})
-                        (when error
+                        (when (get errors i)
                           {:class "form-error"}))]))
          content)
    [:a.bottom-right {:on-click
@@ -111,13 +113,17 @@
     :key         :text
     :required?   true
     :placeholder "an insight or takeaway from the paper"
-    :spec        ::exs/text}
+    :spec        ::exs/text
+    :error-message
+    "extracts must be between 1 and 500 characters. If you need to elaborate,
+    use comments."}
    {:type        :text
     :label       "source article"
     :key         :source
     :required?   true
     :placeholder "https://www.ncbi.nlm.nih.gov/pubmed/..."
-    :spec        ::exs/source}
+    :spec        ::exs/source
+    :error-message "you must reference a source article."}
    {:type        :text-input-list
     :label       "figures"
     :key         :figures

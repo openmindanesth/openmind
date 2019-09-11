@@ -56,10 +56,10 @@
 (s/def ::comments
   ;; FIXME: This should be a list of comments. Eaxh comment should have data of
   ;; its own such as author, authoring time, etc..
-  (s/coll-of ::comment))
+  (s/map-of ::int ::comment))
 
 (s/def ::comment
-  (s/and string? not-empty))
+  string?)
 
 (s/def ::image
   (s/or :link ::url
@@ -67,7 +67,7 @@
 
 ;; FIXME: collection of figures
 (s/def ::figures
-  (s/coll-of ::image :distinct true))
+  (s/map-of ::int ::image))
 
 ;; TODO: What are details?
 (s/def ::details string?)
