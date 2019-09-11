@@ -58,7 +58,7 @@
 
 (defn title-bar []
   [:div
-   [:div.flex.space-between
+   [:div.flex.space-between.mr2
     [:button.z100
      {:on-click #(re-frame/dispatch (if @(re-frame/subscribe [::subs/menu-open?])
                                       [::events/close-menu]

@@ -123,6 +123,18 @@ a {
 		align-items: center;
 }
 
+.left {
+		float: left;
+}
+
+.w-12 {
+		width: 12rem;
+}
+
+.right {
+		float: right;
+}
+
 .flex {
 		display: flex;
 }
@@ -155,6 +167,10 @@ a {
 		justify-content: flex-start;
 }
 
+f-align-start {
+		align-items: flex-start;
+}
+
 .flex-column {
 		flex-direction: column;
 }
@@ -175,6 +191,7 @@ a {
 }
 
 .basis-12 {
+		width: 12rem;
 		flex-basis: 12rem;
 }
 
@@ -264,6 +281,10 @@ a.link-blue {
 		margin-right: 0.5rem;
 }
 
+.mr2 {
+		margin-right: 2rem;
+}
+
 .ph {
 		padding: 0.5rem;
 }
@@ -296,6 +317,10 @@ a.link-blue {
 		padding-bottom: 2rem;
 }
 
+.ptp {
+		padding-top: 7px;
+}
+;
 .pth {
 		padding-top: 0.5rem;
 }
@@ -339,18 +364,42 @@ button.filter-button {
 		min-height: 48px;
 }
 
-
-/* button.filter-button.selected { */
-/* 		color: #333; */
-/* 		outline: 0; */
-/* } */
-
-/* button.filter-button.selected:focus { */
-/* 		color: #333; */
-/* 		outline: 0; */
-/* } */
-
 .z100 {
 		z-index: 100;
 }
 
+.bottom-right {
+		float: right;
+		position: relative;
+		bottom: 0px;
+		right: 0px;
+}
+
+.left-col {
+		width: 100%;
+		padding-bottom: 2rem;
+}
+
+.right-col {
+		width: 100%;
+}
+
+@media only screen and (min-width: 680px) {
+		
+		.left-col {
+				width: 12rem;
+				float: left;
+		}
+
+		.right-col {
+				width: calc(100% - 12rem);
+				float: left;
+		}
+}
+
+.full-width-textarea {
+		border-radius: 0.5rem;
+		padding: 0.5rem;
+		box-sizing: border-box;
+		width: 100%;
+}

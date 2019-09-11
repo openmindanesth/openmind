@@ -3,7 +3,12 @@
 
 (def blank-new-extract
   {:new-extract/selection []
-   :new-extract/content   {:tags #{}}
+   :new-extract/content   {:tags      #{}
+                           :comments  {0 ""}
+                           :related   {0 ""}
+                           :contrast  {0 ""}
+                           :confirmed {0 ""}
+                           :figures   {0 ""}}
    :errors                nil})
 
 (def default-db

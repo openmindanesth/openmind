@@ -8,46 +8,7 @@
 
 (defn pass-edit [ks]
   (fn [ev]
-    (.log js/console ev)
     (re-frame/dispatch [::events/form-edit ks (-> ev .-target .-value)])))
-
-(defn text-box
-  [k label & [{:keys [placeholder class]}]]
-  (let [content @(re-frame/subscribe [k])]
-    [:div.flex.vcenter.mb1h
-     [:span.basis-12 [:b label]]
-     [:input.grow-4 (merge {:id        (name k)
-                            :type      :text
-                            :on-change (pass-edit [k])}
-                           (cond
-                             (seq content) {:value content}
-                             placeholder   {:value       nil
-                                            :placeholder placeholder})
-                           (when class
-                             {:class class}))]]))
-
-
-(defn list-element [k i c]
-  [:input (merge {:type :text
-                  :on-change (pass-edit [k i])}
-                 (if (seq c)
-                   {:value c}
-                   {:value nil
-                    :placeholder "link to paper"}))])
-
-(defn addable-list
-  [k label & [opts]]
-  (let [content @(re-frame/subscribe [k])]
-    [:div.flex.vcenter.mb1h
-     [:span.basis-12 [:b label]]
-     (into [:div]
-        (map (fn [[i c]]
-               [list-element k i c]))
-        content)
-     [:a.plh {:on-click (fn [_]
-                          (re-frame/dispatch
-                           [::events/form-edit [k (count content)] ""]))}
-      "[+]"]]))
 
 (defn add-form-data [{:keys [key] :as elem}]
   (merge elem @(re-frame/subscribe [::subs/form-input-data key])))
@@ -56,37 +17,93 @@
 
 (defmethod input-component :text
   [{:keys [label key required? placeholder spec error content]}]
-  [:div.flex.vcenter.mb1h
-   [:span.basis-12
-    [:b label]
-    (when required? [:span.text-red.super.small " *"])]
-   [:input.grow-4 (merge {:id        (name key)
-                          :type      :text
-                          :on-change (pass-edit [key])}
-                         (cond
-                           (seq content) {:value content}
-                           placeholder   {:value       nil
-                                          :placeholder placeholder})
-                         (when error
-                           {:class "form-error"}))]])
+  [:input (merge {:id        (name key)
+                  :type      :text
+                  :style     {:width      "100%"
+                              :box-sizing "border-box"}
+                  :on-change (pass-edit [key])}
+                 (cond
+                   (seq content) {:value content}
+                   placeholder   {:value       nil
+                                  :placeholder placeholder})
+                 (when error
+                   {:class "form-error"}))])
 
 
-#_(defmethod input-component :textarea
+(defmethod input-component :textarea
   [{:keys [label key required? placeholder spec error content]}]
-  [:div.flex.vcenter.mb1h
-   [:span.basis-12 [:b label] (when required? [:span.text-red.super.small " *"])]
-   [:textarea (merge {:id        (name key)
-                      :type      :text
-                      :on-change (pass-edit [key])}
-                     (cond
-                       (seq content) {:value content}
-                       placeholder   {:value       nil
-                                      :placeholder placeholder})
-                     (when error
-                       {:class "form-error"}))]])
+  [:textarea.full-width-textarea
+   (merge {:id        (name key)
+           :rows      2
+           :type      :text
+           :on-change (pass-edit [key])}
+          (cond
+            (seq content) {:value content}
+            placeholder   {:value       nil
+                           :placeholder placeholder})
+          (when error
+            {:class "form-error"}))])
 
-(defmethod input-component :default
-  [_])
+(defmethod input-component :text-input-list
+  [{:keys [key placeholder spec error content]}]
+  (conj
+   (into [:div.flex.flex-wrap]
+         (map (fn [[i c]]
+                [:input (merge {:type      :text
+                                :on-change (pass-edit [key i])}
+                                      (if (seq c)
+                                        {:value c}
+                                        {:value       nil
+                                         :placeholder placeholder}))]))
+         content)
+   [:a.plh.ptp {:on-click (fn [_]
+                            (re-frame/dispatch
+                             [::events/form-edit [key (count content)] ""]))}
+    "[+]"]))
+
+(defmethod input-component :textarea-list
+  [{:keys [key placeholder spec error content]}]
+  [:div
+   (into [:div]
+         (map (fn [[i c]]
+                [:textarea.full-width-textarea
+                 (merge {:id        (name key)
+                         :rows      2
+                         :type      :text
+                         :on-change (pass-edit [key])}
+                        (cond
+                          (seq content) {:value c}
+                          placeholder   {:value       nil
+                                         :placeholder placeholder})
+                        (when error
+                          {:class "form-error"}))]))
+         content)
+   [:a.bottom-right {:on-click
+                     (fn [_]
+                       (re-frame/dispatch
+                        [::events/form-edit [key (count content)] ""]))}
+    "[+]"]])
+
+(defmethod input-component :tag-selector
+  [{:keys [label]}]
+  [tags/tag-selector])
+
+(defn responsive-two-column [l r]
+  [:div.vcenter.mb1h.mbr2
+   [:div.left-col l]
+   [:div.right-col r]])
+
+(defn input-row
+  [{:keys [label required? full-width?] :as com}]
+  (let [label-span [:span [:b label] (when required?
+                                       [:span.text-red.super.small " *"])]]
+    (if full-width?
+      [:div
+       [:h4.ctext label-span]
+       (input-component com)]
+      [responsive-two-column
+       label-span
+       (input-component com)])))
 
 (def extract-creation-form
   [{:type        :textarea
@@ -102,9 +119,9 @@
     :placeholder "https://www.ncbi.nlm.nih.gov/pubmed/..."
     :spec        ::exs/source}
    {:type        :text-input-list
-    :label       "drag and drop image, or enter url"
+    :label       "figures"
     :key         :figures
-    :placeholder "link to a figure that demonstrates your point"
+    :placeholder "link to a figure"
     :spec        ::exs/image}
    {:type        :textarea-list
     :label       "comments"
@@ -126,10 +143,11 @@
     :key         :related
     :placeholder "link to paper"
     :spec        ::exs/reference}
-   {:type :tag-selector
-    :label "add filter tags"
-    :key :tags
-    :spec ::exs/tags}])
+   {:type        :tag-selector
+    :label       "add filter tags"
+    :key         :tags
+    :full-width? true
+    :spec        ::exs/tags}])
 
 (defn editor-panel []
   (into
@@ -140,18 +158,4 @@
       {:on-click (fn [_]
                    (re-frame/dispatch [::events/create-extract]))}
       "CREATE"]]]
-   (map input-component (map add-form-data extract-creation-form))
-    ;; [text-box :text "extract"
-    ;;  {:placeholder "an insight or takeaway from the paper"}]
-    ;; [text-box :source "source article"
-    ;;  {:placeholder "https://www.ncbi.nlm.nih.gov/pubmed/..."}]
-    ;; [text-box :figure "figure link"
-    ;;  {:placeholder "link to a figure that demonstrates your point"}]
-    ;; [text-box :comments "comments"
-    ;;  {:placeholder "anything you think is important"}]
-    ;; [addable-list :confirmed "confirmed by"]
-    ;; [addable-list :contrast "in contrast to"]
-    ;; [addable-list :related "related results"]
-    ;; [:h4.ctext "add filter tags"]
-    ;; [tags/tag-selector]
-    ))
+   (map input-row (map add-form-data extract-creation-form))))
