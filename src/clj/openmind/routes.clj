@@ -124,8 +124,10 @@
                          (es/index-req es/index)
                          es/send-off!
                          async/<!)]
-        (when ?reply-fn
-          (?reply-fn [:openmind/index-result (:status res)]))))))
+        (if-not (= 200 (:status res))
+          (log/error "Failed to index new extact" res)
+          (when ?reply-fn
+            (?reply-fn [:openmind/index-result (:status res)])))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Tag Hierarchy
