@@ -49,6 +49,11 @@
 ;;;;; Misc
 
 (re-frame/reg-sub
+ ::tag-lookup
+ (fn [db]
+   (:tag-lookup db)))
+
+(re-frame/reg-sub
  ::status-message
  (fn [db]
    (:status-message db)))
@@ -77,9 +82,20 @@
    (:new-extract/content extract)))
 
 (re-frame/reg-sub
- ::tag-lookup
- (fn [db]
-   (:tag-lookup db)))
+ ::new-extract-form-errors
+ :<- [::new-extract]
+ (fn [extract _]
+   (:errors extract)))
+
+(re-frame/reg-sub
+ ::form-input-data
+ :<- [::new-extract-content]
+ :<- [::new-extract-form-errors]
+ (fn [[content errors] [_ k]]
+   {:content (get content k)
+    :errors  (get errors k)}))
+
+;; tags
 
 (re-frame/reg-sub
  ::editor-tag-view-selection
@@ -92,18 +108,3 @@
  :<- [::new-extract-content]
  (fn [content _]
    (:tags content)))
-
-;;;;; HACK: Should pull this out of a spec
-
-(def extract-fields
-  [:text :figure :source :comments :confirmed :contrast :related])
-
-(run!
- (fn [k]
-   (re-frame/reg-sub
-     k
-    (fn [_ _]
-      (re-frame/subscribe [::new-extract-content]))
-    (fn [extract _]
-      (get extract k))))
- extract-fields)

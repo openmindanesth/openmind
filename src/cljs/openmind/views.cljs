@@ -1,10 +1,11 @@
 (ns openmind.views
-  (:require
-   [reagent.core :as reagent]
-   [re-frame.core :as re-frame]
-   [openmind.events :as events]
-   [openmind.subs :as subs]
-   [openmind.views.tags :as tags]))
+  (:require [reagent.core :as reagent]
+            [re-frame.core :as re-frame]
+            [openmind.events :as events]
+            [openmind.spec.extract :as exs]
+            [openmind.subs :as subs]
+            [openmind.views.extract :as extract]
+            [openmind.views.tags :as tags]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Page Level
@@ -103,7 +104,7 @@
     (fn [text float-content]
       [:div
        [:a.plh.prh.link-blue {:on-mouse-over #(reset! hover? true)
-                     :on-mouse-out  #(reset! hover? false)}
+                              :on-mouse-out  #(reset! hover? false)}
         text]
        (when @hover?
          [:div.absolute
@@ -153,77 +154,6 @@
    [search-results]])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;; New Extract Authoring
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defn pass-off [k]
-  (fn [ev]
-    (re-frame/dispatch [::events/form-edit [k] (-> ev .-target .-value)])))
-
-(defn text-box
-  [k label & [{:keys [placeholder class]}]]
-  (let [content @(re-frame/subscribe [k])]
-    [:div.flex.vcenter.mb1h
-     [:span.basis-12 [:b label]]
-     [:input.grow-4 (merge {:id        (name k)
-                            :type      :text
-                            :on-change (pass-off k)}
-                           (cond
-                             (seq content) {:value content}
-                             placeholder   {:value       nil
-                                            :placeholder placeholder})
-                           (when class
-                             {:class class}))]]))
-
-(defn pass-edit [k i]
-  (fn [ev]
-    (re-frame/dispatch [::events/form-edit [k i] (-> ev .-target .-value)])))
-
-(defn list-element [k i c]
-  [:input (merge {:type :text
-                  :on-change (pass-edit k i)}
-                 (if (seq c)
-                   {:value c}
-                   {:value nil
-                    :placeholder "link to paper"}))])
-
-(defn addable-list
-  [k label & [opts]]
-  (let [content @(re-frame/subscribe [k])]
-    [:div.flex.vcenter.mb1h
-     [:span.basis-12 [:b label]]
-     (into [:div]
-        (map (fn [[i c]]
-               [list-element k i c]))
-        content)
-     [:a.plh {:on-click (fn [_]
-                          (re-frame/dispatch
-                           [::events/form-edit [k (count content)] ""]))}
-      "[+]"]]))
-
-(defn editor-panel []
-  [:div.flex.flex-column.flex-start.pl2.pr2
-   [:div.flex.pb1.space-between
-    [:h2 "create a new extract"]
-    [:button.blue.border-round.wide
-     {:on-click (fn [_]
-                  (re-frame/dispatch [::events/create-extract]))}
-     "CREATE"]]
-   [text-box :text "extract"
-    {:placeholder "an insight or takeaway from the paper"}]
-   [text-box :source "source article"
-    {:placeholder "https://www.ncbi.nlm.nih.gov/pubmed/..."}]
-   [text-box :figure "figure link"
-    {:placeholder "link to a figure that demonstrates your point"}]
-   [text-box :comments "comments"
-    {:placeholder "anything you think is important"}]
-   [addable-list :confirmed "confirmed by"]
-   [addable-list :contrast "in contrast to"]
-   [addable-list :related "related results"]
-   [:h4.ctext "add filter tags"]
-   [tags/tag-selector]])
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Entry
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -233,5 +163,5 @@
      (cond
        ;; TODO: Link route to URL, ditch stupid tag system
        (= route ::search) search-view
-       (= route ::create) editor-panel
+       (= route ::create) extract/editor-panel
        :else              four-o-four)]))

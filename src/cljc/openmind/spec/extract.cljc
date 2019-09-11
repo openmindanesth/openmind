@@ -56,6 +56,9 @@
 (s/def ::comments
   ;; FIXME: This should be a list of comments. Eaxh comment should have data of
   ;; its own such as author, authoring time, etc..
+  (s/coll-of ::comment))
+
+(s/def ::comment
   (s/and string? not-empty))
 
 (s/def ::image

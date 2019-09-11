@@ -46,6 +46,14 @@ html {
 		position: absolute;
 }
 
+.super {
+		vertical-align: super;
+}
+
+.small {
+		font-size: small;
+}
+
 .text-black {
 		color: black;
 }
