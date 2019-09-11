@@ -131,7 +131,7 @@
                          (es/index-req es/index)
                          es/send-off!
                          async/<!)]
-        (if-not (= 200 (:status res))
+        (if-not (<= 200 (:status res) 299)
           (log/error "Failed to index new extact" res)
           (when ?reply-fn
             (?reply-fn [:openmind/index-result (:status res)])))))))
