@@ -9,7 +9,8 @@
             ring.middleware.defaults
             ring.middleware.oauth2
             [taoensso.sente :as sente]
-            [taoensso.sente.server-adapters.http-kit :as sente-http-kit]))
+            [taoensso.sente.server-adapters.http-kit :as sente-http-kit]
+            [taoensso.timbre :as log]))
 
 (defonce socket
   (sente/make-channel-socket! (sente-http-kit/get-sch-adapter)
@@ -79,7 +80,7 @@
     (@stop-server!))
   (let [port (env/port)]
     (reset! stop-server! (http/run-server #'app {:port port}))
-    (println "Server listening on port:" port)))
+    (log/info "Server listening on port:" port)))
 
 (defn init! []
   (start-server!)
