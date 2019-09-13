@@ -1,44 +1,15 @@
 (ns openmind.events
-  (:require-macros [cljs.core.async.macros :refer [go go-loop]])
   (:require [cljs.core.async :as async]
             [cljs.spec.alpha :as s]
             [clojure.edn :as edn]
-            [goog.net.XhrIo]
-            [re-frame.core :as re-frame]
-            [reitit.frontend.controllers :as rfc]
-            [reitit.frontend.easy :as rfe]
+            goog.net.XhrIo
             [openmind.config :refer [debug?]]
             [openmind.db :as db]
             [openmind.spec.extract :as extract-spec]
-            [taoensso.sente :as sente]))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;; WS router
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defmulti ch-handler
-  "Dispatch events from server."
-  :id)
-
-(defmethod ch-handler :default
-  [e]
-  (println "Unknown server event:" e))
-
-(defmethod ch-handler :chsk/state
-  [_]
-  "Connection state change.")
-
-(defmethod ch-handler :chsk/handshake
-  [_]
-  "WS handshake.")
-
-(defmethod ch-handler :chsk/timeout
-  [_]
-  (println "Connection timed out."))
-
-(defmethod ch-handler :chsk/recv
-  [e]
-  (re-frame/dispatch [::server-message e]))
+            [re-frame.core :as re-frame]
+            [taoensso.sente :as sente]
+            [taoensso.timbre :as log])
+  (:require-macros [cljs.core.async.macros :refer [go]]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Other
@@ -113,7 +84,7 @@
    (dissoc db :status-message)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;; Extract Creation
+;;;;; Extract Creation tags
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (re-frame/reg-event-db
@@ -306,7 +277,7 @@
    (fn [_]
      (when-not @connecting?
        (reset! connecting? true)
-       (println "Connecting to server...")
+       (log/info "Connecting to server...")
        (let [csrf-ch (async/promise-chan)]
          (goog.net.XhrIo/send "/elmyr"
                               (fn [e]
@@ -322,5 +293,15 @@
              ;; Wait for a message so that we know the channel is open.
              (async/<! (:ch-recv chsk))
              (reset! connecting? false)
-             (sente/start-client-chsk-router! (:ch-recv chsk) ch-handler)
+             (sente/start-client-chsk-router! (:ch-recv chsk)
+              (fn [message]
+                (re-frame/dispatch (:event message))))
              (re-frame/dispatch-sync [::server-connection chsk]))))))))
+
+
+;; TODO: implement handlers for :chsk/* events
+;; handshake
+;; state
+;; ping
+;; timeout
+;; recv
