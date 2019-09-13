@@ -28,7 +28,12 @@
 
 (c/defroutes routes
   (route/resources "/")
+
+  ;; TODO: Derive this list from somewhere central.
   (c/GET "/" req (slurp "resources/public/index.html"))
+  (c/GET "/new" req (slurp "resources/public/index.html"))
+  (c/GET "/edit/:id" req (slurp "resources/public/index.html"))
+
   (c/GET "/elmyr" req (force ring.middleware.anti-forgery/*anti-forgery-token*))
   (c/GET "/chsk" req ((:ajax-get-or-ws-handshake-fn socket) req))
   (c/POST "/chsk" req ((:ajax-post-fn socket) req))
