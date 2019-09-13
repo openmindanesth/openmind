@@ -50,36 +50,6 @@
    db/default-db))
 
 (re-frame/reg-event-db
- ::navigated
- (fn [db [_ match]]
-   (update db :openmind.db/route
-           (fn [previous]
-             (assoc match :controllers
-                    (rfc/apply-controllers (:controllers previous) match))))))
-
-(re-frame/reg-event-fx
- ::navigate
- (fn [db [_ match]]))
-
-(re-frame/reg-fx
- ::navigate!
- (fn [route]
-   (apply rfe/push-state route)))
-
-(re-frame/reg-cofx
- ::current-url
- (fn [cofx]
-   (assoc cofx ::current-url (-> js/window .-location .-href))))
-
-(re-frame/reg-event-fx
- ;; This only gets used by server broadcast which currently isn't done.
- ::server-message
- (fn [cofx [t & args]]
-   (cond
-     (= t :chsk/ws-ping) (println "ping!:")
-     :else (println t args))))
-
-(re-frame/reg-event-db
  ::open-menu
  (fn [db _]
    (assoc db :menu-open? true)))

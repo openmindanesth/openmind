@@ -10,9 +10,6 @@
 ;;;;; Page Level
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn four-o-four []
-  [:h2 "You're in a bad place."])
-
 (defn login-link []
   [:a {:href "/oauth2/orcid"} "login with Orcid"])
 
@@ -20,15 +17,11 @@
   [:a {:on-click #(re-frame/dispatch [::events/logout])} "logout"])
 
 (defn create-extract-link []
-  [:a {:on-click #(re-frame/dispatch [::events/nav-create-extract])}
-   "create new extract"])
+  [:a {:href "/new"} "create new extract"])
 
 (defn logged-in-menu-items []
-  (let [route @(re-frame/subscribe [::subs/route])]
-    (if (= route ::create)
-      [[logout-link]]
-      [[create-extract-link]
-       [logout-link]])))
+  [[create-extract-link]
+   [logout-link]])
 
 (def anon-menu-items
   [[login-link]])
@@ -64,9 +57,11 @@
                                       [::events/close-menu]
                                       [::events/open-menu]))}
      [:span.ham "Ξ"]]
-    [:div.ctext.grow-1.pl1.pr1.xxl.pth
-     {:on-click #(re-frame/dispatch [::events/nav-search])
-      :style {:cursor :pointer}}
+    [:a.ctext.grow-1.pl1.pr1.xxl.pth
+     {:href "/?a=6"
+      :style {:cursor :pointer
+              :text-decoration :inherit
+              :color :inherit}}
      "open" [:b "mind"]]
     [:input.grow-2 {:type :text
                     :on-change (fn [e]
@@ -84,7 +79,7 @@
              "bg-red")}
    [:span message]])
 
-(defn window [content]
+(defn main [content]
   (let [status-message @(re-frame/subscribe [::subs/status-message])]
     [:div.padded
      [title-bar]
@@ -154,26 +149,14 @@
    [search-results]])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;; Routing
+;;;;; Main Routing Table
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def routes
-  [["/" {:name      ::search
-         :component search-view
-         :controllers {:start cljs.pprint/pprint}}]
+  [["/" {:name        ::search
+         :component   search-view
+         :controllers [{:parameters {:query [:term :filters]}
+                        :start      (fn [& x]
+                                      (println "search start" x ))}]}]
    ["/new" {:name      ::new-extract
-            :component extract/editor-panel
-            :controllers {:start cljs.pprint/pprint}}]])
-
-(defn main-view []
-  (let [route @(re-frame/subscribe [::subs/route])]
-    (println route)
-    [window
-     (if route
-       (-> route :data :component)
-       [four-o-four])
-     #_(cond
-       ;; TODO: Link route to URL, ditch stupid tag system
-       (= route ::search) search-view
-       (= route ::create) extract/editor-panel
-       :else              four-o-four)]))
+            :component extract/editor-panel}]])

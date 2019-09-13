@@ -34,11 +34,6 @@
  (fn [db]
    (::db/results db)))
 
-(re-frame/reg-sub
- ::route
- (fn [db]
-   (::db/route db)))
-
 ;;;; Tag tree
 
 (re-frame/reg-sub

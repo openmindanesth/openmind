@@ -4,22 +4,23 @@
             [openmind.router :as router]
             [openmind.views :as views]
             [re-frame.core :as re-frame]
-            [reagent.core :as reagent]))
+            [reagent.core :as reagent]
+            [taoensso.timbre :as log]))
 
 (defn dev-setup []
   (when config/debug?
     (enable-console-print!)
-    (println "dev mode")))
+    (log/info "dev mode")))
 
 (defn ^:after-load mount-root []
   (re-frame/clear-subscription-cache!)
-  (router/init!)
-  (reagent/render [views/main-view]
+  (router/init! views/routes)
+  (reagent/render [views/main router/page]
                   (.getElementById js/document "app")))
+
 
 (defn ^:export init []
   (re-frame/dispatch-sync [::events/initialise-db])
-  (re-frame/dispatch [::router/nav-from-url])
   (re-frame/dispatch [::events/update-tag-tree])
   (re-frame/dispatch [::events/search-request])
   (re-frame/dispatch [::events/login-check])
