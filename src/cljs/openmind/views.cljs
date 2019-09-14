@@ -36,10 +36,10 @@
     [:label.pr1 {:for "stayloggedin"} [:b "stay logged in"]]
     [:input {:type :checkbox
              :id "stayloggedin"}]]
-   [:p.small.mt2
+   [:p.small.mt2 {:style {:max-width "24.5rem"}}
     [:em
      "This site uses cookies solely to maintain login information."
-     [:br]
+     " "
      "If you don't want cookies on your device, don't log in."]]])
 
 (defn logged-in-menu-items []
