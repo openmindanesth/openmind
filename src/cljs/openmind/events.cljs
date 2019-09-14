@@ -109,59 +109,6 @@
 ;;;;; Server Comms
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;;; search
-
-(defn reg-search-updater [key update-fn]
-  (re-frame/reg-event-fx
-   key
-   (fn [cofx e]
-     {:db       (update-fn (:db cofx) e)
-      :dispatch [::search-request]})))
-
-(reg-search-updater
- ::search
- (fn [db [_ term]]
-   (assoc-in db [::db/search :search/term] term)))
-
-(defn format-search [search]
-  (update search :search/filters #(mapv :id %)))
-
-(re-frame/reg-event-fx
- ::search-request
- (fn [cofx _]
-   (let [search  (get-in cofx [:db ::db/search])
-         search  (update search :nonce inc)]
-     {:db        (assoc (:db cofx) ::db/search search)
-      :dispatch [::try-send [:openmind/search
-                             {:search (format-search search)}]]})))
-
-(re-frame/reg-event-db
- :openmind/search-response
- (fn [db [_ {:keys [results nonce] :as e}]]
-   (if (< (get-in db [::db/search :response-number]) nonce)
-     (-> db
-         (assoc-in [::db/search :response-number] nonce)
-         (assoc ::db/results results))
-     db)))
-
-(re-frame/reg-event-db
- ::set-filter-edit
- (fn [db [_ path add?]]
-   (assoc-in db [::db/search :search/selection]
-             (if add?
-               path
-               (vec (butlast path))))))
-
-(reg-search-updater
- ::add-filter-feature
- (fn [db [_ tag]]
-   (update-in db [::db/search :search/filters] conj tag)))
-
-(reg-search-updater
- ::remove-filter-feature
- (fn [db [_ tag]]
-   (update-in db [::db/search :search/filters] disj tag)))
-
 ;;;;; login
 
 (re-frame/reg-event-fx
@@ -230,16 +177,6 @@
  (fn [{{:keys [chsk openmind.db/domain]} :db} _]
    {:dispatch [::try-send [:openmind/tag-tree domain]]}))
 
-(defn build-tag-lookup [{:keys [tag-name id children]}]
-  (into {id tag-name} (map build-tag-lookup) (vals children)))
-
-(re-frame/reg-event-db
- :openmind/tag-tree
- (fn [db [_ tree]]
-   (assoc db
-          ::db/tag-tree tree
-          ::db/tag-lookup (build-tag-lookup tree))))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Connection management
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -298,10 +235,28 @@
                 (re-frame/dispatch (:event message))))
              (re-frame/dispatch-sync [::server-connection chsk]))))))))
 
+;;;;; Sente internal events.
 
-;; TODO: implement handlers for :chsk/* events
-;; handshake
-;; state
-;; ping
-;; timeout
-;; recv
+(re-frame/reg-event-fx
+ :chsk/handshake
+ (fn [_ _]))
+
+(re-frame/reg-event-fx
+ :chsk/state
+ (fn [_ _]))
+
+(re-frame/reg-event-fx
+ :chsk/ping
+ (fn [_ _]))
+
+(re-frame/reg-event-fx
+ :chsk/timeout
+ (fn [_ _]
+   (log/warn "Server websocker connection timed out.")))
+
+(re-frame/reg-event-fx
+ :chsk/recv
+ (fn [_ e]
+   (log/error "Received broadcast message from server"
+              e
+              "Broadcast support is not currently implemented.")))

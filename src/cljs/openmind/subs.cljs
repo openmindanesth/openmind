@@ -3,25 +3,6 @@
    [openmind.db :as db]
    [re-frame.core :as re-frame]))
 
-;;;;; Search
-
-(re-frame/reg-sub
- ::search
- (fn [db]
-   (::db/search db)))
-
-(re-frame/reg-sub
- ::current-filter-edit
- :<- [::search]
- (fn [search]
-   (:search/selection search)))
-
-(re-frame/reg-sub
- ::search-filters
- :<- [::search]
- (fn [search _]
-   (:search/filters search)))
-
 ;;;;; Server comms
 
 (re-frame/reg-sub
@@ -29,24 +10,7 @@
  (fn [db]
    (:send-fn db)))
 
-(re-frame/reg-sub
- ::extracts
- (fn [db]
-   (::db/results db)))
-
-;;;; Tag tree
-
-(re-frame/reg-sub
- ::tags
- (fn [db]
-   (::db/tag-tree db)))
-
 ;;;;; Misc
-
-(re-frame/reg-sub
- ::tag-lookup
- (fn [db]
-   (:tag-lookup db)))
 
 (re-frame/reg-sub
  ::status-message

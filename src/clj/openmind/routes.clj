@@ -45,7 +45,7 @@
 
 ;;;;; Search
 
-(defn search->elastic [{:keys [search/term search/filters]}]
+(defn search->elastic [term filters]
   (async/go
     {:sort  {:created-time {:order :desc}}
      :from  0
@@ -64,22 +64,30 @@
 
 (defn search-req [query]
   (async/go
-    (es/search es/index (async/<! (search->elastic query)))))
+    (es/search es/index (async/<! query))))
 
 (defn parse-search-response [res]
   (mapv :_source res))
 
+(defn prepare-search [term filters time]
+  (search->elastic term filters))
+
 (defmethod dispatch :openmind/search
-  [{[_  {:keys [search]}] :event :as req}]
-  (let [nonce (:nonce search)]
-    (async/go
-      (let [res   (-> search
-                      search-req
-                      async/<!
-                      es/request<!
-                      parse-search-response)
-            event [:openmind/search-response {:results res :nonce nonce}]]
-        (respond-with-fallback req event)))))
+  [{[_
+     {:keys [openmind.search/term
+             openmind.search/filters
+             openmind.search/time
+             :openmind.search/nonce]}]
+    :event :as req}]
+  (async/go
+    (let [res   (-> (prepare-search term filters time)
+                    search-req
+                    async/<!
+                    es/request<!
+                    parse-search-response)
+          event [:openmind/search-response
+                 #:openmind.search{:results res :nonce nonce}]]
+      (respond-with-fallback req event))))
 
 ;;;;; Login
 

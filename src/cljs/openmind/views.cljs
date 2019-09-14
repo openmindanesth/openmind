@@ -1,10 +1,9 @@
 (ns openmind.views
   (:require [openmind.events :as events]
+            [openmind.search :as search]
             [openmind.subs :as subs]
             [openmind.views.extract :as extract]
-            [openmind.views.tags :as tags]
-            [re-frame.core :as re-frame]
-            [reagent.core :as reagent]))
+            [re-frame.core :as re-frame]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Page Level
@@ -67,7 +66,7 @@
                     :on-change (fn [e]
                                  (let [v (-> e .-target .-value)]
                                    (re-frame/dispatch
-                                    [::events/search v])))
+                                    [::search/update-term v])))
                     :placeholder "specific term"}]]
    (when @(re-frame/subscribe [::subs/menu-open?])
      [menu])])
@@ -89,74 +88,14 @@
      [:div.vspacer]
      [content]]))
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;; Extract Display
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defn hlink [text float-content]
-  (let [hover? (reagent/atom false)]
-    (fn [text float-content]
-      [:div
-       [:a.plh.prh.link-blue {:on-mouse-over #(reset! hover? true)
-                              :on-mouse-out  #(reset! hover? false)}
-        text]
-       (when @hover?
-         [:div.absolute
-          float-content])])))
-
-(defn comments-link []
-  [hlink "comments"])
-
-(defn history-link []
-  [hlink "history"])
-
-(defn reference-link [ref]
-  [hlink ref])
-
-(defn format-tags [tags]
-  ;; FIXME: flex isn't the right solution here.
-  (let [tag-lookup @(re-frame/subscribe [::subs/tag-lookup])]
-    (when (seq tags)
-      (into [:div.flex.flex-column.bg-white.p1.border-round]
-            (map (fn [id]
-                   [:div (get tag-lookup id)]))
-            tags))))
-
-(defn result [{:keys [text reference]
-               {:keys [comments details related figure] :as tags} :tags}]
-  [:div.search-result.padded
-   [:div.break-wrap.ph text]
-   [:div.pth
-    [:div.flex.flex-wrap.space-evenly
-     [comments-link (:comments tags)]
-     [history-link]
-     [hlink "related" related]
-     [hlink "details" details]
-     [hlink "tags" (format-tags tags)]
-     [hlink "figure" figure]
-     [reference-link reference]]]])
-
-(defn search-results []
-  (let [results @(re-frame/subscribe [::subs/extracts])]
-    (into [:div]
-          (map (fn [r] [result r]) results))))
-
-(defn search-view []
-  [:div
-   [tags/search-filter]
-   [:hr.mb1.mt1]
-   [search-results]])
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Main Routing Table
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def routes
-  [["/" {:name        ::search
-         :component   search-view
-         :controllers [{:parameters {:query [:term :filters]}
-                        :start      (fn [& x]
-                                      (println "search start" x ))}]}]
-   ["/new" {:name      ::new-extract
+(def extract-creation-routes
+  [["/new" {:name      ::new-extract
             :component extract/editor-panel}]])
+
+(def routes
+  "Combined routes from all pages."
+  (concat search/routes extract-creation-routes))

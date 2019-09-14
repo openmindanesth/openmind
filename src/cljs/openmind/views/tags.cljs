@@ -1,7 +1,98 @@
 (ns openmind.views.tags
-  (:require [openmind.events :as events]
+  (:require [clojure.string :as string]
+            [openmind.events :as events]
             [openmind.subs :as subs]
             [re-frame.core :as re-frame]))
+
+;; FIXME: This ns needs a serious overhaul. Protocols were a mistake. Had I just
+;; stuck to maps of events, the logic would be a lot clearer.
+
+(defn decode-url-filters
+  "Takes the URL filter list and returns a sorted set of filter tags."
+  [filters]
+  (if (seq filters)
+    (into (sorted-set)
+          (string/split filters #","))
+    #{}))
+
+(defn encode-url-filters
+  "Given a set of filters, encode them for use in the URL."
+  [filters]
+  (apply str (interpose "," filters)))
+
+(defn route->query
+  "Parses the current search out of the URL query"
+  [route]
+  (-> route
+      :parameters
+      :query
+      (update :filters decode-url-filters)))
+
+;;;;; Subs
+
+(re-frame/reg-sub
+ ::search
+ (fn [db]
+   (::search db)))
+
+(re-frame/reg-sub
+ ::current-filter-edit
+ :<- [::search]
+ (fn [search]
+   (:search/selection search)))
+
+(re-frame/reg-sub
+ ::search-filters
+ :<- [:openmind.router/route]
+ (fn [route]
+   (:filters (route->query route))))
+
+(re-frame/reg-sub
+ ::tags
+ (fn [db]
+   (::tag-tree db)))
+
+;;;;; Events
+
+(defn build-tag-lookup [{:keys [tag-name id children]}]
+  (into {id tag-name} (map build-tag-lookup) (vals children)))
+
+(re-frame/reg-event-db
+ :openmind/tag-tree
+ (fn [db [_ tree]]
+   (assoc db
+          ::tag-tree tree
+          ::tag-lookup (build-tag-lookup tree))))
+
+(re-frame/reg-event-db
+ ::set-filter-edit
+ (fn [db [_ path add?]]
+   (assoc-in db [::search :search/selection]
+             (if add?
+               path
+               (vec (butlast path))))))
+
+(defn update-filter-tags
+  [cofx tag f]
+  (let [query (-> cofx
+                  :db
+                  :openmind.router/route
+                  route->query
+                  (update :filters f (:id tag))
+                  (update :filters encode-url-filters))]
+    {:dispatch [:openmind.router/navigate
+                {:route :openmind.search/search
+                 :query query}]}))
+
+(re-frame/reg-event-fx
+ ::add-filter-feature
+ (fn [cofx [_ tag]]
+   (update-filter-tags cofx tag conj)))
+
+(re-frame/reg-event-fx
+ ::remove-filter-feature
+ (fn [cofx [_ tag]]
+   (update-filter-tags cofx tag disj)))
 
 ;;;;; REVIEW: Are Protocols really the way to encapsulate chunks of re-frame state?
 
@@ -22,7 +113,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn cancel-descendents [data tag]
-  (when (contains? data tag)
+  (when (contains? (tags data) (:id tag))
     (unselect data tag))
   (run! #(cancel-descendents data %)
         (vals (:children tag))))
@@ -45,7 +136,7 @@
   "Defines the view component for a filter that has subcategories that can be
   navigated."
   [{:keys [tag-name id children] :as tag} display data]
-  (let [selected? (contains? data tag)]
+  (let [selected? (contains? (tags data) (:id tag))]
     [:button.filter-button.border-round.mb1.text-white.mrh.mlh
      {:on-click (fn [_]
                   (if (contains? display tag)
@@ -68,7 +159,7 @@
          [:span {:style {:margin-right "20px"}}
           (let [selected-children (->> children
                                        vals
-                                       (filter #(contains? data %))
+                                       (filter #(contains? (tags data) (:id %)))
                                        (map :tag-name))]
             (str "("
                  (if (seq selected-children)
@@ -77,7 +168,7 @@
                  ")"))]])]]))
 
 (defn leaf-filter [{:keys [tag-name id] :as tag} display data]
-  (let [active? (contains? (tags data) tag)]
+  (let [active? (contains? (tags data) (:id tag))]
     [:button.border-round.mb1.filter-button.text-white.mrh.mlh
      {:class    (if active? "bg-light-blue" "bg-grey")
       :on-click #(if active?
@@ -155,16 +246,16 @@
       (get (tags this) tag not-found))))
 
 (def search-tag-display
-  (create-display ::subs/current-filter-edit
-                  ::events/set-filter-edit))
+  (create-display ::current-filter-edit
+                  ::set-filter-edit))
 
 (def search-tag-data
-  (create-data-manager ::subs/search-filters
-                       ::events/add-filter-feature
-                       ::events/remove-filter-feature))
+  (create-data-manager ::search-filters
+                       ::add-filter-feature
+                       ::remove-filter-feature))
 
 (defn tag-view [display data]
-  (let [tag-tree @(re-frame/subscribe [::subs/tags])]
+  (let [tag-tree @(re-frame/subscribe [::tags])]
     ;; HACK: Select anaesthesia automatically.
     (when (empty? (get-path display))
       (open-path display [(:id tag-tree)]))

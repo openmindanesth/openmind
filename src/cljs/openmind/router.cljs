@@ -28,14 +28,15 @@
 (re-frame/reg-cofx
  ::current-url
  (fn [cofx]
-   (let [loc (.-location js/document)
-         url (str (.-pathname loc) (.-search loc) (.-hash loc))]
-     (assoc cofx ::current-url url))))
+   (let [loc (.-location js/document)]
+     (assoc cofx ::current-url {:path  (.-pathname loc)
+                                :query (.-search loc)
+                                :hash  (.-hash loc)}))))
 
 (re-frame/reg-fx
  ::navigate!
- (fn [route]
-   (apply rfe/push-state route)))
+ (fn [{:keys [route path query]}]
+   (rfe/push-state route path query)))
 
 (re-frame/reg-event-db
  ::navigated
@@ -47,15 +48,17 @@
 
 (re-frame/reg-event-fx
  ::navigate
- (fn [db [_ match]]))
+ (fn [_ [_ args]]
+   {::navigate! args}))
 
 (re-frame/reg-event-fx
  ::init-router
  [(re-frame/inject-cofx ::current-url)]
  (fn [cofx [_ router]]
-   (let [url (::current-url cofx)]
+   (let [path (:path (::current-url cofx))]
      {:db (assoc (:db cofx)
-                 ::route (r/match-by-path router url))})))
+                 ::router router
+                 ::route (r/match-by-path router path))})))
 
 ;;;;; view components
 
