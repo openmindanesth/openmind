@@ -99,17 +99,20 @@
 (defn clean-req [req]
   (dissoc req :ring-req :ch-recv))
 
-(defn start-router! []
+(defn stop-router! []
   (when (fn? @public-router)
     (@public-router))
+  (when (fn? @private-router)
+    (@private-router)))
+
+(defn start-router! []
+  (stop-router!)
   (reset! public-router
           (sente/start-server-chsk-router!
            (:ch-recv anonymous-socket)
            (fn [msg]
              (routes/public-dispatch (clean-req msg)))))
 
-  (when (fn? @private-router)
-    (@private-router))
   (reset! private-router
           (sente/start-server-chsk-router!
            (:ch-recv authed-socket)
@@ -132,8 +135,7 @@
   (start-router!))
 
 (defn stop! []
-  (when @router
-    (@router))
+  (stop-router!)
   (when @stop-server!
     (@stop-server!)))
 
