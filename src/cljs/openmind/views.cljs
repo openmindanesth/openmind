@@ -52,27 +52,35 @@
                    anon-menu-items)))]))
 
 (defn title-bar []
-  [:div
-   [:div.flex.space-between.mr2
-    [:button.z100
-     {:on-click #(re-frame/dispatch (if @(re-frame/subscribe [::subs/menu-open?])
-                                      [::events/close-menu]
-                                      [::events/open-menu]))}
-     [:span.ham "Ξ"]]
-    [:a.ctext.grow-1.pl1.pr1.xxl.pth
-     {:href (href :openmind.search/search)
-      :style {:cursor :pointer
-              :text-decoration :inherit
-              :color :inherit}}
-     "open" [:b "mind"]]
-    [:input.grow-2 {:type :text
-                    :on-change (fn [e]
-                                 (let [v (-> e .-target .-value)]
-                                   (re-frame/dispatch
-                                    [::search/update-term v])))
-                    :placeholder "specific term"}]]
-   (when @(re-frame/subscribe [::subs/menu-open?])
-     [menu])])
+  (let [search-term (-> (re-frame/subscribe [:openmind.router/route])
+                        deref
+                        :parameters
+                        :query
+                        :term)]
+    [:div
+     [:div.flex.space-between.mr2
+      [:button.z100
+       {:on-click #(re-frame/dispatch (if @(re-frame/subscribe [::subs/menu-open?])
+                                        [::events/close-menu]
+                                        [::events/open-menu]))}
+       [:span.ham "Ξ"]]
+      [:a.ctext.grow-1.pl1.pr1.xxl.pth
+       {:href (href :openmind.search/search)
+        :style {:cursor :pointer
+                :text-decoration :inherit
+                :color :inherit}}
+       "open" [:b "mind"]]
+      [:input.grow-2 (merge {:type :text
+                             :on-change (fn [e]
+                                          (let [v (-> e .-target .-value)]
+                                            (re-frame/dispatch
+                                             [::search/update-term v])))}
+                            (if (empty? search-term)
+                              {:value nil
+                               :placeholder "specific term"}
+                              {:value search-term}))]]
+     (when @(re-frame/subscribe [::subs/menu-open?])
+       [menu])]))
 
 (defn status-message-bar [{:keys [status message]}]
   [:div.pt1.pb1.pl1
