@@ -23,8 +23,24 @@
   [:a {:href (href ::new-extract)} "create new extract"])
 
 (defn login-page []
-  [:div
-   [:]])
+  [:div.flex.flex-column.left.mt2.ml2
+   [:button.p1 {:on-click #(-> js/document
+                               .-location
+                               (set! "/oauth2/orcid?keep=true"))}
+    [:img {:src "https://orcid.org/sites/default/files/images/orcid_24x24.png"
+           :style {:vertical-align :bottom}}]
+    [:span.pl1 " login with Orcid"]]
+   [:button.mt1.p1 {:disabled true}
+    [:span "login via Orcid is the only method available at present"]]
+   [:div.mt2
+    [:label.pr1 {:for "stayloggedin"} [:b "stay logged in"]]
+    [:input {:type :checkbox
+             :id "stayloggedin"}]]
+   [:p.small.mt2
+    [:em
+     "This site uses cookies to solely maintain login information."
+     [:br]
+     "If you don't want cookies on your device, don't log in."]]])
 
 (defn logged-in-menu-items []
   [[create-extract-link]
@@ -56,6 +72,7 @@
                    (logged-in-menu-items)
                    anon-menu-items)))]))
 
+
 (defn title-bar []
   (let [search-term (-> (re-frame/subscribe [:openmind.router/route])
                         deref
@@ -69,11 +86,8 @@
                                         [::events/close-menu]
                                         [::events/open-menu]))}
        [:span.ham "Ξ"]]
-      [:a.ctext.grow-1.pl1.pr1.xxl.pth
-       {:href (href :openmind.search/search)
-        :style {:cursor :pointer
-                :text-decoration :inherit
-                :color :inherit}}
+      [:a.ctext.grow-1.pl1.pr1.xxl.pth.plain
+       {:href (href :openmind.search/search)}
        "open" [:b "mind"]]
       [:input.grow-2 (merge {:type :text
                              :on-change (fn [e]

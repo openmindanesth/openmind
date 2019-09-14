@@ -41,7 +41,7 @@
 (defn setup-login [req]
   (let [token (force ring.middleware.anti-forgery/*anti-forgery-token*)]
     (println token)
-    (println req)
+    (clojure.pprint/pprint req)
     req))
 
 (c/defroutes public-routes
@@ -50,8 +50,7 @@
   (c/GET "/login" req (slurp "resources/public/index.html"))
   (c/GET "/chsk" req ((:ajax-get-or-ws-handshake-fn anonymous-socket) req))
   (c/POST "/chsk" req ((:ajax-post-fn anonymous-socket) req))
-  (c/GET "/logout" req  logout-response)
-  (route/not-found "This is not a page."))
+  (c/GET "/logout" req  logout-response))
 
 (c/defroutes logged-in-routes
   (c/GET "/new" req (slurp "resources/public/index.html"))
@@ -89,7 +88,9 @@
        (wrap-oauth2 oauth2/sites)
        (wrap-defaults
         (-> site-defaults
-            (assoc-in [:session :cookie-attrs :same-site] :lax))))))
+            (assoc-in [:session :cookie-attrs :same-site] :lax))))
+
+   (route/not-found "This is not a page.")))
 
 (defonce ^:private stop-server! (atom nil))
 (defonce ^:private public-router (atom nil))

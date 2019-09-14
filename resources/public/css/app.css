@@ -261,6 +261,10 @@ a.link-blue {
 		margin-top: 1rem;
 }
 
+.mt2 {
+		margin-top: 2rem;
+}
+
 .mbh {
 		margin-bottom: 0.5rem;
 }
@@ -287,6 +291,10 @@ a.link-blue {
 
 .mlh {
 		margin-left: 0.5rem;
+}
+
+.ml2 {
+		margin-left: 2rem;
 }
 
 .mrh {
@@ -421,4 +429,8 @@ button.filter-button {
 		border-width: 1px;
 }
 
-
+a.plain {
+		text-decoration: inherit;
+		color: inherit;
+		cursor: inherit;
+}
