@@ -3,11 +3,14 @@
             [openmind.search :as search]
             [openmind.subs :as subs]
             [openmind.views.extract :as extract]
-            [re-frame.core :as re-frame]))
+            [re-frame.core :as re-frame]
+            reitit.frontend.easy))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Page Level
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def href reitit.frontend.easy/href)
 
 (defn login-link []
   [:a {:href "/oauth2/orcid"} "login with Orcid"])
@@ -16,7 +19,7 @@
   [:a {:on-click #(re-frame/dispatch [::events/logout])} "logout"])
 
 (defn create-extract-link []
-  [:a {:href "/new"} "create new extract"])
+  [:a {:href (href ::new-extract)} "create new extract"])
 
 (defn logged-in-menu-items []
   [[create-extract-link]
@@ -57,7 +60,7 @@
                                       [::events/open-menu]))}
      [:span.ham "Ξ"]]
     [:a.ctext.grow-1.pl1.pr1.xxl.pth
-     {:href "/?a=6"
+     {:href (href :openmind.search/search)
       :style {:cursor :pointer
               :text-decoration :inherit
               :color :inherit}}
