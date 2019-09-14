@@ -38,13 +38,14 @@
  (fn [{:keys [route path query]}]
    (rfe/push-state route path query)))
 
-(re-frame/reg-event-db
+(re-frame/reg-event-fx
  ::navigated
- (fn [db [_ match]]
-   (update db ::route
-           (fn [previous]
-             (assoc match :controllers
-                    (rfc/apply-controllers (:controllers previous) match))))))
+ (fn [{:keys [db]} [_ match]]
+   {:db (update db ::route
+                (fn [previous]
+                  (assoc match :controllers
+                         (rfc/apply-controllers (:controllers previous) match))))
+    :dispatch [:openmind.events/close-menu]}))
 
 (re-frame/reg-event-fx
  ::navigate
