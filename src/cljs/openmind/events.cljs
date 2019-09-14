@@ -3,7 +3,6 @@
             [cljs.spec.alpha :as s]
             [clojure.edn :as edn]
             goog.net.XhrIo
-            [openmind.config :refer [debug?]]
             [openmind.db :as db]
             [openmind.spec.extract :as extract-spec]
             [re-frame.core :as re-frame]
@@ -52,12 +51,9 @@
 
      (if (s/valid? ::extract-spec/extract extract)
        {:dispatch [::try-send [:openmind/index extract]]}
-       (do
-         (when debug?
-           (cljs.pprint/pprint (s/explain-data ::extract-spec/extract extract)))
-         {:db (assoc-in (:db cofx) [:openmind.db/new-extract :errors]
-                        (extract-spec/interpret-explanation
-                         (s/explain-data ::extract-spec/extract extract)))})))))
+       {:db (assoc-in (:db cofx) [:openmind.db/new-extract :errors]
+                      (extract-spec/interpret-explanation
+                       (s/explain-data ::extract-spec/extract extract)))}))))
 
 
 (defn success? [status]

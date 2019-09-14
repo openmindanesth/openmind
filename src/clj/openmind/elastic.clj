@@ -1,7 +1,6 @@
 (ns openmind.elastic
   (:require [clojure.core.async :as async]
             [clojure.data.json :as json]
-            [clojure.pprint :refer [pprint]]
             [openmind.env :as env]
             [org.httpkit.client :as http]
             [taoensso.timbre :as log]))

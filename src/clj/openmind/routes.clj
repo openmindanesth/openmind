@@ -1,7 +1,6 @@
 (ns openmind.routes
   (:require [clojure.core.async :as async]
             [clojure.spec.alpha :as s]
-            [clojure.pprint]
             [clojure.walk :as walk]
             [openmind.elastic :as es]
             [openmind.spec.extract :as extract-spec]
