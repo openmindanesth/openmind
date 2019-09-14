@@ -38,7 +38,7 @@
              :id "stayloggedin"}]]
    [:p.small.mt2
     [:em
-     "This site uses cookies to solely maintain login information."
+     "This site uses cookies solely to maintain login information."
      [:br]
      "If you don't want cookies on your device, don't log in."]]])
 
