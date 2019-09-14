@@ -137,7 +137,7 @@
 
 (defn prepare [doc]
   (-> doc
-      ;; Prefer server timestamp
+      ;; Prefer server timestamp over what came from client
       (assoc :created-time (java.util.Date.))
       parse-dates
       collapse-maps))
