@@ -87,7 +87,8 @@
                                         [::events/open-menu]))}
        [:span.ham "Ξ"]]
       [:a.ctext.grow-1.pl1.pr1.xxl.pth.plain
-       {:href (href :openmind.search/search)}
+       {:href (href :openmind.search/search)
+        :style {:cursor :pointer}}
        "open" [:b "mind"]]
       [:input.grow-2 (merge {:type :text
                              :on-change (fn [e]
