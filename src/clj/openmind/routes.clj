@@ -29,6 +29,8 @@
 (def ^:private public-access
   "Whitelist of web socket messages open to unauthenticated users."
   #{:openmind/search
+    :openmind/tag-tree
+
     :chsk/ws-ping
     :chsk/timeout
     :chsk/state
