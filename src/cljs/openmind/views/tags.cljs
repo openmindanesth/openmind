@@ -73,12 +73,12 @@
                (vec (butlast path))))))
 
 (defn update-filter-tags
-  [cofx tag f]
+  [cofx tags f]
   (let [query (-> cofx
                   :db
                   :openmind.router/route
                   route->query
-                  (update :filters f (:id tag))
+                  (update :filters #(reduce f % (map :id tags)))
                   (update :filters encode-url-filters))]
     {:dispatch [:openmind.router/navigate
                 {:route :openmind.search/search
@@ -86,13 +86,13 @@
 
 (re-frame/reg-event-fx
  ::add-filter-feature
- (fn [cofx [_ tag]]
-   (update-filter-tags cofx tag conj)))
+ (fn [cofx [_ & tags]]
+   (update-filter-tags cofx tags conj)))
 
 (re-frame/reg-event-fx
  ::remove-filter-feature
- (fn [cofx [_ tag]]
-   (update-filter-tags cofx tag disj)))
+ (fn [cofx [_ & tags]]
+   (update-filter-tags cofx tags disj)))
 
 ;;;;; REVIEW: Are Protocols really the way to encapsulate chunks of re-frame state?
 
@@ -112,11 +112,13 @@
 ;;;;; View code
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defn get-descendents [tag]
+  (when tag
+    (conj (mapcat get-descendents (vals (:children tag))) tag)))
+
 (defn cancel-descendents [data tag]
-  (when (contains? (tags data) (:id tag))
-    (unselect data tag))
-  (run! #(cancel-descendents data %)
-        (vals (:children tag))))
+  (let [children (get-descendents tag)]
+    (unselect data children)))
 
 (defn cancel-button [tag display data]
   [:a.border-circle.bg-white.text-black.border-black
@@ -172,7 +174,7 @@
     [:button.border-round.mb1.filter-button.text-white.mrh.mlh
      {:class    (if active? "bg-light-blue" "bg-grey")
       :on-click #(if active?
-                   (unselect data tag)
+                   (unselect data [tag])
                    (select data tag))}
      [:span.p2 tag-name]]))
 
@@ -236,8 +238,8 @@
       @(re-frame/subscribe [sub]))
     (select [_ tag]
       (re-frame/dispatch [add tag]))
-    (unselect [_ tag]
-       (re-frame/dispatch [remove tag]))
+    (unselect [_ tags]
+      (re-frame/dispatch (into [remove] tags)))
 
     ILookup
     (-lookup [this tag]
