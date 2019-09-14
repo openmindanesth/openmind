@@ -51,7 +51,10 @@
            :orcid-id (-> res :body :orcid)
            :name     (-> res :body :name))))
 
-;; KLUDGE: monkey patching works, but oh boy...
+;; HACK: monkey patching works, but oh boy...
+;;
+;; I can't get see any other way to do this without making a second request.
+;; REVIEW: Would that be so bad?
 (alter-var-root #'ring.middleware.oauth2/format-access-token
                 (constantly my-format-access-token))
 
@@ -65,8 +68,6 @@
 (defonce ^:private stop-server! (atom nil))
 (defonce ^:private router (atom nil))
 
-(def req (atom nil))
-
 (defn start-router! []
   (when (fn? @router)
     (@router))
@@ -75,7 +76,6 @@
            (:ch-recv socket)
            (fn [msg]
              (let [oauth (-> msg :ring-req :oauth2/access-tokens)]
-               (reset! req msg)
                (routes/dispatch (-> msg
                                     (dissoc :ring-req :ch-recv)
                                     (assoc :tokens oauth))))))))
