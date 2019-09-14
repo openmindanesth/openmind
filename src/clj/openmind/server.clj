@@ -38,9 +38,16 @@
    :headers {"Content-Type" "text/html"}
    :body    "Goodbye"})
 
+(defn setup-login [req]
+  (let [token (force ring.middleware.anti-forgery/*anti-forgery-token*)]
+    (println token)
+    (println req)
+    req))
+
 (c/defroutes public-routes
   (route/resources "/")
   (c/GET "/" req (slurp "resources/public/index.html"))
+  (c/GET "/login" req (slurp "resources/public/index.html"))
   (c/GET "/chsk" req ((:ajax-get-or-ws-handshake-fn anonymous-socket) req))
   (c/POST "/chsk" req ((:ajax-post-fn anonymous-socket) req))
   (c/GET "/logout" req  logout-response)
@@ -49,10 +56,9 @@
 (c/defroutes logged-in-routes
   (c/GET "/new" req (slurp "resources/public/index.html"))
   (c/GET "/edit/:id" req (slurp "resources/public/index.html"))
-  (c/GET "/login" req (force ring.middleware.anti-forgery/*anti-forgery-token*))
+  (c/GET "/finish-login" req (setup-login req))
   (c/GET "/chsk-secure" req ((:ajax-get-or-ws-handshake-fn authed-socket) req))
   (c/POST "/chsk-secure" req ((:ajax-post-fn authed-socket) req)))
-
 
 (defonce
   ^{:doc "Import of private fn ring.middleware.oauth2/format-access-token"}
@@ -72,18 +78,13 @@
 (alter-var-root #'ring.middleware.oauth2/format-access-token
                 (constantly my-format-access-token))
 
-(defn wrap-print [handler]
-  (fn [req]
-    (clojure.pprint/pprint req)
-    (handler req)))
-
 (def app
   (c/routes
    (-> public-routes
        wrap-keyword-params
        wrap-params
-       wrap-content-type
-       (wrap-print))
+       wrap-content-type)
+
    (-> logged-in-routes
        (wrap-oauth2 oauth2/sites)
        (wrap-defaults
@@ -91,21 +92,32 @@
             (assoc-in [:session :cookie-attrs :same-site] :lax))))))
 
 (defonce ^:private stop-server! (atom nil))
-(defonce ^:private router (atom nil))
+(defonce ^:private public-router (atom nil))
+(defonce ^:private private-router (atom nil))
+
+(defn clean-req [req]
+  (dissoc req :ring-req :ch-recv))
 
 (defn start-router! []
-  (when (fn? @router)
-    (@router))
-  (reset! router
+  (when (fn? @public-router)
+    (@public-router))
+  (reset! public-router
           (sente/start-server-chsk-router!
            (:ch-recv anonymous-socket)
            (fn [msg]
-             ;; TODO: secure this!
-             (routes/dispatch msg)
-             #_(let [oauth (-> msg :ring-req :oauth2/access-tokens)]
+             (routes/public-dispatch (clean-req msg)))))
+
+  (when (fn? @private-router)
+    (@private-router))
+  (reset! private-router
+          (sente/start-server-chsk-router!
+           (:ch-recv authed-socket)
+           (fn [msg]
+             (let [oauth (-> msg :ring-req :oauth2/access-tokens)]
                (routes/dispatch (-> msg
-                                    (dissoc :ring-req :ch-recv)
+                                    clean-req
                                     (assoc :tokens oauth))))))))
+
 
 (defn start-server! []
   (when (fn? @stop-server!)

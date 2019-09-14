@@ -26,7 +26,20 @@
 
     :else (log/warn "No way to return response to sender." uid msg))  )
 
+(def ^:private public-access
+  "Whitelist of web socket messages open to unauthenticated users."
+  #{:openmind/search
+    :chsk/ws-ping
+    :chsk/timeout
+    :chsk/state
+    :chsk/handshake})
+
 (defmulti dispatch (fn [e] (first (:event e))))
+
+(defn public-dispatch [msg]
+  (if (contains? public-access (:id msg))
+    (dispatch msg)
+    (log/warn "Unauthorised access attempt on anonymous connection:" msg)))
 
 (defmethod dispatch :chsk/ws-ping
   [_])

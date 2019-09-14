@@ -13,13 +13,18 @@
 (def href reitit.frontend.easy/href)
 
 (defn login-link []
-  [:a {:href "/oauth2/orcid"} "login with Orcid"])
+  [:a {:href (href ::login)} "login"])
 
 (defn logout-link []
+  ;; TODO: Make this a real page.
   [:a {:on-click #(re-frame/dispatch [::events/logout])} "logout"])
 
 (defn create-extract-link []
   [:a {:href (href ::new-extract)} "create new extract"])
+
+(defn login-page []
+  [:div
+   [:]])
 
 (defn logged-in-menu-items []
   [[create-extract-link]
@@ -105,7 +110,9 @@
 
 (def extract-creation-routes
   [["/new" {:name      ::new-extract
-            :component extract/editor-panel}]])
+            :component extract/editor-panel}]
+   ["/login" {:name      ::login
+              :component login-page}]])
 
 (def routes
   "Combined routes from all pages."
