@@ -111,9 +111,7 @@
  ::login-check
  [(re-frame/inject-cofx :storage/get :orcid)]
  (fn [cofx _]
-   (if-let [login-info (:storage/get cofx)]
-     {:db (assoc (:db cofx) :login-info login-info)}
-     {:dispatch [::try-send [:openmind/verify-login]]})))
+   {:dispatch [::try-send [:openmind/verify-login]]}))
 
 (re-frame/reg-event-fx
  :openmind/identity
@@ -126,7 +124,8 @@
  ::logout
  (fn [cofx _]
    {:storage/remove :orcid
-    ::server-logout nil}))
+    ::server-logout nil
+    :dispatch [:openmind.router/navigate {:route :openmind.search/search}]}))
 
 (re-frame/reg-fx
  ::server-logout
