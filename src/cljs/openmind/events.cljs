@@ -211,26 +211,6 @@
      (when-not @connecting?
        (reset! connecting? true)
        (log/info "Connecting to server...")
-       ;; TODO: timeout, retry, backoff.
-       (go
-         (let [chsk  (sente/make-channel-socket-client! "/chsk" {:type :auto})]
-           ;; Wait for a message so that we know the channel is open.
-           (async/<! (:ch-recv chsk))
-           (reset! connecting? false)
-           (sente/start-client-chsk-router!
-            (:ch-recv chsk)
-            (fn [message]
-              (when (vector? (:event message))
-                (re-frame/dispatch (:event message)))))
-           (re-frame/dispatch-sync [::server-connection chsk])))))))
-
-(let [connecting? (atom false)]
-  (re-frame/reg-fx
-   ::connect--secure-chsk!
-   (fn [_]
-     (when-not @connecting?
-       (reset! connecting? true)
-       (log/info "Connecting to server...")
        (let [csrf-ch (async/promise-chan)]
          (goog.net.XhrIo/send "/elmyr"
                               (fn [e]

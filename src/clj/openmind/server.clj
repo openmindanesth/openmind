@@ -16,55 +16,7 @@
             [taoensso.sente.server-adapters.http-kit :as sente-http-kit]
             [taoensso.timbre :as log]))
 
-(defonce authed-socket
-  ;;"Web socket server for logged in users."
-  (sente/make-channel-socket-server!
-   (sente-http-kit/get-sch-adapter)
-   {:user-id-fn (fn [req]
-                  (-> req
-                      :oauth2/access-tokens
-                      :orcid
-                      :orcid-id))}))
-
-(defonce anonymous-socket
-  ;;"Web socket server for anonymous users."
-  (sente/make-channel-socket-server!
-   (sente-http-kit/get-sch-adapter)
-   {:csrf-token-fn nil
-    :user-id-fn (constantly nil)}))
-
-(def logout-response
-  {:status  200
-   :session nil
-   :headers {"Content-Type" "text/html"}
-   :body    "Goodbye"})
-
-(defn check-login [req]
-  (let [token (force ring.middleware.anti-forgery/*anti-forgery-token*)]
-    (println token)
-    (clojure.pprint/pprint req)
-    req))
-
-(defn orcid-login [req]
-  (update (redirect "/oauth2/orcid")
-          :session assoc
-          :stay-logged-in (-> req :query-params (get "stay"))))
-
-(c/defroutes public-routes
-  (route/resources "/")
-  (c/GET "/" req (slurp "resources/public/index.html"))
-  (c/GET "/login" req (slurp "resources/public/index.html"))
-  (c/GET "/chsk" req ((:ajax-get-or-ws-handshake-fn anonymous-socket) req))
-  (c/POST "/chsk" req ((:ajax-post-fn anonymous-socket) req))
-  (c/GET "/logout" req  logout-response))
-
-(c/defroutes logged-in-routes
-  (c/GET "/new" req (slurp "resources/public/index.html"))
-  (c/GET "/edit/:id" req (slurp "resources/public/index.html"))
-  (c/GET "/login/orcid" req (orcid-login req))
-  (c/GET "/elmyr" req (check-login req))
-  (c/GET "/chsk-secure" req ((:ajax-get-or-ws-handshake-fn authed-socket) req))
-  (c/POST "/chsk-secure" req ((:ajax-post-fn authed-socket) req)))
+;;;;; Hacks
 
 (defonce
   ^{:doc "Import of private fn ring.middleware.oauth2/format-access-token"}
@@ -84,45 +36,67 @@
 (alter-var-root #'ring.middleware.oauth2/format-access-token
                 (constantly my-format-access-token))
 
+;;;;; Websocket server
+
+(defonce socket
+  (sente/make-channel-socket-server!
+   (sente-http-kit/get-sch-adapter)
+   {:user-id-fn (fn [req]
+                  (-> req
+                      :oauth2/access-tokens
+                      :orcid
+                      :orcid-id))}))
+
+;;;;; Routes
+
+(def logout-response
+  {:status  200
+   :session nil
+   :headers {"Content-Type" "text/html"}
+   :body    "Goodbye"})
+
+(defn orcid-login [req]
+  (update (redirect "/oauth2/orcid")
+          :session assoc
+          :stay-logged-in (-> req :query-params (get "stay"))))
+
+(c/defroutes routes
+  (route/resources "/")
+  (c/GET "/" req (slurp "resources/public/index.html"))
+  (c/GET "/new" req (slurp "resources/public/index.html"))
+  (c/GET "/edit/:id" req (slurp "resources/public/index.html"))
+
+  (c/GET "/login/orcid" req (orcid-login req))
+  (c/GET "/login" req (slurp "resources/public/index.html"))
+  (c/GET "/logout" req  logout-response)
+
+  (c/GET "/elmyr" req (force ring.middleware.anti-forgery/*anti-forgery-token*))
+  (c/GET "/chsk" req ((:ajax-get-or-ws-handshake-fn socket) req))
+  (c/POST "/chsk" req ((:ajax-post-fn socket) req))
+
+  (route/not-found "This is not a page."))
+
 (def app
-  (c/routes
-   (-> public-routes
-       wrap-keyword-params
-       wrap-params
-       wrap-content-type)
+  (-> routes
+      (wrap-oauth2 oauth2/sites)
+      (wrap-defaults
+       (-> site-defaults
+           (assoc-in [:session :cookie-attrs :same-site] :lax)))))
 
-   (-> logged-in-routes
-       (wrap-oauth2 oauth2/sites)
-       (wrap-defaults
-        (-> site-defaults
-            (assoc-in [:session :cookie-attrs :same-site] :lax))))
-
-   (route/not-found "This is not a page.")))
+;;;;; Main server
 
 (defonce ^:private stop-server! (atom nil))
-(defonce ^:private public-router (atom nil))
-(defonce ^:private private-router (atom nil))
-
-(defn clean-req [req]
-  (dissoc req :ring-req :ch-recv))
+(defonce ^:private router (atom nil))
 
 (defn stop-router! []
-  (when (fn? @public-router)
-    (@public-router))
-  (when (fn? @private-router)
-    (@private-router)))
+  (when (fn? @router)
+    (@router)))
 
 (defn start-router! []
   (stop-router!)
-  (reset! public-router
+  (reset! router
           (sente/start-server-chsk-router!
-           (:ch-recv anonymous-socket)
-           (fn [msg]
-             (routes/public-dispatch (clean-req msg)))))
-
-  (reset! private-router
-          (sente/start-server-chsk-router!
-           (:ch-recv authed-socket)
+           (:ch-recv socket)
            (fn [msg]
              (let [oauth (-> msg :ring-req :oauth2/access-tokens)]
                (routes/dispatch (-> msg

@@ -26,21 +26,10 @@
 
     :else (log/warn "No way to return response to sender." uid msg))  )
 
-(def ^:private public-access
-  "Whitelist of web socket messages open to unauthenticated users."
-  #{:openmind/search
-    :openmind/tag-tree})
-
 (defmulti dispatch (fn [{:keys [id] :as e}]
                      ;; Ignore all internal sente messages at present
                      (when-not (= "chsk" (namespace id))
                        id)))
-
-(defn public-dispatch [msg]
-  (if (or (contains? public-access (:id msg))
-          (= "chsk" (namespace (:id msg))))
-    (dispatch msg)
-    (log/warn "Unauthorised access attempt on anonymous connection:" msg)))
 
 (defmethod dispatch nil
   [e]
