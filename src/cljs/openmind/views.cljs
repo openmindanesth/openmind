@@ -63,15 +63,19 @@
                :on-click #(re-frame/dispatch
                            [::set-stay-logged-in (not stay?)])
                :id       "stayloggedin"}]
-      [:p.pl2.pt1.small
-       (if stay?
+      [:p.pl2.pt1.smaller.justify {:style {:max-width "25rem"}}
+       (str
+        "This checkbox doesn't actually do anything right now."
+        " It's only here because it's expected."
+        " You will stay logged in until either you log out,"
+        " or the server gets updated,"
+        " whichever comes first.")
+       #_(if stay?
          "You will remain logged in until you explicitly log out."
          "You will be logged out automatically in 12 hours.")]]
-     [:p.small.mt2 {:style {:max-width "24.5rem"}}
+     [:p.small.mt2.justify {:style {:max-width "24.5rem"}}
       [:em
-       "This site uses cookies solely to maintain login information."
-       " "
-       "If you don't want cookies on your device, don't log in."]]]))
+       "This site uses cookies solely to maintain login information."]]]))
 
 (defn logged-in-menu-items []
   [[create-extract-link]

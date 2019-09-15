@@ -1,4 +1,4 @@
-/* Is this the best way to hide scrollbars? */
+/emall* Is this the best way to hide scrollbars? */
 
 html::-webkit-scrollbar {
 		display: none;
@@ -15,6 +15,10 @@ html {
 
 .padded {
 		padding: 0.5em;
+}
+
+.justify {
+		text-align: justify;
 }
 
 .break-wrap {
@@ -52,6 +56,10 @@ html {
 
 .small {
 		font-size: small;
+}
+
+.smaller {
+		font-size: x-small;
 }
 
 .text-black {
