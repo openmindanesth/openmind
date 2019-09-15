@@ -224,6 +224,32 @@
                 (re-frame/dispatch (:event message)))))
            (re-frame/dispatch-sync [::server-connection chsk])))))))
 
+(let [connecting? (atom false)]
+  (re-frame/reg-fx
+   ::connect--secure-chsk!
+   (fn [_]
+     (when-not @connecting?
+       (reset! connecting? true)
+       (log/info "Connecting to server...")
+       (let [csrf-ch (async/promise-chan)]
+         (goog.net.XhrIo/send "/elmyr"
+                              (fn [e]
+                                (->> e
+                                     .-target
+                                     .getResponseText
+                                     (async/put! csrf-ch))))
+         ;; TODO: timeout, retry, backoff.
+         (go
+           (let [token (async/<! csrf-ch)
+                 chsk  (sente/make-channel-socket-client!
+                        "/chsk" token {:type :auto})]
+             ;; Wait for a message so that we know the channel is open.
+             (async/<! (:ch-recv chsk))
+             (reset! connecting? false)
+             (sente/start-client-chsk-router! (:ch-recv chsk)
+              (fn [message]
+                (re-frame/dispatch (:event message))))
+             (re-frame/dispatch-sync [::server-connection chsk]))))))))
 
 ;;;;; Sente internal events.
 

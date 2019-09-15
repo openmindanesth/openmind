@@ -29,33 +29,26 @@
 (def ^:private public-access
   "Whitelist of web socket messages open to unauthenticated users."
   #{:openmind/search
-    :openmind/tag-tree
+    :openmind/tag-tree})
 
-    :chsk/ws-ping
-    :chsk/timeout
-    :chsk/state
-    :chsk/handshake})
-
-(defmulti dispatch (fn [e] (first (:event e))))
+(defmulti dispatch (fn [{:keys [id] :as e}]
+                     ;; Ignore all internal sente messages at present
+                     (when-not (= "chsk" (namespace id))
+                       id)))
 
 (defn public-dispatch [msg]
-  (if (contains? public-access (:id msg))
+  (if (or (contains? public-access (:id msg))
+          (= "chsk" (namespace (:id msg))))
     (dispatch msg)
     (log/warn "Unauthorised access attempt on anonymous connection:" msg)))
 
-(defmethod dispatch :chsk/ws-ping
-  [_])
-
-(defmethod dispatch :chsk/uidport-open
-  [_])
-
-(defmethod dispatch :chsk/uidport-close
-  [_])
+(defmethod dispatch nil
+  [e]
+  (log/trace "sente message" e))
 
 (defmethod dispatch :default
   [e]
-  (log/warn "Unhandled client event:" e)
-  nil)
+  (log/warn "Unhandled client event:" e))
 
 ;;;;; Search
 

@@ -11,6 +11,7 @@
             [ring.middleware.keyword-params :refer [wrap-keyword-params]]
             [ring.middleware.oauth2 :refer [wrap-oauth2]]
             [ring.middleware.params :refer [wrap-params]]
+            [ring.util.response :refer [redirect]]
             [taoensso.sente :as sente]
             [taoensso.sente.server-adapters.http-kit :as sente-http-kit]
             [taoensso.timbre :as log]))
@@ -38,11 +39,16 @@
    :headers {"Content-Type" "text/html"}
    :body    "Goodbye"})
 
-(defn setup-login [req]
+(defn check-login [req]
   (let [token (force ring.middleware.anti-forgery/*anti-forgery-token*)]
     (println token)
     (clojure.pprint/pprint req)
     req))
+
+(defn orcid-login [req]
+  (update (redirect "/oauth2/orcid")
+          :session assoc
+          :stay-logged-in (-> req :query-params (get "stay"))))
 
 (c/defroutes public-routes
   (route/resources "/")
@@ -55,7 +61,8 @@
 (c/defroutes logged-in-routes
   (c/GET "/new" req (slurp "resources/public/index.html"))
   (c/GET "/edit/:id" req (slurp "resources/public/index.html"))
-  (c/GET "/finish-login" req (setup-login req))
+  (c/GET "/login/orcid" req (orcid-login req))
+  (c/GET "/elmyr" req (check-login req))
   (c/GET "/chsk-secure" req ((:ajax-get-or-ws-handshake-fn authed-socket) req))
   (c/POST "/chsk-secure" req ((:ajax-post-fn authed-socket) req)))
 

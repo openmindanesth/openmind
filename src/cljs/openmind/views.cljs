@@ -22,25 +22,56 @@
 (defn create-extract-link []
   [:a {:href (href ::new-extract)} "create new extract"])
 
+(re-frame/reg-sub
+ ::stay-logged-in?
+ (fn [db]
+   (::stay-logged-in? db)))
+
+(re-frame/reg-event-db
+ ::set-stay-logged-in
+ (fn [db [_ v]]
+   (assoc db ::stay-logged-in? v)))
+
+(re-frame/reg-event-fx
+ ::login
+ (fn [cofx [_ stay? service]]
+   ;; Only option
+   (when (= service :orcid)
+     {::nav-out (str "/login/orcid?stay=" (boolean stay?))})))
+
+(re-frame/reg-fx
+ ::nav-out
+ (fn [url]
+   (-> js/document
+       .-location
+       (set! url))))
+
 (defn login-page []
-  [:div.flex.flex-column.left.mt2.ml2
-   [:button.p1 {:on-click #(-> js/document
-                               .-location
-                               (set! "/oauth2/orcid?keep=true"))}
-    [:img {:src "https://orcid.org/sites/default/files/images/orcid_24x24.png"
-           :style {:vertical-align :bottom}}]
-    [:span.pl1 " login with Orcid"]]
-   [:button.mt1.p1 {:disabled true}
-    [:span "login via Orcid is the only method available at present"]]
-   [:div.mt2
-    [:label.pr1 {:for "stayloggedin"} [:b "stay logged in"]]
-    [:input {:type :checkbox
-             :id "stayloggedin"}]]
-   [:p.small.mt2 {:style {:max-width "24.5rem"}}
-    [:em
-     "This site uses cookies solely to maintain login information."
-     " "
-     "If you don't want cookies on your device, don't log in."]]])
+  (let [stay? @(re-frame/subscribe [::stay-logged-in?])]
+    [:div.flex.flex-column.left.mt2.ml2
+     [:button.p1 {:on-click #(re-frame/dispatch [::login stay? :orcid])}
+      [:img {:src "https://orcid.org/sites/default/files/images/orcid_24x24.png"
+
+             :style {:vertical-align :bottom}}]
+      [:span.pl1 " login with Orcid"]]
+     [:button.mt1.p1 {:disabled true}
+      [:span "login via Orcid is the only method available at present"]]
+     [:div.mt2
+      [:label.pr1 {:for "stayloggedin"} [:b "stay logged in?"]]
+      [:input {:type     :checkbox
+               :checked  stay?
+               :on-click #(re-frame/dispatch
+                           [::set-stay-logged-in (not stay?)])
+               :id       "stayloggedin"}]
+      [:p.pl2.pt1.small
+       (if stay?
+         "You will remain logged in until you explicitly log out."
+         "You will be logged out automatically in 12 hours.")]]
+     [:p.small.mt2 {:style {:max-width "24.5rem"}}
+      [:em
+       "This site uses cookies solely to maintain login information."
+       " "
+       "If you don't want cookies on your device, don't log in."]]]))
 
 (defn logged-in-menu-items []
   [[create-extract-link]

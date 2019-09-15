@@ -10,4 +10,4 @@
     :scopes           ["/authenticate"]
     :launch-uri       "/oauth2/orcid"
     :redirect-uri     (env/read :orcid-redirect-uri)
-    :landing-uri      "/finish-login"}})
+    :landing-uri      "/"}})
