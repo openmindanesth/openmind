@@ -13,7 +13,7 @@
 (re-frame/reg-sub
  ::tag-lookup
  (fn [db]
-   (:tag-lookup db)))
+   (:openmind.views.tags/tag-lookup db)))
 
 ;;;;; Events
 
@@ -76,7 +76,7 @@
 (defn reference-link [ref]
   [hlink ref])
 
-(defn format-tags [tags]
+(defn tag-hover [tags]
   ;; FIXME: flex isn't the right solution here.
   (let [tag-lookup @(re-frame/subscribe [::tag-lookup])]
     (when (seq tags)
@@ -95,7 +95,7 @@
      [history-link]
      [hlink "related" related]
      [hlink "details" details]
-     [hlink "tags" (format-tags tags)]
+     [hlink "tags" [tag-hover tags]]
      [hlink "figure" figure]
      [reference-link reference]]]])
 
