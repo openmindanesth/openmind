@@ -63,8 +63,8 @@
        [:a.plh.prh.link-blue {:on-mouse-over #(reset! hover? true)
                               :on-mouse-out  #(reset! hover? false)}
         text]
-       (when @hover?
-         [:div.absolute
+       (when (not @hover?)
+         [:div.absolute {:style {:transform "translateX(-50%)"}}
           float-content])])))
 
 (defn comments-link []
@@ -76,14 +76,44 @@
 (defn reference-link [ref]
   [hlink ref])
 
+(defn tg1 [bs]
+  (into {}
+        (comp
+         (map (fn [[k vs]]
+                [k (map rest vs)]))
+         (remove (comp nil? first)))
+        (group-by first bs)))
+
+(defn tree-group
+  "Given a sequence of sequences of tags, return a prefix tree on those
+  sequences."
+  [bs]
+  (when (seq bs)
+    (into {} (map (fn [[k v]]
+                    [k (tree-group v)]))
+          (tg1 bs))))
+
+(defn tag-display [tag-lookup [k children]]
+  (when (seq k)
+    [:div.flex
+     [:div {:class (str "bg-blue border-round p1 mbh mrh "
+                        "text-white flex flex-column flex-centre")}
+      [:div
+       (:tag-name (tag-lookup k))]]
+     (into [:div.flex.flex-column]
+           (map (fn [b] [tag-display tag-lookup b]))
+           children)]))
+
 (defn tag-hover [tags]
-  ;; FIXME: flex isn't the right solution here.
-  (let [tag-lookup @(re-frame/subscribe [::tag-lookup])]
-    (when (seq tags)
-      (into [:div.flex.flex-column.bg-white.p1.border-round]
-            (map (fn [id]
-                   [:div (get tag-lookup id)]))
-            tags))))
+  (let [tag-lookup @(re-frame/subscribe [::tag-lookup])
+        branches   (->> tags
+                        (map tag-lookup)
+                        (map (fn [{:keys [id parents]}] (conj parents id))))]
+    [:div.bg-white.p1.border-round.border-solid
+     (into [:div.flex.flex-column]
+           (map (fn [t]
+                  [tag-display tag-lookup t]))
+           (get (tree-group branches) "8PvLV2wBvYu2ShN9w4NT"))]))
 
 (defn result [{:keys [text reference]
                {:keys [comments details related figure] :as tags} :tags}]

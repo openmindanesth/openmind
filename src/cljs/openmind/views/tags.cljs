@@ -54,8 +54,8 @@
 
 ;;;;; Events
 
-(defn build-tag-lookup [{:keys [tag-name id children]}]
-  (into {id tag-name} (map build-tag-lookup) (vals children)))
+(defn build-tag-lookup [{:keys [tag-name id children] :as tag}]
+  (into {id tag} (map build-tag-lookup) (vals children)))
 
 (re-frame/reg-event-db
  :openmind/tag-tree
