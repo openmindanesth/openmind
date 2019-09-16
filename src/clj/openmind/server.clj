@@ -95,16 +95,16 @@
 (defn clean-req [msg]
   (select-keys msg [:event :id :?reply-fn :send-fn :client-id :uid]))
 
+(defn dispatch-msg [msg]
+  (let [oauth (-> msg :ring-req :oauth2/access-tokens)]
+    (routes/dispatch (-> msg
+                         clean-req
+                         (assoc :tokens oauth)))))
+
 (defn start-router! []
   (stop-router!)
   (reset! router
-          (sente/start-server-chsk-router!
-           (:ch-recv socket)
-           (fn [msg]
-             (let [oauth (-> msg :ring-req :oauth2/access-tokens)]
-               (routes/dispatch (-> msg
-                                    clean-req
-                                    (assoc :tokens oauth))))))))
+          (sente/start-server-chsk-router! (:ch-recv socket) dispatch-msg)))
 
 
 (defn start-server! []
