@@ -56,25 +56,21 @@
 
 ;;;;; Views
 
-(defn hlink [text float-content]
+(defn hlink [text float-content orientation]
   (let [hover? (reagent/atom false)]
     (fn [text float-content]
       [:div
        [:a.plh.prh.link-blue {:on-mouse-over #(reset! hover? true)
                               :on-mouse-out  #(reset! hover? false)}
         text]
-       (when @hover?
-         [:div.absolute {:style {:transform "translateX(-50%)"}}
-          float-content])])))
-
-(defn comments-link []
-  [hlink "comments"])
-
-(defn history-link []
-  [hlink "history"])
-
-(defn reference-link [ref]
-  [hlink ref])
+       (when float-content
+         (when @hover?
+           [:div.absolute
+            {:style (cond
+                      (= :left orientation)  {:left "10px"}
+                      (= :right orientation) {:right "10px"}
+                      :else                  {:transform "translateX(-50%)"})}
+            float-content]))])))
 
 (defn tg1 [bs]
   (into {}
@@ -104,6 +100,10 @@
            (map (fn [b] [tag-display tag-lookup b]))
            children)]))
 
+(defn no-content []
+  [:div.border-round.bg-grey.p1 {:style {:width       "1rem"
+                                         :margin-left "2.5rem"}}])
+
 (defn tag-hover [tags]
   (if (seq tags)
     (let [tag-lookup @(re-frame/subscribe [::tag-lookup])
@@ -115,22 +115,31 @@
              (map (fn [t]
                     [tag-display tag-lookup t]))
              (get (tree-group branches) "8PvLV2wBvYu2ShN9w4NT"))])
-    [:div.border-round.bg-grey.p1 {:style {:width "1rem"
-                                           :margin-left "2.5rem"}}]))
+    [no-content]))
 
-(defn result [{:keys [text reference]
-               {:keys [comments details related figure] :as tags} :tags}]
+
+(defn comments-hover [comments]
+  (if (seq comments)
+    (into
+     [:div.flex.flex-column.border-round.bg-white.border-solid.p1.pbh]
+     (map (fn [com]
+            [:div.break-wrap.ph.border-round.border-solid.border-grey.mbh
+             com]))
+     comments)
+    [no-content]))
+
+(defn result [{:keys [text reference comments details related figure tags]}]
   [:div.search-result.padded
    [:div.break-wrap.ph text]
    [:div.pth
     [:div.flex.flex-wrap.space-evenly
-     [comments-link (:comments tags)]
-     [history-link]
-     [hlink "related" related]
-     [hlink "details" details]
+     [hlink "comments" [comments-hover comments] :left]
+     [hlink "history"]
+     [hlink "related" #_related]
+     [hlink "details" #_details]
      [hlink "tags" [tag-hover tags]]
-     [hlink "figure" figure]
-     [reference-link reference]]]])
+     [hlink "figure" #_figure]
+     [hlink reference]]]])
 
 (defn search-results []
   (let [results @(re-frame/subscribe [::extracts])]

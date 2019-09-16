@@ -95,6 +95,10 @@ html {
 		background-color: red;
 }		
 
+.border-grey {
+		border-color: #BCBCCD !important;
+}
+
 .border-black {
 		border-color: black !important;
 }
