@@ -92,6 +92,9 @@
   (when (fn? @router)
     (@router)))
 
+(defn clean-req [msg]
+  (select-keys msg [:event :id :?reply-fn :send-fn :client-id :uid]))
+
 (defn start-router! []
   (stop-router!)
   (reset! router
