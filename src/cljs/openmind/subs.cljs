@@ -66,4 +66,4 @@
  ::editor-selected-tags
  :<- [::new-extract-content]
  (fn [content _]
-   (:tags content)))
+   (into #{} (map :id (:tags content)))))

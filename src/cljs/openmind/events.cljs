@@ -98,8 +98,9 @@
 
 (re-frame/reg-event-db
  ::remove-editor-tag
- (fn [db [_ tag]]
-   (update-in db [::db/new-extract :new-extract/content :tags] disj tag)))
+ (fn [db [_ & tags]]
+   (update-in db [::db/new-extract :new-extract/content :tags]
+              #(reduce disj % tags))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Server Comms
