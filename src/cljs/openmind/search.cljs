@@ -105,15 +105,18 @@
            children)]))
 
 (defn tag-hover [tags]
-  (let [tag-lookup @(re-frame/subscribe [::tag-lookup])
-        branches   (->> tags
-                        (map tag-lookup)
-                        (map (fn [{:keys [id parents]}] (conj parents id))))]
-    [:div.bg-white.p1.border-round.border-solid
-     (into [:div.flex.flex-column]
-           (map (fn [t]
-                  [tag-display tag-lookup t]))
-           (get (tree-group branches) "8PvLV2wBvYu2ShN9w4NT"))]))
+  (if (seq tags)
+    (let [tag-lookup @(re-frame/subscribe [::tag-lookup])
+          branches   (->> tags
+                          (map tag-lookup)
+                          (map (fn [{:keys [id parents]}] (conj parents id))))]
+      [:div.bg-white.p1.border-round.border-solid
+       (into [:div.flex.flex-column]
+             (map (fn [t]
+                    [tag-display tag-lookup t]))
+             (get (tree-group branches) "8PvLV2wBvYu2ShN9w4NT"))])
+    [:div.border-round.bg-grey.p1 {:style {:width "1rem"
+                                           :margin-left "2.5rem"}}]))
 
 (defn result [{:keys [text reference]
                {:keys [comments details related figure] :as tags} :tags}]
