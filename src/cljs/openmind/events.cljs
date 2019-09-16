@@ -41,7 +41,6 @@
 (re-frame/reg-event-fx
  ::create-extract
  (fn [cofx _]
-   ;; TODO: validation and form feedback
    (let [author  @(re-frame/subscribe [:openmind.subs/login-info])
          extract (-> cofx
                      (get-in [:db ::db/new-extract :new-extract/content])
@@ -70,7 +69,8 @@
                  ::db/route :openmind.views/search)
 
       :dispatch-later [{:ms 2000 :dispatch [::clear-status-message]}
-                       {:ms 500 :dispatch [::search-request]}]}
+                       {:ms 500 :dispatch [:openmind.router/navigate
+                                           {:route :openmind.search/search}]}]}
      {:db (assoc db :status-message
                  {:status :error :message "Failed to create extract."})})))
 
