@@ -199,9 +199,11 @@
  ::server-connection
  (fn [{:keys [db]} [_ chsk]]
    (let [pending (:request-queue db)]
-     (merge {:db (assoc db :chsk chsk :request-queue [] :connecting? false)}
-            (when (seq pending)
-              {:dispatch-n (mapv (fn [ev] [::try-send ev]) pending)})))))
+     (merge {:db (assoc db :chsk chsk :request-queue [] :connecting? false)
+             :dispatch-n
+             (into [::login-check]
+                   (when (seq pending)
+                     (map (fn [ev] [::try-send ev]) pending)))}))))
 
 (let [connecting? (atom false)]
   (re-frame/reg-fx
