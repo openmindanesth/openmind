@@ -63,7 +63,7 @@
        [:a.plh.prh.link-blue {:on-mouse-over #(reset! hover? true)
                               :on-mouse-out  #(reset! hover? false)}
         text]
-       (when (not @hover?)
+       (when @hover?
          [:div.absolute {:style {:transform "translateX(-50%)"}}
           float-content])])))
 
