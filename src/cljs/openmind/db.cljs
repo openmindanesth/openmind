@@ -12,16 +12,14 @@
    :errors                nil})
 
 (def default-db
-  {::domain         "anaesthesia"
-   ::tag-tree       ::uninitialised
-   ::tag-lookup     ::uninitialised
-   ::status-message ""
-   ::search         {:search/term      nil
-                     :search/selection []
-                     :search/filters   #{}}
-   ::route          nil
-   ::new-extract    blank-new-extract
-   ::results        []})
+  {::domain                    "anaesthesia"
+   ::tag-tree                  ::uninitialised
+   ::tag-lookup                ::uninitialised
+   ::status-message            ""
+   :openmind.views.tags/search {:search/selection []}
+   :openmind.router/route      nil
+   ::new-extract               blank-new-extract
+   ::results                   []})
 
 (s/def ::db
   (s/keys :req [::new-extract

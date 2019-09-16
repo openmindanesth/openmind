@@ -58,7 +58,6 @@
  (fn [cofx [_ router]]
    (let [path (:path (::current-url cofx))]
      {:db (assoc (:db cofx)
-                 ::router router
                  ::route (r/match-by-path router path))})))
 
 ;;;;; view components

@@ -22,6 +22,8 @@
 (defn create-extract-link []
   [:a {:href (href ::new-extract)} "create new extract"])
 
+;;;;; Login
+
 (re-frame/reg-sub
  ::stay-logged-in?
  (fn [db]
@@ -158,7 +160,7 @@
 ;;;;; Main Routing Table
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def extract-creation-routes
+(def other-routes
   [["/new" {:name      ::new-extract
             :component extract/editor-panel}]
    ["/login" {:name      ::login
@@ -166,4 +168,4 @@
 
 (def routes
   "Combined routes from all pages."
-  (concat search/routes extract-creation-routes))
+  (concat search/routes other-routes))
