@@ -183,3 +183,7 @@
                    (re-frame/dispatch [::events/create-extract]))}
       "CREATE"]]]
    (map input-row (map add-form-data extract-creation-form))))
+
+(def routes
+  [["/new" {:name      ::new-extract
+            :component extract/editor-panel}]])

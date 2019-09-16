@@ -161,11 +161,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def other-routes
-  [["/new" {:name      ::new-extract
-            :component extract/editor-panel}]
-   ["/login" {:name      ::login
+  [["/login" {:name      ::login
               :component login-page}]])
 
 (def routes
   "Combined routes from all pages."
-  (concat search/routes other-routes))
+  (concat search/routes extract/routes other-routes))
