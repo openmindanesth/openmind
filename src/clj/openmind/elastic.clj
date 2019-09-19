@@ -20,19 +20,19 @@
    :user-agent "Openmind server"})
 
 (def base-url
-  (str (env/read :elastic-url)))
+  (env/read :elastic-url))
 
 (defn index-req [index doc]
   (merge base-req
          {:method :post
-          :url (str base-url "/" (name index) "/_doc/")
+          :url (str base-url "/" index "/_doc/")
           :body (json/write-str doc)}))
 
 (defn search [index body]
   (let [qbody (json/write-str body)]
     (merge base-req
            {:method :get
-            :url (str base-url "/" (name index) "/_search")
+            :url (str base-url "/" index "/_search")
             :body qbody})))
 
 ;;;;; Init new index
@@ -40,19 +40,19 @@
 (defn set-mapping [index]
   (merge base-req
          {:method :put
-          :url (str base-url "/" (name index) "/_mapping")
+          :url (str base-url "/" index "/_mapping")
           :body (json/write-str mapping)}))
 
 (defn create-index [index]
   (assoc base-req
-         :url (str base-url "/" (name index))
+         :url (str base-url "/" index)
          :method :put))
 
 ;;;;; Tags in elastic
 
 (defn index-tag [index tag-data]
   (assoc base-req
-         :url (str base-url "/" (name index) "/_doc/")
+         :url (str base-url "/" index "/_doc/")
          :method :post
          :body (json/write-str tag-data)))
 
@@ -72,16 +72,19 @@
   "Sends HTTP request req and returns a core.async promise channel which will
   eventually contain the result."
   [req]
-  (let [out-ch (async/promise-chan)]
-    (log/trace "Elastic request: " (select-keys req [:method :url :body]))
-    (http/request req (fn [res]
-                        (log/trace "Response from elastic: "
-                                  (-> res
-                                       (select-keys [:body :opts :status :error])
-                                       (update :opts select-keys
-                                               [:method :body :url])))
-                        (async/put! out-ch res)))
-    out-ch))
+  (if (:url req)
+    (let [out-ch (async/promise-chan)]
+      (log/trace "Elastic request: " (select-keys req [:method :url :body]))
+      (http/request req (fn [res]
+                          (log/trace "Response from elastic: "
+                                     (-> res
+                                         (select-keys
+                                          [:body :opts :status :error])
+                                         (update :opts select-keys
+                                                 [:method :body :url])))
+                          (async/put! out-ch res)))
+      out-ch)
+    (log/error "No Elastic URL set")))
 
 (defmacro request<!
   "Must be called inside a go block. Sends request, and returns processed result
