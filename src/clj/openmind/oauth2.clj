@@ -9,5 +9,6 @@
     :client-secret    (env/read :orcid-client-secret)
     :scopes           ["/authenticate"]
     :launch-uri       "/oauth2/orcid"
-    :redirect-uri     (env/read :orcid-redirect-uri)
+    :redirect-uri     (or (env/read :orcid-redirect-uri)
+                          "/oauth2/orcid/redirect")
     :landing-uri      "/"}})

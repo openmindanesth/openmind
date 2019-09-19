@@ -1,5 +1,7 @@
 (ns openmind.server
-  (:require [compojure.core :as c]
+  (:require clj-http.client
+            [clojure.java.io :as io]
+            [compojure.core :as c]
             [compojure.route :as route]
             [openmind.env :as env]
             [openmind.oauth2 :as oauth2]
@@ -49,6 +51,10 @@
 
 ;;;;; Routes
 
+(def index
+  "The SP in SPA"
+  (io/resource "public/index.html"))
+
 (def logout-response
   {:status  200
    :session nil
@@ -62,12 +68,12 @@
 
 (c/defroutes routes
   (route/resources "/")
-  (c/GET "/" req (slurp "resources/public/index.html"))
-  (c/GET "/new" req (slurp "resources/public/index.html"))
-  (c/GET "/edit/:id" req (slurp "resources/public/index.html"))
+  (c/GET "/" req index)
+  (c/GET "/new" req index)
+  (c/GET "/edit/:id" req index)
 
   (c/GET "/login/orcid" req (orcid-login req))
-  (c/GET "/login" req (slurp "resources/public/index.html"))
+  (c/GET "/login" req index)
   (c/GET "/logout" req  logout-response)
 
   (c/GET "/elmyr" req (force ring.middleware.anti-forgery/*anti-forgery-token*))
@@ -124,4 +130,7 @@
     (@stop-server!)))
 
 (defn -main [& args]
-  (init!))
+  (try
+    (init!)
+    (catch Exception e
+      (.printStackTrace e))))
