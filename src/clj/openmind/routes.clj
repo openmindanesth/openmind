@@ -26,6 +26,18 @@
 
     :else (log/warn "No way to return response to sender." uid msg))  )
 
+;;;;; Offline testing stub
+;; TODO: Maybe put this in a new namespace
+(defmulti offline-dispatch :id)
+
+(defmethod offline-dispatch :openmind/verify-login
+  [req]
+  (respond-with-fallback req [:openmind/identity {:name "t" :orcid-id "xyzzy"}]))
+
+(defmethod offline-dispatch :default
+  [msg]
+  #_(println msg))
+
 (defmulti dispatch (fn [{:keys [id] :as e}]
                      ;; Ignore all internal sente messages at present
                      (when-not (= "chsk" (namespace id))
@@ -84,6 +96,15 @@
           event [:openmind/search-response
                  #:openmind.search{:results res :nonce nonce}]]
       (respond-with-fallback req event))))
+
+(defmethod offline-dispatch :openmind/search
+  [{:keys [event] :as req}]
+  (println (:event req))
+  (respond-with-fallback
+   req
+   [:openmind/search-response
+    #:openmind.search{:results [{:text "asdasd"}]
+                      :nonce (:openmind.search/nonce (second event))}]))
 
 ;;;;; Login
 
