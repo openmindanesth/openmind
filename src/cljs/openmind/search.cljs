@@ -131,6 +131,9 @@
 (defn result [{:keys [text reference comments details related figure tags]}]
   [:div.search-result.padded
    [:div.break-wrap.ph text]
+   [:div.right.relative.text-grey.small
+    {:style {:top "-2rem" :right "1rem"}}
+    [:a "edit"]]
    [:div.pth
     [:div.flex.flex-wrap.space-evenly
      [hlink "comments" [comments-hover comments] :left]

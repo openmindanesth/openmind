@@ -50,6 +50,10 @@ html {
 		position: absolute;
 }
 
+.relative {
+		position: relative;
+}
+
 .super {
 		vertical-align: super;
 }
@@ -70,6 +74,9 @@ html {
 		color: #BB1212;
 }
 
+.text-grey {
+		color: #BCBCCD;
+}
 
 .border-red {
 		border-color: #BB1212;

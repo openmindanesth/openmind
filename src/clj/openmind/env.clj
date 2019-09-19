@@ -33,3 +33,5 @@
       (number? p) p
       (string? p) (Integer/parseInt p)
       :else       (throw (Exception. "Invalid port specified.")))))
+
+(def offline? (atom false))

@@ -185,5 +185,5 @@
    (map input-row (map add-form-data extract-creation-form))))
 
 (def routes
-  [["/new" {:name      ::new-extract
-            :component extract/editor-panel}]])
+  [["/new" {:name      ::new
+            :component editor-panel}]])

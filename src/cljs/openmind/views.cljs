@@ -20,7 +20,7 @@
   [:a {:on-click #(re-frame/dispatch [::events/logout])} "logout"])
 
 (defn create-extract-link []
-  [:a {:href (href ::new-extract)} "create new extract"])
+  [:a {:href (href :openmind.views.extract/new)} "create new extract"])
 
 ;;;;; Login
 
