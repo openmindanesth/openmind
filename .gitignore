@@ -6,3 +6,4 @@ out
 .cpcache
 .nrepl-port
 conf.edn
+.terraform
