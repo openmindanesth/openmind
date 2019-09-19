@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 
+echo `pwd`
+
 #N.B.: Always use clojure, never clj !!!
 
 set -e
 
-mkdir target
-export LEIN_INCLUDE_IN_SLUG=no
+test -e target || mkdir target
 
 # build cljs
 
@@ -27,5 +28,9 @@ echo
 
 clojure -Auberjar
 
-echo ready to go
+echo Building Docker container...
 echo
+
+docker build . -t openmind
+
+echo done
