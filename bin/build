@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-echo `pwd`
-
 #N.B.: Always use clojure, never clj !!!
 
 set -e
@@ -28,9 +26,9 @@ echo
 
 clojure -Auberjar
 
-echo Building Docker container...
-echo
+# echo Building Docker container...
+# echo
 
-docker build . -t openmind
+# docker build . -t openmind
 
-echo done
+# echo done
