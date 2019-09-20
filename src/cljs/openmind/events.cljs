@@ -36,7 +36,10 @@
 (re-frame/reg-event-db
  ::set-editor-selection
  (fn [db [_ path add?]]
-   (assoc-in db [::db/new-extract :new-extract/selection]
+   ;; REVIEW: These handlers should be part of the extract editor logical group,
+   ;; and the event / sub names should be passed into the tags component.
+   (assoc-in db [:openmind.components.extract-editor/new-extract
+                 :new-extract/selection]
              (if add?
                path
                (vec (butlast path))))))
@@ -44,12 +47,14 @@
 (re-frame/reg-event-db
  ::add-editor-tag
  (fn [db [_ tag]]
-   (update-in db [::db/new-extract :new-extract/content :tags] conj tag)))
+   (update-in db [:openmind.components.extract-editor/new-extract
+                  :new-extract/content :tags] conj tag)))
 
 (re-frame/reg-event-db
  ::remove-editor-tag
  (fn [db [_ & tags]]
-   (update-in db [::db/new-extract :new-extract/content :tags]
+   (update-in db [:openmind.components.extract-editor/new-extract
+                  :new-extract/content :tags]
               #(reduce disj % tags))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -76,7 +81,7 @@
  (fn [cofx _]
    {:storage/remove :orcid
     ::server-logout nil
-    :dispatch [:openmind.router/navigate {:route :openmind.search/search}]}))
+    :dispatch [:openmind.router/navigate {:route :search}]}))
 
 (re-frame/reg-fx
  ::server-logout
@@ -152,7 +157,7 @@
    (let [pending (:request-queue db)]
      (merge {:db (assoc db :chsk chsk :request-queue [] :connecting? false)
              :dispatch-n
-             (into [::login-check]
+             (into [[::login-check]]
                    (when (seq pending)
                      (map (fn [ev] [::try-send ev]) pending)))}))))
 

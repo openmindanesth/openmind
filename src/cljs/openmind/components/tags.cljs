@@ -1,4 +1,4 @@
-(ns openmind.views.tags
+(ns openmind.components.tags
   (:require [clojure.string :as string]
             [openmind.events :as events]
             [openmind.subs :as subs]
@@ -62,7 +62,7 @@
  (fn [db [_ tree]]
    (assoc db
           ::tag-tree tree
-          ::tag-lookup (build-tag-lookup tree))))
+          :tag-lookup (build-tag-lookup tree))))
 
 (re-frame/reg-event-db
  ::set-filter-edit
@@ -81,7 +81,7 @@
                   (update :filters #(reduce f % (map :id tags)))
                   (update :filters encode-url-filters))]
     {:dispatch [:openmind.router/navigate
-                {:route :openmind.search/search
+                {:route :search
                  :query query}]}))
 
 (re-frame/reg-event-fx

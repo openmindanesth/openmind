@@ -26,7 +26,7 @@
 
 (re-frame/reg-sub
  ::editor-tag-view-selection
- :<- [::new-extract]
+ :<- [:openmind.components.extract-editor/new-extract]
  (fn [extract _]
    (:new-extract/selection extract)))
 

@@ -1,7 +1,7 @@
-(ns openmind.views.extract
+(ns openmind.components.extract-editor
   (:require [cljs.spec.alpha :as s]
             [openmind.spec.extract :as exs]
-            [openmind.views.tags :as tags]
+            [openmind.components.tags :as tags]
             [reagent.core :as r]
             [re-frame.core :as re-frame]))
 
@@ -84,7 +84,7 @@
                         :dispatch [:openmind.events/clear-status-message]}
                        {:ms       500
                         :dispatch [:openmind.router/navigate
-                                   {:route :openmind.search/search}]}]}
+                                   {:route :search}]}]}
      {:db (assoc db :status-message
                  ;; FIXME: So should this
                  {:status :error :message "Failed to create extract."})})))
@@ -327,5 +327,5 @@
    (map input-row (map add-form-data extract-creation-form))))
 
 (def routes
-  [["/new" {:name      ::new
+  [["/new" {:name      :extract/create
             :component editor-panel}]])

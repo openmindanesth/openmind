@@ -1,5 +1,5 @@
-(ns openmind.search
-  (:require [openmind.views.tags :as tags]
+(ns openmind.components.search
+  (:require [openmind.components.tags :as tags]
             [re-frame.core :as re-frame]
             [reagent.core :as reagent]))
 
@@ -10,10 +10,12 @@
  (fn [db]
    (::results db)))
 
+;; REVIEW: This is effectively global read-only state. It shouldn't be
+;; namespaced. Or, presumably, in this namespace.
 (re-frame/reg-sub
- ::tag-lookup
+ :tag-lookup
  (fn [db]
-   (:openmind.views.tags/tag-lookup db)))
+   (:tag-lookup db)))
 
 ;;;;; Events
 
@@ -36,7 +38,7 @@
 
 (re-frame/reg-event-db
  :openmind/search-response
- (fn [db [_ {:keys [::results ::nonce]}]]
+ (fn [db [_ {:keys [::results ::nonce] :as e}]]
    ;; This is for slow connections: when typing, a new search is requested at
    ;; each keystroke, and these could come back out of order. When a response
    ;; comes back, if it corresponds to a newer request than that currently
@@ -51,7 +53,7 @@
  ::update-term
  (fn [cofx [_ term]]
    (let [query (-> cofx :db :openmind.router/route :parameters :query)]
-     {:dispatch [:openmind.router/navigate {:route ::search
+     {:dispatch [:openmind.router/navigate {:route :search
                                             :query (assoc query :term term)}]})))
 
 ;;;;; Views
@@ -106,7 +108,7 @@
 
 (defn tag-hover [tags]
   (if (seq tags)
-    (let [tag-lookup @(re-frame/subscribe [::tag-lookup])
+    (let [tag-lookup @(re-frame/subscribe [:tag-lookup])
           branches   (->> tags
                           (map tag-lookup)
                           (map (fn [{:keys [id parents]}] (conj parents id))))]
@@ -156,7 +158,7 @@
    [search-results]])
 
 (def routes
-  [["/" {:name        ::search
+  [["/" {:name        :search
          :component   search-view
          :controllers [{:parameters {:query [:term :filters :time]}
 

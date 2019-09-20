@@ -1,8 +1,8 @@
-(ns openmind.views
-  (:require [openmind.events :as events]
-            [openmind.search :as search]
+(ns openmind.components.window
+  (:require [openmind.components.extract-editor :as extract]
+            [openmind.components.search :as search]
+            [openmind.events :as events]
             [openmind.subs :as subs]
-            [openmind.views.extract :as extract]
             [re-frame.core :as re-frame]
             reitit.frontend.easy))
 
@@ -20,7 +20,7 @@
   [:a {:on-click #(re-frame/dispatch [::events/logout])} "logout"])
 
 (defn create-extract-link []
-  [:a {:href (href :openmind.views.extract/new)} "create new extract"])
+  [:a {:href (href :extract/create)} "create new extract"])
 
 ;;;;; Login
 
@@ -124,9 +124,11 @@
                                         [::events/open-menu]))}
        [:span.ham "Ξ"]]
       [:a.ctext.grow-1.pl1.pr1.xxl.pth.plain
-       {:href (href :openmind.search/search)
+       {:href (href :search)
         :style {:cursor :pointer}}
        "open" [:b "mind"]]
+      ;; REVIEW: I think this component should be with the rest of the search
+      ;; logic.
       [:input.grow-2 (merge {:type :text
                              :on-change (fn [e]
                                           (let [v (-> e .-target .-value)]
@@ -161,9 +163,5 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def other-routes
-  [["/login" {:name      ::login
+  [["/login" {:name      :login
               :component login-page}]])
-
-(def routes
-  "Combined routes from all pages."
-  (concat search/routes extract/routes other-routes))

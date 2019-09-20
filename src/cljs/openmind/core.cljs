@@ -1,8 +1,10 @@
 (ns ^:figwheel-hooks openmind.core
-  (:require [openmind.config :as config]
+  (:require [openmind.components.extract-editor :as extract]
+            [openmind.components.search :as search]
+            [openmind.components.window :as window]
+            [openmind.config :as config]
             [openmind.events :as events]
             [openmind.router :as router]
-            [openmind.views :as views]
             [re-frame.core :as re-frame]
             [reagent.core :as reagent]
             [taoensso.timbre :as log]))
@@ -12,10 +14,15 @@
     (enable-console-print!)
     (log/info "dev mode")))
 
+(def routes
+  "Aggregated routing table for the app."
+  (concat search/routes extract/routes window/other-routes))
+
+
 (defn ^:after-load mount-root []
   (re-frame/clear-subscription-cache!)
-  (router/init! views/routes)
-  (reagent/render [views/main router/page]
+  (router/init! routes)
+  (reagent/render [window/main router/page]
                   (.getElementById js/document "app")))
 
 

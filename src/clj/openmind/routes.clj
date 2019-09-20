@@ -36,7 +36,7 @@
 
 (defmethod offline-dispatch :default
   [msg]
-  #_(println msg))
+  )
 
 (defmulti dispatch (fn [{:keys [id] :as e}]
                      ;; Ignore all internal sente messages at present
@@ -82,10 +82,10 @@
 
 (defmethod dispatch :openmind/search
   [{[_
-     {:keys [openmind.search/term
-             openmind.search/filters
-             openmind.search/time
-             :openmind.search/nonce]}]
+     {:keys [openmind.components.search/term
+             openmind.components.search/filters
+             openmind.components.search/time
+             :openmind.components.search/nonce]}]
     :event :as req}]
   (async/go
     (let [res   (-> (prepare-search term filters time)
@@ -94,17 +94,18 @@
                     es/request<!
                     parse-search-response)
           event [:openmind/search-response
-                 #:openmind.search{:results res :nonce nonce}]]
+                 #:openmind.components.search{:results res :nonce nonce}]]
       (respond-with-fallback req event))))
 
 (defmethod offline-dispatch :openmind/search
   [{:keys [event] :as req}]
-  (println (:event req))
   (respond-with-fallback
    req
    [:openmind/search-response
-    #:openmind.search{:results [{:text "asdasd"}]
-                      :nonce (:openmind.search/nonce (second event))}]))
+    ;; REVIEW: This is coupling. A search result is something independent of the
+    ;; component that displays it. This naming forces us to keep them bound.
+    #:openmind.components.search{:results [{:text "asdasd"}]
+                      :nonce (:openmind.components.search/nonce (second event))}]))
 
 ;;;;; Login
 

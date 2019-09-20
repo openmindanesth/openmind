@@ -2,22 +2,22 @@
  (:require [cljs.spec.alpha :as s]))
 
 (def default-db
-  {::domain                    "anaesthesia"
-   ::tag-tree                  ::uninitialised
-   ::tag-lookup                ::uninitialised
-   ::status-message            ""
-   :openmind.views.tags/search {:search/selection []}
-   :openmind.router/route      nil
-   :openmind.views.extract/new-extract
-   {:new-extract/selection          []
-    :openmind.views.extract/content {:comments  {0 ""}
-                                     :related   {0 ""}
-                                     :contrast  {0 ""}
-                                     :confirmed {0 ""}
-                                     :figures   {0 ""}
-                                     :tags      #{}}
-    :errors                         nil}
-   ::results                   []})
+  {::domain                         "anaesthesia"
+   ::tag-tree                       ::uninitialised
+   :tag-lookup                     ::uninitialised
+   ::status-message                 ""
+   :openmind.components.tags/search {:search/selection []}
+   :openmind.router/route           nil
+   :openmind.componentes.extract-editor/new-extract
+   {:new-extract/selection                      []
+    :openmind.components.extract-editor/content {:comments  {0 ""}
+                                                 :related   {0 ""}
+                                                 :contrast  {0 ""}
+                                                 :confirmed {0 ""}
+                                                 :figures   {0 ""}
+                                                 :tags      #{}}
+    :errors                                     nil}
+   ::results                        []})
 
 (s/def ::db
   (s/keys :req [::new-extract
