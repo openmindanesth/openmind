@@ -202,45 +202,54 @@
   (.preventDefault e)
   (.stopPropagation e))
 
-(defn drop-upload [k e]
-  (.log js/console (.-target e))
-  (let [file (-> e .-dataTransfer .-files (aget 0))]
-    (.log js/console (-> e .-dataTransfer .-items (aget 0)
-                         (.getAsFile js/console.log)
-                        ))))
+(defn drop-upload
+  "Extracts the dropped image from the drop event and adds it to the app state."
+  ;;FIXME: Is there some sort of standard regarding the dragging of images from
+  ;;a browser? How can I be sure the first item will always contain a URL?
+  [k e]
+  (let [item (-> e .-dataTransfer .-items (aget 0))]
+    (if-let [file (.getAsFile item)]
+      (re-frame/dispatch [::form-edit [k] {:type :file :value file}])
+      (.getAsString item #(re-frame/dispatch
+                           [::form-edit [k] {:type :url :value %}])))))
+
 
 (defn select-upload [k e]
   (let [f (-> e .-target .-files (aget 0))]
-    (re-frame/dispatch [::form-edit k f]))
-  )
+    (re-frame/dispatch [::form-edit [k] {:type :file :value f}])))
 
 (defmethod input-component :image-drop
   [opts]
   (let [id          (str (gensym))
         drag-hover? (r/atom false)]
-    (fn [{:keys [key placeholder]}]
-      [:div.mt1.mb2
-       [:label.p2.border-round
-        {:style         {:border     :dashed
-                         :cursor     :pointer
-                         :min-height "250px"
-                         :max-width  "250px"}
-         :class         (if @drag-hover?
-                          :border-blue
-                          :border-grey)
-         :for           id
-         :on-drag-enter (juxt halt #(reset! drag-hover? true))
-         :on-drag-over  (juxt halt #(reset! drag-hover? true))
-         :on-drag-leave (juxt halt #(reset! drag-hover? false))
-         :on-drop       (juxt halt #(reset! drag-hover? false)
-                              (partial drop-upload key))}
-        placeholder]
-       [:input {:type      :file
-                :id        id
-                :style     {:visibility :hidden}
-                :accept    "image/png,image/gif,image/jpeg"
-                :on-change (partial select-upload key)}
-        ]])))
+    (fn [{:keys [key placeholder content]}]
+      (let [drop-state {:style         {:border    :dashed
+                                        :cursor    :pointer
+                                        :max-width "250px"}
+                        :class         (if @drag-hover?
+                                         :border-blue
+                                         :border-grey)
+                        :for           id
+                        :on-drag-enter (juxt halt #(reset! drag-hover? true))
+                        :on-drag-over  (juxt halt #(reset! drag-hover? true))
+                        :on-drag-leave (juxt halt #(reset! drag-hover? false))
+                        :on-drop       (juxt halt #(reset! drag-hover? false)
+                                             (partial drop-upload key))}]
+        [:div.mt1.mb2
+         (if content
+           [:img.border-round.p1
+            (merge drop-state
+                   {:src   (if (= :file (:type content))
+                             (js/URL.createObjectURL (:value content))
+                             (:value content))
+                    :on-click #(.click (.getElementById js/document id))}
+                   )]
+           [:label.p2.border-round drop-state placeholder])
+         [:input {:type      :file
+                  :id        id
+                  :style     {:visibility :hidden}
+                  :accept    "image/png,image/gif,image/jpeg"
+                  :on-change (partial select-upload key)}]]))))
 
 (defn responsive-two-column [l r]
   [:div.vcenter.mb1h.mbr2
