@@ -1,22 +1,22 @@
 (ns openmind.components.extract-editor
   (:require [cljs.spec.alpha :as s]
-            [openmind.spec.extract :as exs]
             [openmind.components.tags :as tags]
-            [reagent.core :as r]
-            [re-frame.core :as re-frame]))
+            [openmind.spec.extract :as exs]
+            [re-frame.core :as re-frame]
+            [reagent.core :as r]))
 
 ;;;;; Subs
 
 (re-frame/reg-sub
  ::new-extract
  (fn [db]
-   (::new-extract db)))
+   (::new (::extracts db))))
 
 (re-frame/reg-sub
  ::new-extract-content
  :<- [::new-extract]
  (fn [extract _]
-   (::content extract)))
+   (:content extract)))
 
 (re-frame/reg-sub
  ::new-extract-form-errors
@@ -94,8 +94,8 @@
   (<= 200 status 299))
 
 (def blank-new-extract
-  {:new-extract/selection []
-   ::content   {:tags      #{}
+  {:selection []
+   :content   {:tags      #{}
                            :comments  {0 ""}
                            :related   {0 ""}
                            :contrast  {0 ""}
@@ -126,6 +126,7 @@
                  {:status  :success
                   :message "Extract Successfully Created!"})
 
+      :dispatch [::clear-extract ::new]
       :dispatch-later [{:ms       2000
                         :dispatch [:openmind.events/clear-status-message]}
                        {:ms       500
@@ -378,4 +379,6 @@
 
 (def routes
   [["/new" {:name      :extract/create
-            :component editor-panel}]])
+            :component editor-panel
+            :controllers [{:start (fn [_]
+                                    (re-frame/dispatch [::init-new-extract]))}]}]])

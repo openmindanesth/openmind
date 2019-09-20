@@ -19,19 +19,3 @@
  ::menu-open?
  (fn [db]
    (:menu-open? db)))
-
-;;;;; Extract creation
-
-;; tags
-
-(re-frame/reg-sub
- ::editor-tag-view-selection
- :<- [:openmind.components.extract-editor/new-extract]
- (fn [extract _]
-   (:new-extract/selection extract)))
-
-(re-frame/reg-sub
- ::editor-selected-tags
- :<- [::new-extract-content]
- (fn [content _]
-   (into #{} (map :id (:tags content)))))

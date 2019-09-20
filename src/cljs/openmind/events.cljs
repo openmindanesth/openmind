@@ -33,29 +33,6 @@
 ;;;;; Extract Creation tags
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(re-frame/reg-event-db
- ::set-editor-selection
- (fn [db [_ path add?]]
-   ;; REVIEW: These handlers should be part of the extract editor logical group,
-   ;; and the event / sub names should be passed into the tags component.
-   (assoc-in db [:openmind.components.extract-editor/new-extract
-                 :new-extract/selection]
-             (if add?
-               path
-               (vec (butlast path))))))
-
-(re-frame/reg-event-db
- ::add-editor-tag
- (fn [db [_ tag]]
-   (update-in db [:openmind.components.extract-editor/new-extract
-                  :new-extract/content :tags] conj tag)))
-
-(re-frame/reg-event-db
- ::remove-editor-tag
- (fn [db [_ & tags]]
-   (update-in db [:openmind.components.extract-editor/new-extract
-                  :new-extract/content :tags]
-              #(reduce disj % tags))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Server Comms

@@ -13,7 +13,7 @@
 (def href reitit.frontend.easy/href)
 
 (defn login-link []
-  [:a {:href (href ::login)} "login"])
+  [:a {:href (href :login)} "login"])
 
 (defn logout-link []
   ;; TODO: Make this a real page.
