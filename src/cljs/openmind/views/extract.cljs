@@ -242,8 +242,7 @@
                    {:src   (if (= :file (:type content))
                              (js/URL.createObjectURL (:value content))
                              (:value content))
-                    :on-click #(.click (.getElementById js/document id))}
-                   )]
+                    :on-click #(.click (.getElementById js/document id))})]
            [:label.p2.border-round drop-state placeholder])
          [:input {:type      :file
                   :id        id
