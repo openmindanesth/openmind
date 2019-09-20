@@ -101,12 +101,56 @@
    [:a.bottom-right {:on-click
                      (fn [_]
                        (re-frame/dispatch
-                        [::events/form-edit [key (count content)] ""]))}
+                        [::form-edit [key (count content)] ""]))}
     "[+]"]])
 
 (defmethod input-component :tag-selector
-  [{:keys [label]}]
+  [opts]
   [tags/tag-selector])
+
+(defn halt [e]
+  (.preventDefault e)
+  (.stopPropagation e))
+
+(defn drop-upload [k e]
+  (.log js/console (.-target e))
+  (let [file (-> e .-dataTransfer .-files (aget 0))]
+    (.log js/console (-> e .-dataTransfer .-items (aget 0)
+                         (.getAsFile js/console.log)
+                        ))))
+
+(defn select-upload [k e]
+  (let [f (-> e .-target .-files (aget 0))]
+    (re-frame/dispatch [::form-edit k f]))
+  )
+
+(defmethod input-component :image-drop
+  [opts]
+  (let [id          (str (gensym))
+        drag-hover? (r/atom false)]
+    (fn [{:keys [key placeholder]}]
+      [:div.mt1.mb2
+       [:label.p2.border-round
+        {:style         {:border     :dashed
+                         :cursor     :pointer
+                         :min-height "250px"
+                         :max-width  "250px"}
+         :class         (if @drag-hover?
+                          :border-blue
+                          :border-grey)
+         :for           id
+         :on-drag-enter (juxt halt #(reset! drag-hover? true))
+         :on-drag-over  (juxt halt #(reset! drag-hover? true))
+         :on-drag-leave (juxt halt #(reset! drag-hover? false))
+         :on-drop       (juxt halt #(reset! drag-hover? false)
+                              (partial drop-upload key))}
+        placeholder]
+       [:input {:type      :file
+                :id        id
+                :style     {:visibility :hidden}
+                :accept    "image/png,image/gif,image/jpeg"
+                :on-change (partial select-upload key)}
+        ]])))
 
 (defn responsive-two-column [l r]
   [:div.vcenter.mb1h.mbr2
@@ -120,10 +164,10 @@
     (if full-width?
       [:div
        [:h4.ctext label-span]
-       (input-component com)]
+       [input-component com]]
       [responsive-two-column
        label-span
-       (input-component com)])))
+       [input-component com]])))
 
 (def extract-creation-form
   [{:type        :textarea
@@ -142,10 +186,10 @@
     :placeholder "https://www.ncbi.nlm.nih.gov/pubmed/..."
     :spec        ::exs/source
     :error-message "you must reference a source article."}
-   {:type        :text-input-list
-    :label       "figures"
-    :key         :figures
-    :placeholder "link to a figure"
+   {:type        :image-drop
+    :label       "figure"
+    :key         :figure
+    :placeholder [:span [:b "choose a file"] " or drag it here"]
     :spec        ::exs/image}
    {:type        :textarea-list
     :label       "comments"
