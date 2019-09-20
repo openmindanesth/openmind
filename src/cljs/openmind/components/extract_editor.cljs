@@ -32,19 +32,53 @@
    {:content (get content k)
     :errors  (get errors k)}))
 
+;; tags
+
+(re-frame/reg-sub
+ ::editor-tag-view-selection
+ :<- [::new-extract]
+ (fn [extract _]
+   (:selection extract)))
+
+(re-frame/reg-sub
+ ::editor-selected-tags
+ :<- [::new-extract-content]
+ (fn [content _]
+   (into #{} (map :id (:tags content)))))
+
+(re-frame/reg-event-db
+ ::set-editor-selection
+ (fn [db [_ path add?]]
+   ;; REVIEW: These handlers should be part of the extract editor logical group,
+   ;; and the event / sub names should be passed into the tags component.
+   (assoc-in db [::extracts ::new :selection]
+             (if add?
+               path
+               (vec (butlast path))))))
+
+(re-frame/reg-event-db
+ ::add-editor-tag
+ (fn [db [_ tag]]
+   (update-in db [::extracts ::new :content :tags] conj tag)))
+
+(re-frame/reg-event-db
+ ::remove-editor-tag
+ (fn [db [_ & tags]]
+   (update-in db [:extracts ::new :content :tags] #(reduce disj % tags))))
+
 ;;;;; Events
 
 (re-frame/reg-event-db
  ::form-edit
  (fn [db [_ k v]]
-   (assoc-in db (concat [::new-extract ::content] k) v)))
+   (assoc-in db (concat [::extracts ::new :content] k) v)))
 
 (re-frame/reg-event-fx
  ::create-extract
  (fn [cofx _]
    (let [author  @(re-frame/subscribe [:openmind.subs/login-info])
          extract (-> cofx
-                     (get-in [:db ::new-extract ::content])
+                     (get-in [:db ::extracts ::new :content])
                      (assoc :author author
                             :created-time (js/Date.))
                      (update :tags #(mapv :id %)))]
@@ -68,6 +102,18 @@
                            :confirmed {0 ""}
                            :figures   {0 ""}}
    :errors                nil})
+
+(re-frame/reg-event-db
+ ::clear-extract
+ (fn [db [_ id]]
+   (update db ::extracts dissoc id)))
+
+(re-frame/reg-event-db
+ ::init-new-extract
+ (fn [db]
+   (update-in db [::extracts ::new] #(if (nil? %)
+                                       blank-new-extract
+                                       %))))
 
 (re-frame/reg-event-fx
  :openmind/index-result
@@ -196,7 +242,11 @@
 
 (defmethod input-component :tag-selector
   [opts]
-  [tags/tag-selector])
+  [tags/tag-widget {:selection {:read ::editor-tag-view-selection
+                                :set  ::set-editor-selection}
+                    :edit      {:read ::editor-selected-tags
+                                :add ::add-editor-tag
+                                :remove ::remove-editor-tag}}])
 
 (defn halt [e]
   (.preventDefault e)

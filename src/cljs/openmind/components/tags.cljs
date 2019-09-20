@@ -50,7 +50,7 @@
 (re-frame/reg-sub
  ::tags
  (fn [db]
-   (::tag-tree db)))
+   (:tag-tree db)))
 
 ;;;;; Events
 
@@ -61,7 +61,7 @@
  :openmind/tag-tree
  (fn [db [_ tree]]
    (assoc db
-          ::tag-tree tree
+          :tag-tree tree
           :tag-lookup (build-tag-lookup tree))))
 
 (re-frame/reg-event-db
@@ -266,18 +266,7 @@
 (defn search-filter []
   [tag-view search-tag-display search-tag-data])
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;; Extract Creation
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(def edit-display
-  (create-display ::subs/editor-tag-view-selection
-                  ::events/set-editor-selection))
-
-(def edit-data
-  (create-data-manager ::subs/editor-selected-tags
-                       ::events/add-editor-tag
-                       ::events/remove-editor-tag))
-
-(defn tag-selector []
-  [tag-view edit-display edit-data])
+(defn tag-widget [{:keys [selection edit]}]
+  [tag-view
+   (create-display (:read selection) (:set selection))
+   (create-data-manager (:read edit) (:add edit) (:remove edit))])
