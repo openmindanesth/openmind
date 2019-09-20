@@ -26,18 +26,6 @@
 
     :else (log/warn "No way to return response to sender." uid msg))  )
 
-;;;;; Offline testing stub
-;; TODO: Maybe put this in a new namespace
-(defmulti offline-dispatch :id)
-
-(defmethod offline-dispatch :openmind/verify-login
-  [req]
-  (respond-with-fallback req [:openmind/identity {:name "t" :orcid-id "xyzzy"}]))
-
-(defmethod offline-dispatch :default
-  [msg]
-  )
-
 (defmulti dispatch (fn [{:keys [id] :as e}]
                      ;; Ignore all internal sente messages at present
                      (when-not (= "chsk" (namespace id))
@@ -96,16 +84,6 @@
           event [:openmind/search-response
                  #:openmind.components.search{:results res :nonce nonce}]]
       (respond-with-fallback req event))))
-
-(defmethod offline-dispatch :openmind/search
-  [{:keys [event] :as req}]
-  (respond-with-fallback
-   req
-   [:openmind/search-response
-    ;; REVIEW: This is coupling. A search result is something independent of the
-    ;; component that displays it. This naming forces us to keep them bound.
-    #:openmind.components.search{:results [{:text "asdasd"}]
-                      :nonce (:openmind.components.search/nonce (second event))}]))
 
 ;;;;; Login
 
@@ -168,11 +146,13 @@
 
 (defmethod dispatch :openmind/tag-tree
   [{:keys [send-fn ?reply-fn] [_ root] :event}]
+  (println "tag-tree-req")
   (async/go
     (when-let [root-id (get (async/<! (tags/get-top-level-tags)) root)]
       (let [tree    (async/<! (tags/get-tag-tree root-id))
             event   [:openmind/tag-tree (tags/invert-tag-tree
                                          tree
                                          {:tag-name root :id root-id})]]
+        (respond-with-fallback )
         (when ?reply-fn
           (?reply-fn event))))))

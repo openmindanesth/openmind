@@ -104,9 +104,6 @@
 (def dispatch-fn
   routes/dispatch)
 
-(defn set-offline-mode! []
-  (alter-var-root #'dispatch-fn (constantly routes/offline-dispatch)))
-
 (defn dispatch-msg [msg]
   (let [oauth (-> msg :ring-req :oauth2/access-tokens)]
     (dispatch-fn (-> msg
