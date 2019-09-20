@@ -1,16 +1,106 @@
 (ns openmind.views.extract
-  (:require [openmind.events :as events]
+  (:require [cljs.spec.alpha :as s]
             [openmind.spec.extract :as exs]
-            [openmind.subs :as subs]
             [openmind.views.tags :as tags]
+            [reagent.core :as r]
             [re-frame.core :as re-frame]))
 
+;;;;; Subs
+
+(re-frame/reg-sub
+ ::new-extract
+ (fn [db]
+   (::new-extract db)))
+
+(re-frame/reg-sub
+ ::new-extract-content
+ :<- [::new-extract]
+ (fn [extract _]
+   (::content extract)))
+
+(re-frame/reg-sub
+ ::new-extract-form-errors
+ :<- [::new-extract]
+ (fn [extract _]
+   (:errors extract)))
+
+(re-frame/reg-sub
+ ::form-input-data
+ :<- [::new-extract-content]
+ :<- [::new-extract-form-errors]
+ (fn [[content errors] [_ k]]
+   {:content (get content k)
+    :errors  (get errors k)}))
+
+;;;;; Events
+
+(re-frame/reg-event-db
+ ::form-edit
+ (fn [db [_ k v]]
+   (assoc-in db (concat [::new-extract ::content] k) v)))
+
+(re-frame/reg-event-fx
+ ::create-extract
+ (fn [cofx _]
+   (let [author  @(re-frame/subscribe [:openmind.subs/login-info])
+         extract (-> cofx
+                     (get-in [:db ::new-extract ::content])
+                     (assoc :author author
+                            :created-time (js/Date.))
+                     (update :tags #(mapv :id %)))]
+
+     (if (s/valid? ::exs/extract extract)
+       {:dispatch [::try-send [:openmind/index extract]]}
+       {:db (assoc-in (:db cofx) [::new-extract :errors]
+                      (exs/interpret-explanation
+                       (s/explain-data ::exs/extract extract)))}))))
+
+
+(defn success? [status]
+  (<= 200 status 299))
+
+(def blank-new-extract
+  {:new-extract/selection []
+   :new-extract/content   {:tags      #{}
+                           :comments  {0 ""}
+                           :related   {0 ""}
+                           :contrast  {0 ""}
+                           :confirmed {0 ""}
+                           :figures   {0 ""}}
+   :errors                nil})
+
+(re-frame/reg-event-fx
+ :openmind/index-result
+ (fn [{:keys [db]} [_ status]]
+   (if (success? status)
+     {:db (assoc db
+                 ::new-extract blank-new-extract
+                 ;; TODO: This should be an event
+                 :openmind.db/status-message
+                 {:status  :success
+                  :message "Extract Successfully Created!"})
+
+      :dispatch-later [{:ms       2000
+                        :dispatch [:openmind.events/clear-status-message]}
+                       {:ms       500
+                        :dispatch [:openmind.router/navigate
+                                   {:route :openmind.search/search}]}]}
+     {:db (assoc db :status-message
+                 ;; FIXME: So should this
+                 {:status :error :message "Failed to create extract."})})))
+
+(re-frame/reg-event-db
+ ::clear-status-message
+ (fn [db]
+   (dissoc db :status-message)))
 (defn pass-edit [ks]
   (fn [ev]
-    (re-frame/dispatch [::events/form-edit ks (-> ev .-target .-value)])))
+    (re-frame/dispatch [::form-edit ks (-> ev .-target .-value)])))
+
+;;;; Components
 
 (defn add-form-data [{:keys [key] :as elem}]
-  (merge elem @(re-frame/subscribe [::subs/form-input-data key])))
+  (merge elem @(re-frame/subscribe [::form-input-data key])))
 
 (defn error [text]
   [:p.text-red.small.pl1.mth.mb0 text])
@@ -72,7 +162,7 @@
          content)
    [:a.plh.ptp {:on-click (fn [_]
                             (re-frame/dispatch
-                             [::events/form-edit [key (count content)] ""]))}
+                             [::form-edit [key (count content)] ""]))}
     "[+]"]))
 
 (defmethod input-component :textarea-list
@@ -224,7 +314,7 @@
      [:h2 "create a new extract"]
      [:button.bg-grey.border-round.wide
       {:on-click (fn [_]
-                   (re-frame/dispatch [::events/create-extract]))}
+                   (re-frame/dispatch [::create-extract]))}
       "CREATE"]]]
    (map input-row (map add-form-data extract-creation-form))))
 

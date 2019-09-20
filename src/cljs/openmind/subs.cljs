@@ -22,31 +22,6 @@
 
 ;;;;; Extract creation
 
-(re-frame/reg-sub
- ::new-extract
- (fn [db]
-   (::db/new-extract db)))
-
-(re-frame/reg-sub
- ::new-extract-content
- :<- [::new-extract]
- (fn [extract _]
-   (:new-extract/content extract)))
-
-(re-frame/reg-sub
- ::new-extract-form-errors
- :<- [::new-extract]
- (fn [extract _]
-   (:errors extract)))
-
-(re-frame/reg-sub
- ::form-input-data
- :<- [::new-extract-content]
- :<- [::new-extract-form-errors]
- (fn [[content errors] [_ k]]
-   {:content (get content k)
-    :errors  (get errors k)}))
-
 ;; tags
 
 (re-frame/reg-sub

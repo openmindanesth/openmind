@@ -82,6 +82,10 @@ html {
 		border-color: #BB1212;
 }
 
+.border-blue {
+		border-color: #3286E5 !important;
+}
+
 .bg-white {
 		background-color: white;
 }

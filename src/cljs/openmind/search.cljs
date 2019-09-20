@@ -58,7 +58,7 @@
 
 (defn hlink [text float-content orientation]
   (let [hover? (reagent/atom false)]
-    (fn [text float-content]
+    (fn [text float-content orientation]
       [:div
        [:a.plh.prh.link-blue {:on-mouse-over #(reset! hover? true)
                               :on-mouse-out  #(reset! hover? false)}

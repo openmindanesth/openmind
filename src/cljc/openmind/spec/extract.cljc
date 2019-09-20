@@ -22,7 +22,7 @@
 
 (s/def ::extract
   (s/keys :req-un [::text ::source ::tags ::created-time ::author]
-          :opt-un [::comments ::figures ::history ::related ::details
+          :opt-un [::comments ::figure ::history ::related ::details
                    ::confirmed ::contrast]))
 
 ;;;;; Required
@@ -68,7 +68,7 @@
         :upload ::file-reference))
 
 ;; FIXME: collection of figures
-(s/def ::figures
+(s/def ::figure
   (s/map-of ::int ::image))
 
 ;; TODO: What are details?

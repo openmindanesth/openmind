@@ -30,56 +30,6 @@
    (assoc db :menu-open? false)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;; Extract Creation
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(re-frame/reg-event-db
- ::form-edit
- (fn [db [_ k v]]
-   (assoc-in db (concat [::db/new-extract :new-extract/content] k) v)))
-
-(re-frame/reg-event-fx
- ::create-extract
- (fn [cofx _]
-   (let [author  @(re-frame/subscribe [:openmind.subs/login-info])
-         extract (-> cofx
-                     (get-in [:db ::db/new-extract :new-extract/content])
-                     (assoc :author author
-                            :created-time (js/Date.))
-                     (update :tags #(mapv :id %)))]
-
-     (if (s/valid? ::extract-spec/extract extract)
-       {:dispatch [::try-send [:openmind/index extract]]}
-       {:db (assoc-in (:db cofx) [:openmind.db/new-extract :errors]
-                      (extract-spec/interpret-explanation
-                       (s/explain-data ::extract-spec/extract extract)))}))))
-
-
-(defn success? [status]
-  (<= 200 status 299))
-
-(re-frame/reg-event-fx
- :openmind/index-result
- (fn [{:keys [db]} [_ status]]
-   (if (success? status)
-     {:db (assoc db
-                 ::db/new-extract db/blank-new-extract
-                 ::db/status-message {:status  :success
-                                  :message "Extract Successfully Created!"}
-                 ::db/route :openmind.views/search)
-
-      :dispatch-later [{:ms 2000 :dispatch [::clear-status-message]}
-                       {:ms 500 :dispatch [:openmind.router/navigate
-                                           {:route :openmind.search/search}]}]}
-     {:db (assoc db :status-message
-                 {:status :error :message "Failed to create extract."})})))
-
-(re-frame/reg-event-db
- ::clear-status-message
- (fn [db]
-   (dissoc db :status-message)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Extract Creation tags
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
