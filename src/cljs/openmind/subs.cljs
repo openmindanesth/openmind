@@ -3,13 +3,6 @@
    [openmind.db :as db]
    [re-frame.core :as re-frame]))
 
-;;;;; Server comms
-
-(re-frame/reg-sub
- ::send-fn
- (fn [db]
-   (:send-fn db)))
-
 ;;;;; Misc
 
 (re-frame/reg-sub
