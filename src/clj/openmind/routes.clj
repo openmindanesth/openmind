@@ -11,7 +11,7 @@
 ;;;; routing table
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- respond-with-fallback
+(defn respond-with-fallback
   "Tries to respond directly to sender, if that fails, tries to respond to all
   connected devices logged into the account of the sender."
   [{:keys [send-fn ?reply-fn uid]} msg]
@@ -145,14 +145,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmethod dispatch :openmind/tag-tree
-  [{:keys [send-fn ?reply-fn] [_ root] :event}]
-  (println "tag-tree-req")
+  [{[_ root] :event :as req}]
   (async/go
     (when-let [root-id (get (async/<! (tags/get-top-level-tags)) root)]
       (let [tree    (async/<! (tags/get-tag-tree root-id))
             event   [:openmind/tag-tree (tags/invert-tag-tree
                                          tree
                                          {:tag-name root :id root-id})]]
-        (respond-with-fallback )
-        (when ?reply-fn
-          (?reply-fn event))))))
+        (respond-with-fallback req event)))))
