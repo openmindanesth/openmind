@@ -61,7 +61,7 @@
 
 (def blank-new-extract
   {:new-extract/selection []
-   :new-extract/content   {:tags      #{}
+   ::content   {:tags      #{}
                            :comments  {0 ""}
                            :related   {0 ""}
                            :contrast  {0 ""}

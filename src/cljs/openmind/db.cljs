@@ -8,7 +8,7 @@
    ::status-message                 ""
    :openmind.components.tags/search {:search/selection []}
    :openmind.router/route           nil
-   :openmind.componentes.extract-editor/new-extract
+   :openmind.components.extract-editor/new-extract
    {:new-extract/selection                      []
     :openmind.components.extract-editor/content {:comments  {0 ""}
                                                  :related   {0 ""}
