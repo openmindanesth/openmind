@@ -68,5 +68,5 @@
 (defn page []
   (let [route @(re-frame/subscribe [::route])]
     (if route
-      [(-> route :data :component)]
+      [(-> route :data :component) route]
       [four-o-four])))
