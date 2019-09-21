@@ -209,20 +209,16 @@
        (let [sub-sel (second path)]
          (filter-view (get (:children tag) sub-sel) display data))])))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;; Search screen
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 (defn create-display [sub event]
   (reify TagDisplay
     (get-path [_]
-      @(re-frame/subscribe [sub]))
+      @(re-frame/subscribe sub))
     (open-path [_ tag]
       (let [path (conj (:parents tag) (:id tag))]
-        (re-frame/dispatch [event path true])))
+        (re-frame/dispatch (into event [path true]))))
     (close-path [_ tag]
       (let [path (conj (:parents tag) (:id tag))]
-        (re-frame/dispatch [event path false])))
+        (re-frame/dispatch (into event [path false]))))
 
     ILookup
     (-lookup [this tag]
@@ -235,11 +231,11 @@
 (defn create-data-manager [sub add remove]
   (reify TagSet
     (tags [_]
-      @(re-frame/subscribe [sub]))
+      @(re-frame/subscribe sub))
     (select [_ tag]
-      (re-frame/dispatch [add tag]))
+      (re-frame/dispatch (into add [tag])))
     (unselect [_ tags]
-      (re-frame/dispatch (into [remove] tags)))
+      (re-frame/dispatch (into remove tags)))
 
     ILookup
     (-lookup [this tag]
@@ -247,14 +243,18 @@
     (-lookup [this tag not-found]
       (get (tags this) tag not-found))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;; Search screen
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (def search-tag-display
-  (create-display ::current-filter-edit
-                  ::set-filter-edit))
+  (create-display [::current-filter-edit]
+                  [::set-filter-edit]))
 
 (def search-tag-data
-  (create-data-manager ::search-filters
-                       ::add-filter-feature
-                       ::remove-filter-feature))
+  (create-data-manager [::search-filters]
+                       [::add-filter-feature]
+                       [::remove-filter-feature]))
 
 (defn tag-view [display data]
   (let [tag-tree @(re-frame/subscribe [::tags])]
