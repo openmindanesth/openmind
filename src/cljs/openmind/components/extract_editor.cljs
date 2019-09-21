@@ -8,14 +8,16 @@
 ;;;;; Subs
 
 (re-frame/reg-sub
- ::new-extract
- (fn [db]
-   (::new (::extracts db))))
+ ::extract
+ (fn [db [_ k]]
+   (get (::extracts db) k)))
 
 (re-frame/reg-sub
- ::new-extract-content
- :<- [::new-extract]
- (fn [extract _]
+ ::extract-content
+ (fn [[_ dk] _]
+   (println dk)
+   (re-frame/subscribe [::extract dk]))
+ (fn [extract e]
    (:content extract)))
 
 (re-frame/reg-sub
@@ -26,8 +28,10 @@
 
 (re-frame/reg-sub
  ::form-input-data
- :<- [::new-extract-content]
- :<- [::new-extract-form-errors]
+ (fn [[_ dk k] _]
+   (println dk)
+   [(re-frame/subscribe [::extract-content dk])
+    (re-frame/subscribe [::new-extract-form-errors])])
  (fn [[content errors] [_ k]]
    {:content (get content k)
     :errors  (get errors k)}))
@@ -36,13 +40,13 @@
 
 (re-frame/reg-sub
  ::editor-tag-view-selection
- :<- [::new-extract]
+ :<- [::extract]
  (fn [extract _]
    (:selection extract)))
 
 (re-frame/reg-sub
  ::editor-selected-tags
- :<- [::new-extract-content]
+ :<- [::extract-content]
  (fn [content _]
    (into #{} (map :id (:tags content)))))
 
@@ -85,7 +89,7 @@
 
      (if (s/valid? ::exs/extract extract)
        {:dispatch [::try-send [:openmind/index extract]]}
-       {:db (assoc-in (:db cofx) [::new-extract :errors]
+       {:db (assoc-in (:db cofx) [::extracts ::new :errors]
                       (exs/interpret-explanation
                        (s/explain-data ::exs/extract extract)))}))))
 
@@ -120,8 +124,6 @@
  (fn [{:keys [db]} [_ status]]
    (if (success? status)
      {:db (assoc db
-                 ::new-extract blank-new-extract
-                 ;; TODO: This should be an event
                  :openmind.db/status-message
                  {:status  :success
                   :message "Extract Successfully Created!"})
@@ -146,8 +148,10 @@
 
 ;;;; Components
 
-(defn add-form-data [{:keys [key] :as elem}]
-  (merge elem @(re-frame/subscribe [::form-input-data key])))
+(defn add-form-data [id {:keys [key] :as elem}]
+  (-> elem
+      (assoc :data-key id)
+      (merge @(re-frame/subscribe [::form-input-data id key]))))
 
 (defn error [text]
   [:p.text-red.small.pl1.mth.mb0 text])
@@ -366,7 +370,8 @@
     :full-width? true
     :spec        ::exs/tags}])
 
-(defn editor-panel []
+(defn extract-editor
+  [{{:keys [id] :or {id ::new}} :path-params}]
   (into
    [:div.flex.flex-column.flex-start.pl2.pr2
     [:div.flex.pb1.space-between
@@ -375,10 +380,12 @@
       {:on-click (fn [_]
                    (re-frame/dispatch [::create-extract]))}
       "CREATE"]]]
-   (map input-row (map add-form-data extract-creation-form))))
+   (map input-row (map (partial add-form-data id) extract-creation-form))))
 
 (def routes
-  [["/new" {:name      :extract/create
-            :component editor-panel
+  [["/new" {:name        :extract/create
+            :component   extract-editor
             :controllers [{:start (fn [_]
-                                    (re-frame/dispatch [::init-new-extract]))}]}]])
+                                    (re-frame/dispatch [::init-new-extract]))}]}]
+   ["/edit/:id" {:name      :extract/edit
+                 :component extract-editor}]])
