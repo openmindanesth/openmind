@@ -58,7 +58,7 @@
 (s/def ::comments
   ;; FIXME: This should be a list of comments. Eaxh comment should have data of
   ;; its own such as author, authoring time, etc..
-  (s/coll-of ::comment))
+  (s/coll-of ::comment :kind vector?))
 
 (s/def ::comment
   string?)
@@ -72,18 +72,18 @@
 (s/def ::details string?)
 
 (s/def ::history
-  (s/coll-of ::extract))
+  (s/coll-of ::extract :kind vector?))
 
 (s/def ::int int?)
 
-(s/def ::numbered-reference-list
-  (s/coll-of ::reference))
+(s/def ::reference-list
+  (s/coll-of ::reference :kind vector?))
 
-(s/def ::related ::numbered-reference-list)
+(s/def ::related ::reference-list)
 
-(s/def ::confirmed ::numbered-reference-list)
+(s/def ::confirmed ::reference-list)
 
-(s/def ::contrast ::numbered-reference-list)
+(s/def ::contrast ::reference-list)
 
 (comment
   (def example

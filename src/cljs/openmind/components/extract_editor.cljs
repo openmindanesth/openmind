@@ -49,7 +49,7 @@
  (fn [[_ k]]
    (re-frame/subscribe [::extract-content k]))
  (fn [content _]
-   (into #{} (map :id (:tags content)))))
+   (:tags content)))
 
 (re-frame/reg-event-db
  ::set-editor-selection
@@ -62,12 +62,13 @@
 (re-frame/reg-event-db
  ::add-editor-tag
  (fn [db [_ id tag]]
-   (update-in db [::extracts id :content :tags] conj tag)))
+   (update-in db [::extracts id :content :tags] conj (:id tag))))
 
 (re-frame/reg-event-db
  ::remove-editor-tag
  (fn [db [_ id & tags]]
-   (update-in db [:extracts id :content :tags] #(reduce disj % tags))))
+   (update-in db [::extracts id :content :tags]
+              #(reduce disj % (map :id tags)))))
 
 ;;;;; Events
 
@@ -83,12 +84,10 @@
          extract (-> cofx
                      (get-in [:db ::extracts id :content])
                      (assoc :author author
-                            :created-time (js/Date.))
-                     (update :tags #(mapv :id %)))
+                            :created-time (js/Date.)))
          event   (if (= ::new id)
                    [:openmind/index extract]
-                   [:openmind/update id extract])]
-     (println event)
+                   [:openmind/update extract])]
      (if (s/valid? ::exs/extract extract)
        {:dispatch [:openmind.events/try-send event]}
        {:db (assoc-in (:db cofx) [::extracts id :errors]
@@ -102,10 +101,10 @@
 (def blank-new-extract
   {:selection []
    :content   {:tags      #{}
-               :comments  {0 ""}
-               :related   {0 ""}
-               :contrast  {0 ""}
-               :confirmed {0 ""}}
+               :comments  [""]
+               :related   [""]
+               :contrast  [""]
+               :confirmed [""]}
    :errors    nil})
 
 (re-frame/reg-event-db
@@ -206,20 +205,22 @@
   [{:keys [key placeholder spec errors content data-key]}]
   (conj
    (into [:div.flex.flex-wrap]
-         (map (fn [[i c]]
-                (let [err (get errors i)]
-                  [:div
-                   [:input.full-width-textarea (merge {:type      :text
-                                   :on-change (pass-edit data-key [key i])}
-                                  (when err
-                                    {:class "form-error"})
-                                  (if (seq c)
-                                    {:value c}
-                                    {:value       nil
-                                     :placeholder placeholder}))]
-                   (when err
-                     [:div.mbh
-                      [error err]])])))
+         (map-indexed
+          (fn [i c]
+            (let [err (get errors i)]
+              [:div
+               [:input.full-width-textarea
+                (merge {:type      :text
+                        :on-change (pass-edit data-key [key i])}
+                       (when err
+                         {:class "form-error"})
+                       (if (seq c)
+                         {:value c}
+                         {:value       nil
+                          :placeholder placeholder}))]
+               (when err
+                 [:div.mbh
+                  [error err]])])))
          content)
    [:a.plh.ptp {:on-click (fn [_]
                             (re-frame/dispatch
@@ -230,24 +231,25 @@
   [{:keys [key placeholder spec errors content data-key] :as e}]
   [:div
    (into [:div]
-         (map (fn [[i c]]
-                (let [err (get errors i)]
-                  [:div
-                   [:textarea.full-width-textarea
-                    (merge {:id        (name (str key i))
-                            :style     {:resize :vertical}
-                            :rows      2
-                            :type      :text
-                            :on-change (pass-edit data-key [key i])}
-                           (cond
-                             (seq content) {:value c}
-                             placeholder   {:value       nil
-                                            :placeholder placeholder})
-                           (when err
-                             {:class "form-error"}))]
-                   (when err
-                     [:div.mbh
-                      [error err]])]))
+         (map-indexed
+          (fn [i c]
+            (let [err (get errors i)]
+              [:div
+               [:textarea.full-width-textarea
+                (merge {:id        (name (str key i))
+                        :style     {:resize :vertical}
+                        :rows      2
+                        :type      :text
+                        :on-change (pass-edit data-key [key i])}
+                       (cond
+                         (seq content) {:value c}
+                         placeholder   {:value       nil
+                                        :placeholder placeholder})
+                       (when err
+                         {:class "form-error"}))]
+               (when err
+                 [:div.mbh
+                  [error err]])]))
               content))
    [:a.bottom-right {:on-click
                      (fn [_]

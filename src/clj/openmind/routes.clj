@@ -113,18 +113,11 @@
 
     :else doc))
 
-(defn collapse-maps [doc]
-  (let [map-keys [:comments :contrast :confirmed :related :figures]]
-    (reduce (fn [doc k]
-              (update doc k #(remove empty? (vals %))))
-            doc map-keys)))
-
 (defn prepare [doc]
   (-> doc
       ;; Prefer server timestamp over what came from client
       (assoc :created-time (java.util.Date.))
-      parse-dates
-      collapse-maps))
+      parse-dates))
 
 (defmethod dispatch :openmind/index
   [{:keys [client-id send-fn ?reply-fn uid tokens] [_ doc] :event}]
@@ -145,7 +138,11 @@
 ;;;;; Extract editing
 
 (defn fetch-response [res]
-  [:openmind/fetch-extract-response (assoc (:_source res) :id (:_id res))])
+  [:openmind/fetch-extract-response
+   (-> res
+       :_source
+       (assoc :id (:_id res))
+       (update :tags set))])
 
 (defmethod dispatch :openmind/fetch-extract
   [{[_ id] :event :as req}]
