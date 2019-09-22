@@ -35,6 +35,10 @@
             :url (str base-url "/" index "/_search")
             :body qbody})))
 
+(defn lookup [index id]
+  (assoc base-req
+         :url (str base-url "/" index "/_doc/" id)))
+
 ;;;;; Init new index
 
 (defn set-mapping [index]

@@ -142,6 +142,21 @@
           (when ?reply-fn
             (?reply-fn [:openmind/index-result (:status res)])))))))
 
+;;;;; Extract editing
+
+(defn fetch-response [res]
+  [:openmind/fetch-extract-response (assoc (:_source res) :id (:_id res))])
+
+(defmethod dispatch :openmind/fetch-extract
+  [{[_ id] :event :as req}]
+  (async/go
+    (->> (es/lookup es/index id)
+         es/send-off!
+         async/<!
+         es/parse-response
+         fetch-response
+         (respond-with-fallback req))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Tag Hierarchy
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

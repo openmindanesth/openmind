@@ -15,24 +15,23 @@
 (re-frame/reg-sub
  ::extract-content
  (fn [[_ dk] _]
-   (println dk)
    (re-frame/subscribe [::extract dk]))
  (fn [extract e]
    (:content extract)))
 
 (re-frame/reg-sub
- ::new-extract-form-errors
- :<- [::new-extract]
+ ::extract-form-errors
+ (fn [[_ k]]
+   (re-frame/subscribe [::extract k]))
  (fn [extract _]
    (:errors extract)))
 
 (re-frame/reg-sub
  ::form-input-data
  (fn [[_ dk k] _]
-   (println dk)
    [(re-frame/subscribe [::extract-content dk])
-    (re-frame/subscribe [::new-extract-form-errors])])
- (fn [[content errors] [_ k]]
+    (re-frame/subscribe [::extract-form-errors dk])])
+ (fn [[content errors] [_ dk k]]
    {:content (get content k)
     :errors  (get errors k)}))
 
@@ -40,35 +39,35 @@
 
 (re-frame/reg-sub
  ::editor-tag-view-selection
- :<- [::extract]
+ (fn [[_ k]]
+   (re-frame/subscribe [::extract k]))
  (fn [extract _]
    (:selection extract)))
 
 (re-frame/reg-sub
  ::editor-selected-tags
- :<- [::extract-content]
+ (fn [[_ k]]
+   (re-frame/subscribe [::extract-content k]))
  (fn [content _]
    (into #{} (map :id (:tags content)))))
 
 (re-frame/reg-event-db
  ::set-editor-selection
- (fn [db [_ path add?]]
-   ;; REVIEW: These handlers should be part of the extract editor logical group,
-   ;; and the event / sub names should be passed into the tags component.
-   (assoc-in db [::extracts ::new :selection]
+ (fn [db [_ id path add?]]
+   (assoc-in db [::extracts id :selection]
              (if add?
                path
                (vec (butlast path))))))
 
 (re-frame/reg-event-db
  ::add-editor-tag
- (fn [db [_ tag]]
-   (update-in db [::extracts ::new :content :tags] conj tag)))
+ (fn [db [_ id tag]]
+   (update-in db [::extracts id :content :tags] conj tag)))
 
 (re-frame/reg-event-db
  ::remove-editor-tag
- (fn [db [_ & tags]]
-   (update-in db [:extracts ::new :content :tags] #(reduce disj % tags))))
+ (fn [db [_ id & tags]]
+   (update-in db [:extracts id :content :tags] #(reduce disj % tags))))
 
 ;;;;; Events
 
@@ -86,9 +85,8 @@
                      (assoc :author author
                             :created-time (js/Date.))
                      (update :tags #(mapv :id %)))]
-
      (if (s/valid? ::exs/extract extract)
-       {:dispatch [::try-send [:openmind/index extract]]}
+       {:dispatch [:openmind.events/try-send [:openmind/index extract]]}
        {:db (assoc-in (:db cofx) [::extracts ::new :errors]
                       (exs/interpret-explanation
                        (s/explain-data ::exs/extract extract)))}))))
@@ -100,24 +98,28 @@
 (def blank-new-extract
   {:selection []
    :content   {:tags      #{}
-                           :comments  {0 ""}
-                           :related   {0 ""}
-                           :contrast  {0 ""}
-                           :confirmed {0 ""}
-                           :figures   {0 ""}}
-   :errors                nil})
+               :comments  {0 ""}
+               :related   {0 ""}
+               :contrast  {0 ""}
+               :confirmed {0 ""}}
+   :errors    nil})
 
 (re-frame/reg-event-db
  ::clear-extract
  (fn [db [_ id]]
    (update db ::extracts dissoc id)))
 
+(re-frame/reg-event-fx
+ ::init-extract
+ (fn [{:keys [db]} [_ id]]
+   (if (= ::new id)
+     {:db (update-in db [::extracts ::new] #(if (nil? %) blank-new-extract %))}
+     {:dispatch [:openmind.events/try-send [:openmind/fetch-extract id]]})))
+
 (re-frame/reg-event-db
- ::init-new-extract
- (fn [db]
-   (update-in db [::extracts ::new] #(if (nil? %)
-                                       blank-new-extract
-                                       %))))
+ :openmind/fetch-extract-response
+ (fn [db [_ extract]]
+   (assoc-in db [::extracts (:id extract) :content] extract)))
 
 (re-frame/reg-event-fx
  :openmind/index-result
@@ -156,6 +158,9 @@
 (defn error [text]
   [:p.text-red.small.pl1.mth.mb0 text])
 
+;; TODO: Make these into individual components. The extra layer of indirection
+;; is useless since we're just dispatching on keys in a map. We may as well put
+;; the appropriate component in the map.
 (defmulti input-component :type)
 
 (defmethod input-component :text
@@ -217,7 +222,7 @@
     "[+]"]))
 
 (defmethod input-component :textarea-list
-  [{:keys [key placeholder spec errors content]}]
+  [{:keys [key placeholder spec errors content] :as e}]
   [:div
    (into [:div]
          (map (fn [[i c]]
@@ -246,12 +251,12 @@
     "[+]"]])
 
 (defmethod input-component :tag-selector
-  [opts]
-  [tags/tag-widget {:selection {:read ::editor-tag-view-selection
-                                :set  ::set-editor-selection}
-                    :edit      {:read ::editor-selected-tags
-                                :add ::add-editor-tag
-                                :remove ::remove-editor-tag}}])
+  [{id :data-key}]
+  [tags/tag-widget {:selection {:read [::editor-tag-view-selection id]
+                                :set  [::set-editor-selection id]}
+                    :edit      {:read   [::editor-selected-tags id]
+                                :add    [::add-editor-tag id]
+                                :remove [::remove-editor-tag id]}}])
 
 (defn halt [e]
   (.preventDefault e)
@@ -311,16 +316,16 @@
    [:div.right-col r]])
 
 (defn input-row
-  [{:keys [label required? full-width?] :as com}]
+  [{:keys [label required? full-width?] :as field}]
   (let [label-span [:span [:b label] (when required?
                                        [:span.text-red.super.small " *"])]]
     (if full-width?
       [:div
        [:h4.ctext label-span]
-       [input-component com]]
+       [input-component field]]
       [responsive-two-column
        label-span
-       [input-component com]])))
+       [input-component field]])))
 
 (def extract-creation-form
   [{:type        :textarea
@@ -383,9 +388,17 @@
    (map input-row (map (partial add-form-data id) extract-creation-form))))
 
 (def routes
-  [["/new" {:name        :extract/create
-            :component   extract-editor
-            :controllers [{:start (fn [_]
-                                    (re-frame/dispatch [::init-new-extract]))}]}]
-   ["/edit/:id" {:name      :extract/edit
-                 :component extract-editor}]])
+  [["/new" {:name      :extract/create
+            :component extract-editor
+            :controllers
+            [{:start (fn [_]
+                       (re-frame/dispatch [::init-extract ::new]))}]}]
+   ["/edit/:id" {:name :extract/edit
+                 :parameters {:path {:id any?}}
+                 :component extract-editor
+                 :controllers
+                 [{:parameters {:path [:id]}
+                   :start (fn [{{id :id} :path}]
+                            (re-frame/dispatch [::init-extract id]))
+                   :stop (fn [{{id :id} :path}]
+                           (re-frame/dispatch [::clear-extract id]))}]}]])

@@ -130,12 +130,21 @@
      comments)
     [no-content]))
 
-(defn result [{:keys [text reference comments details related figure tags]}]
+(defn edit-link [extract]
+  (when-let [login @(re-frame/subscribe [:openmind.subs/login-info])]
+    (when (= (:author extract) login)
+      [:div.right.relative.text-grey.small
+       {:style {:top "-2rem" :right "1rem"}}
+       [:a {:on-click #(re-frame/dispatch [:openmind.router/navigate
+                                           {:route :extract/edit
+                                            :path  {:id (:id extract)}}])}
+        "edit"]])))
+
+(defn result [{:keys [text reference comments details related figure tags]
+               :as extract}]
   [:div.search-result.padded
    [:div.break-wrap.ph text]
-   [:div.right.relative.text-grey.small
-    {:style {:top "-2rem" :right "1rem"}}
-    [:a "edit"]]
+   [edit-link extract]
    [:div.pth
     [:div.flex.flex-wrap.space-evenly
      [hlink "comments" [comments-hover comments] :left]
