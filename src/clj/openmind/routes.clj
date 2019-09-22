@@ -63,7 +63,9 @@
     (es/search es/index (async/<! query))))
 
 (defn parse-search-response [res]
-  (mapv :_source res))
+  (mapv (fn [ex]
+          (assoc (:_source ex) :id (:_id ex)))
+        res))
 
 (defn prepare-search [term filters time]
   (search->elastic term filters))
