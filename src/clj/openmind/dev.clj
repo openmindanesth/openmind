@@ -10,7 +10,7 @@
 
 (defmethod offline-dispatch :default
   [msg]
-  (println (:id msg)))
+  (log/warn "Unhandled message:" (:id msg)))
 
 (defmethod offline-dispatch :openmind/search
   [{:keys [event] :as req}]
