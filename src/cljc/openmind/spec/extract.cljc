@@ -58,18 +58,15 @@
 (s/def ::comments
   ;; FIXME: This should be a list of comments. Eaxh comment should have data of
   ;; its own such as author, authoring time, etc..
-  (s/map-of ::int ::comment))
+  (s/coll-of ::comment))
 
 (s/def ::comment
   string?)
 
-(s/def ::image
-  (s/or :link ::url
-        :upload ::file-reference))
-
 ;; FIXME: collection of figures
 (s/def ::figure
-  (s/map-of ::int ::image))
+  (s/or :link ::url
+        :upload ::file-reference))
 
 ;; TODO: What are details?
 (s/def ::details string?)
@@ -80,10 +77,7 @@
 (s/def ::int int?)
 
 (s/def ::numbered-reference-list
-  (s/and
-   (s/every-kv ::int ::reference)
-   #(let [ks (keys %)]
-      (= (range (count ks)) (sort ks)))))
+  (s/coll-of ::reference))
 
 (s/def ::related ::numbered-reference-list)
 

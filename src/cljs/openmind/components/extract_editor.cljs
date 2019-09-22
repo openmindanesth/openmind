@@ -73,21 +73,25 @@
 
 (re-frame/reg-event-db
  ::form-edit
- (fn [db [_ k v]]
-   (assoc-in db (concat [::extracts ::new :content] k) v)))
+ (fn [db [_ id k v]]
+   (assoc-in db (concat [::extracts id :content] k) v)))
 
 (re-frame/reg-event-fx
- ::create-extract
- (fn [cofx _]
+ ::update-extract
+ (fn [cofx [_ id]]
    (let [author  @(re-frame/subscribe [:openmind.subs/login-info])
          extract (-> cofx
-                     (get-in [:db ::extracts ::new :content])
+                     (get-in [:db ::extracts id :content])
                      (assoc :author author
                             :created-time (js/Date.))
-                     (update :tags #(mapv :id %)))]
+                     (update :tags #(mapv :id %)))
+         event   (if (= ::new id)
+                   [:openmind/index extract]
+                   [:openmind/update id extract])]
+     (println event)
      (if (s/valid? ::exs/extract extract)
-       {:dispatch [:openmind.events/try-send [:openmind/index extract]]}
-       {:db (assoc-in (:db cofx) [::extracts ::new :errors]
+       {:dispatch [:openmind.events/try-send event]}
+       {:db (assoc-in (:db cofx) [::extracts id :errors]
                       (exs/interpret-explanation
                        (s/explain-data ::exs/extract extract)))}))))
 
@@ -144,9 +148,10 @@
  ::clear-status-message
  (fn [db]
    (dissoc db :status-message)))
-(defn pass-edit [ks]
+
+(defn pass-edit [id ks]
   (fn [ev]
-    (re-frame/dispatch [::form-edit ks (-> ev .-target .-value)])))
+    (re-frame/dispatch [::form-edit id ks (-> ev .-target .-value)])))
 
 ;;;; Components
 
@@ -164,12 +169,12 @@
 (defmulti input-component :type)
 
 (defmethod input-component :text
-  [{:keys [label key required? placeholder spec errors content]}]
+  [{:keys [label key required? placeholder spec errors content data-key]}]
   [:div
    [:input.full-width-textarea
     (merge {:id        (name key)
             :type      :text
-            :on-change (pass-edit [key])}
+            :on-change (pass-edit data-key [key])}
            (cond
              (seq content) {:value content}
              placeholder   {:value       nil
@@ -180,14 +185,14 @@
      [error errors])])
 
 (defmethod input-component :textarea
-  [{:keys [label key required? placeholder spec errors content]}]
+  [{:keys [label key required? placeholder spec errors content data-key]}]
   [:div
    [:textarea.full-width-textarea
     (merge {:id        (name key)
             :rows      2
             :style     {:resize :vertical}
             :type      :text
-            :on-change (pass-edit [key])}
+            :on-change (pass-edit data-key [key])}
            (cond
              (seq content) {:value content}
              placeholder   {:value       nil
@@ -198,14 +203,14 @@
      [error errors])])
 
 (defmethod input-component :text-input-list
-  [{:keys [key placeholder spec errors content]}]
+  [{:keys [key placeholder spec errors content data-key]}]
   (conj
    (into [:div.flex.flex-wrap]
          (map (fn [[i c]]
                 (let [err (get errors i)]
                   [:div
                    [:input.full-width-textarea (merge {:type      :text
-                                   :on-change (pass-edit [key i])}
+                                   :on-change (pass-edit data-key [key i])}
                                   (when err
                                     {:class "form-error"})
                                   (if (seq c)
@@ -218,11 +223,11 @@
          content)
    [:a.plh.ptp {:on-click (fn [_]
                             (re-frame/dispatch
-                             [::form-edit [key (count content)] ""]))}
+                             [::form-edit data-key [key (count content)] ""]))}
     "[+]"]))
 
 (defmethod input-component :textarea-list
-  [{:keys [key placeholder spec errors content] :as e}]
+  [{:keys [key placeholder spec errors content data-key] :as e}]
   [:div
    (into [:div]
          (map (fn [[i c]]
@@ -233,7 +238,7 @@
                             :style     {:resize :vertical}
                             :rows      2
                             :type      :text
-                            :on-change (pass-edit [key i])}
+                            :on-change (pass-edit data-key [key i])}
                            (cond
                              (seq content) {:value c}
                              placeholder   {:value       nil
@@ -247,7 +252,7 @@
    [:a.bottom-right {:on-click
                      (fn [_]
                        (re-frame/dispatch
-                        [::form-edit [key (count content)] ""]))}
+                        [::form-edit data-key [key (count content)] ""]))}
     "[+]"]])
 
 (defmethod input-component :tag-selector
@@ -266,23 +271,23 @@
   "Extracts the dropped image from the drop event and adds it to the app state."
   ;;FIXME: Is there some sort of standard regarding the dragging of images from
   ;;a browser? How can I be sure the first item will always contain a URL?
-  [k e]
+  [dk k e]
   (let [item (-> e .-dataTransfer .-items (aget 0))]
     (if-let [file (.getAsFile item)]
-      (re-frame/dispatch [::form-edit [k] {:type :file :value file}])
+      (re-frame/dispatch [::form-edit dk [k] {:type :file :value file}])
       (.getAsString item #(re-frame/dispatch
-                           [::form-edit [k] {:type :url :value %}])))))
+                           [::form-edit dk [k] {:type :url :value %}])))))
 
 
-(defn select-upload [k e]
+(defn select-upload [dk k e]
   (let [f (-> e .-target .-files (aget 0))]
-    (re-frame/dispatch [::form-edit [k] {:type :file :value f}])))
+    (re-frame/dispatch [::form-edit dk [k] {:type :file :value f}])))
 
 (defmethod input-component :image-drop
   [opts]
   (let [id          (str (gensym))
         drag-hover? (r/atom false)]
-    (fn [{:keys [key placeholder content]}]
+    (fn [{:keys [key placeholder content data-key]}]
       (let [drop-state {:style         {:border    :dashed
                                         :cursor    :pointer
                                         :max-width "250px"}
@@ -294,7 +299,8 @@
                         :on-drag-over  (juxt halt #(reset! drag-hover? true))
                         :on-drag-leave (juxt halt #(reset! drag-hover? false))
                         :on-drop       (juxt halt #(reset! drag-hover? false)
-                                             (partial drop-upload key))}]
+                                             (partial drop-upload
+                                                      data-key key))}]
         [:div.mt1.mb2
          (if content
            [:img.border-round.p1
@@ -308,7 +314,7 @@
                   :id        id
                   :style     {:visibility :hidden}
                   :accept    "image/png,image/gif,image/jpeg"
-                  :on-change (partial select-upload key)}]]))))
+                  :on-change (partial select-upload data-key key)}]]))))
 
 (defn responsive-two-column [l r]
   [:div.vcenter.mb1h.mbr2
@@ -380,11 +386,13 @@
   (into
    [:div.flex.flex-column.flex-start.pl2.pr2
     [:div.flex.pb1.space-between
-     [:h2 "create a new extract"]
+     [:h2 (if (= ::new id)
+            "create a new extract"
+            "modify extract")]
      [:button.bg-grey.border-round.wide
       {:on-click (fn [_]
-                   (re-frame/dispatch [::create-extract]))}
-      "CREATE"]]]
+                   (re-frame/dispatch [::update-extract id]))}
+      (if (= ::new id) "CREATE" "SAVE")]]]
    (map input-row (map (partial add-form-data id) extract-creation-form))))
 
 (def routes
