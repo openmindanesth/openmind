@@ -10,7 +10,14 @@
 
 (def mapping
   {:properties {:created-time {:type :date}
-                :tags {:type :keyword}}})
+                :text         {:type :search_as_you_type}
+                :source       {:type :text}
+                :figure       {:type :tex}
+                :tags         {:type :keyword}
+                :contrast     {:type :text}
+                :related      {:type :text}
+                :author       {:type :object}
+                :confirmed    {:type :text}}})
 
 ;;;;; REST API wrapping
 
