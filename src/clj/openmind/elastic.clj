@@ -115,16 +115,3 @@
   (search index {:sort {:created-time {:order :asc}}
                  :from 0
                  :size 10}))
-
-;;;;; Tag init hack
-
-(defn create-and-init!
-  "Setup indicies on a blank instance and populate basic tags."
-  []
-  ;; FIXME: This doesn't work because of timing issues. Figure that out, or
-  ;; write better documentation on how to initialise a new elastic DB.
-
-  ;; (t create-index)
-  ;; (t set-mapping)
-  ;; (index-tag-tree tag-index tag-tree [])
-  )
