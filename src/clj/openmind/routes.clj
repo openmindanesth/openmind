@@ -120,7 +120,9 @@
             doc map-keys)))
 
 (defn prepare [doc]
-  (-> doc
+  (-> (if (empty? (:figure doc))
+        (dissoc doc :figure)
+        doc)
       remove-empty
       ;; Prefer server timestamp over what came from client
       (assoc :created-time (java.util.Date.))
@@ -142,6 +144,11 @@
           (when ?reply-fn
             (?reply-fn [:openmind/index-result (:status res)])))))))
 
+(defmethod dispatch :openmind/update
+  [{:keys [client-id send-fn ?reply-fn uid tokens] [_ doc] :event}]
+  (clojure.pprint/pprint doc)
+
+  )
 ;;;;; Extract editing
 
 (defn fetch-response [res]

@@ -3,7 +3,8 @@
             [openmind.components.tags :as tags]
             [openmind.spec.extract :as exs]
             [re-frame.core :as re-frame]
-            [reagent.core :as r]))
+            [reagent.core :as r]
+            [taoensso.timbre :as log]))
 
 ;;;;; Subs
 
@@ -77,22 +78,46 @@
  (fn [db [_ id k v]]
    (assoc-in db (concat [::extracts id :content] k) v)))
 
+(defn write-file-data [id {:keys [type value]}]
+  (if (= :file type)
+    (let [reader (js/FileReader.)]
+            (set! (.-onload reader)
+                  (fn [e]
+                    (let [img (->> e
+                                   .-target
+                                   .-result)]
+                      (re-frame/dispatch [::extract-update-figure id img]))))
+            (.readAsDataURL reader value))
+    (re-frame/dispatch [::extract-update-figure id value])))
+
+(defn update-figure [m img-data]
+  (if (seq img-data)
+    (assoc m :figure img-data)
+    m))
+
 (re-frame/reg-event-fx
- ::update-extract
- (fn [cofx [_ id]]
+ ::extract-update-figure
+ (fn [cofx [_ id img-data]]
    (let [author  @(re-frame/subscribe [:openmind.subs/login-info])
          extract (-> cofx
                      (get-in [:db ::extracts id :content])
                      (assoc :author author
-                            :created-time (js/Date.)))
+                            :created-time (js/Date.))
+                     (update-figure img-data))
          event   (if (= ::new id)
                    [:openmind/index extract]
                    [:openmind/update extract])]
      (if (s/valid? ::exs/extract extract)
        {:dispatch [:openmind.events/try-send event]}
-       {:db (assoc-in (:db cofx) [::extracts id :errors]
-                      (exs/interpret-explanation
-                       (s/explain-data ::exs/extract extract)))}))))
+       (let [err (s/explain-data ::exs/extract extract)]
+         (log/warn "Bad extract" id err)
+         {:db (assoc-in (:db cofx) [::extracts id :errors]
+                        (exs/interpret-explanation err))})))))
+
+(re-frame/reg-event-fx
+ ::update-extract
+ (fn [cofx [_ id]]
+   (write-file-data id (get-in cofx [:db ::extracts id :content :figure]))))
 
 
 (defn success? [status]
