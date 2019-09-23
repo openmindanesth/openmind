@@ -117,7 +117,9 @@
   (-> doc
       ;; Prefer server timestamp over what came from client
       (assoc :created-time (java.util.Date.))
-      parse-dates))
+      parse-dates
+      ;;TODO: Remove empty comments, related, etc..
+      ))
 
 (defmethod dispatch :openmind/index
   [{:keys [client-id send-fn ?reply-fn uid tokens] [_ doc] :event}]
