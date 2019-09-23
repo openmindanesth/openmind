@@ -113,13 +113,18 @@
 
     :else doc))
 
+(defn remove-empty [doc]
+  (let [map-keys [:comments :contrast :confirmed :related]]
+    (reduce (fn [doc k]
+              (update doc k #(remove empty? %)))
+            doc map-keys)))
+
 (defn prepare [doc]
   (-> doc
+      remove-empty
       ;; Prefer server timestamp over what came from client
       (assoc :created-time (java.util.Date.))
-      parse-dates
-      ;;TODO: Remove empty comments, related, etc..
-      ))
+      parse-dates))
 
 (defmethod dispatch :openmind/index
   [{:keys [client-id send-fn ?reply-fn uid tokens] [_ doc] :event}]
