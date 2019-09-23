@@ -138,7 +138,10 @@
           (async/go
             (let [tag-data {:tag-name k
                             :parents parents}
-                  id (find-id (async/<! (es/send-off! (es/index-tag index tag-data))))]
+                  id (find-id
+                      (async/<!
+                       (es/send-off!
+                        (es/index-tag index tag-data))))]
               (tap> [k id parents])
               (index-tag-tree index v (conj parents id)))))
         tree))
