@@ -12,7 +12,7 @@
   {:properties {:created-time {:type :date}
                 :text         {:type :search_as_you_type}
                 :source       {:type :text}
-                :figure       {:type :tex}
+                :figure       {:type :text}
                 :tags         {:type :keyword}
                 :contrast     {:type :text}
                 :related      {:type :text}
