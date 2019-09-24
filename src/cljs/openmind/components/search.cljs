@@ -58,20 +58,23 @@
 
 ;;;;; Views
 
-(defn hlink [text float-content orientation]
+(defn hlink [text float-content {:keys [orientation style force?]}]
   (let [hover? (reagent/atom false)]
-    (fn [text float-content orientation]
+    (fn [text float-content {:keys [orientation style force?]}]
       [:div
        [:a.plh.prh.link-blue {:on-mouse-over #(reset! hover? true)
                               :on-mouse-out  #(reset! hover? false)}
         text]
        (when float-content
-         (when @hover?
+         ;; dev hack
+         (when (or force? @hover?)
            [:div.absolute
-            {:style (cond
-                      (= :left orientation)  {:left "10px"}
-                      (= :right orientation) {:right "10px"}
-                      :else                  {:transform "translateX(-50%)"})}
+            {:style (merge
+                     style
+                     (cond
+                       (= :left orientation)  {:left "10px"}
+                       (= :right orientation) {:right "2rem"}
+                       :else                  {:transform "translateX(-50%)"}))}
             float-content]))])))
 
 (defn tg1 [bs]
@@ -130,6 +133,14 @@
      comments)
     [no-content]))
 
+(defn figure-hover [figure]
+  (when figure
+    [:div.border-round.border-solid.bg-white
+     [:img.relative {:src figure
+                     :style {:width "99%"
+                             :left "2px"
+                             :top "2px"}}]]))
+
 (defn edit-link [extract]
   (when-let [login @(re-frame/subscribe [:openmind.subs/login-info])]
     (when (= (:author extract) login)
@@ -140,20 +151,22 @@
                                             :path  {:id (:id extract)}}])}
         "edit"]])))
 
-(defn result [{:keys [text reference comments details related figure tags]
+(defn result [{:keys [text source comments details related figure tags]
                :as extract}]
   [:div.search-result.padded
    [:div.break-wrap.ph text]
    [edit-link extract]
    [:div.pth
     [:div.flex.flex-wrap.space-evenly
-     [hlink "comments" [comments-hover comments] :left]
+     [hlink "comments" [comments-hover comments] {:orientation :left}]
      [hlink "history"]
      [hlink "related" #_related]
      [hlink "details" #_details]
      [hlink "tags" [tag-hover tags]]
-     [hlink "figure" #_figure]
-     [hlink reference]]]])
+     [hlink "figure" [figure-hover figure] {:orientation :right
+                                            :style {:max-width "75%"}
+}]
+     [:a.link-blue {:href source} source]]]])
 
 (defn search-results []
   (let [results @(re-frame/subscribe [::extracts])]

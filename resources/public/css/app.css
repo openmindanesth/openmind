@@ -232,6 +232,7 @@ f-align-start {
 }
 
 a.link-blue {
+		text-decoration: inherit;
 		color: #1EAEDB;
 }
 
