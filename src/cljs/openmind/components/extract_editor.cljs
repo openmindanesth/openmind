@@ -78,17 +78,17 @@
  (fn [db [_ id k v]]
    (assoc-in db (concat [::extracts id :content] k) v)))
 
-(defn write-file-data [id {:keys [type value]}]
-  (if (= :file type)
+(defn write-file-data [id figure]
+  (if (string? figure)
+    (re-frame/dispatch [::extract-update-figure id figure])
     (let [reader (js/FileReader.)]
-            (set! (.-onload reader)
-                  (fn [e]
-                    (let [img (->> e
-                                   .-target
-                                   .-result)]
-                      (re-frame/dispatch [::extract-update-figure id img]))))
-            (.readAsDataURL reader value))
-    (re-frame/dispatch [::extract-update-figure id value])))
+      (set! (.-onload reader)
+            (fn [e]
+              (let [img (->> e
+                             .-target
+                             .-result)]
+                (re-frame/dispatch [::extract-update-figure id img]))))
+      (.readAsDataURL reader figure))))
 
 (defn update-figure [m img-data]
   (if (seq img-data)
@@ -117,7 +117,9 @@
 (re-frame/reg-event-fx
  ::update-extract
  (fn [cofx [_ id]]
-   (write-file-data id (get-in cofx [:db ::extracts id :content :figure]))))
+   (if-let [figure (get-in cofx [:db ::extracts id :content :figure])]
+     (write-file-data id figure)
+     (re-frame/dispatch [::extract-update-figure id nil]))))
 
 
 (defn success? [status]
@@ -153,20 +155,20 @@
  :openmind/index-result
  (fn [{:keys [db]} [_ status]]
    (if (success? status)
-     {:db (assoc db
-                 :openmind.db/status-message
-                 {:status  :success
-                  :message "Extract Successfully Created!"})
-
-      :dispatch [::clear-extract ::new]
-      :dispatch-later [{:ms       2000
+     {:dispatch-later [{:ms 0
+                        :dispatch [::clear-extract ::new]}
+                       {:ms 0
+                        :dispatch
+                        [:notify {:status  :success
+                                   :message "Extract Successfully Created!"}]}
+                       {:ms       2000
                         :dispatch [:openmind.events/clear-status-message]}
                        {:ms       500
                         :dispatch [:openmind.router/navigate
                                    {:route :search}]}]}
-     {:db (assoc db :status-message
-                 ;; FIXME: So should this
-                 {:status :error :message "Failed to create extract."})})))
+     ;;TODO: Fix notification bar.
+     {:dispatch [:notify {:status :error
+                          :message "Failed to create extract."}]})))
 
 (re-frame/reg-event-db
  ::clear-status-message
@@ -301,14 +303,14 @@
   [dk k e]
   (let [item (-> e .-dataTransfer .-items (aget 0))]
     (if-let [file (.getAsFile item)]
-      (re-frame/dispatch [::form-edit dk [k] {:type :file :value file}])
+      (re-frame/dispatch [::form-edit dk [k] file])
       (.getAsString item #(re-frame/dispatch
-                           [::form-edit dk [k] {:type :url :value %}])))))
+                           [::form-edit dk [k] %])))))
 
 
 (defn select-upload [dk k e]
   (let [f (-> e .-target .-files (aget 0))]
-    (re-frame/dispatch [::form-edit dk [k] {:type :file :value f}])))
+    (re-frame/dispatch [::form-edit dk [k] f])))
 
 (defmethod input-component :image-drop
   [opts]
@@ -332,9 +334,9 @@
          (if content
            [:img.border-round.p1
             (merge drop-state
-                   {:src   (if (= :file (:type content))
-                             (js/URL.createObjectURL (:value content))
-                             (:value content))
+                   {:src   (if (string? content)
+                             content
+                             (js/URL.createObjectURL content))
                     :on-click #(.click (.getElementById js/document id))})]
            [:label.p2.border-round drop-state placeholder])
          [:input {:type      :file
