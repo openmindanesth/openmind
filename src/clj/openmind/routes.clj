@@ -129,7 +129,7 @@
       parse-dates))
 
 (defmethod dispatch :openmind/index
-  [{:keys [client-id send-fn ?reply-fn uid tokens] [_ doc] :event}]
+  [{:keys [client-id send-fn ?reply-fn uid tokens] [_ doc] :event :as req}]
   (when (not= uid :taoensso.sente/nil-uid)
     (async/go
       (let [res (some->> doc
@@ -141,10 +141,10 @@
                          async/<!)]
         (when-not (<= 200 (:status res) 299)
           (log/error "Failed to index new extact" res))
-        (respond-with-fallback [:openmind/index-result (:status res)])))))
+        (respond-with-fallback req [:openmind/index-result (:status res)])))))
 
 (defmethod dispatch :openmind/update
-  [{:keys [client-id send-fn ?reply-fn uid tokens] [_ doc] :event}]
+  [{:keys [client-id send-fn ?reply-fn uid tokens] [_ doc] :event :as req}]
   (let [auth (select-keys (:orcid tokens) [:name :orcid-id])]
     (when (= uid (:orcid-id (:orcid tokens)))
       (async/go
