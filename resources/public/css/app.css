@@ -74,6 +74,7 @@ html {
 		color: #BB1212;
 }
 
+
 .text-grey {
 		color: #BCBCCD;
 }
@@ -96,6 +97,10 @@ html {
 
 .bg-grey {
 		background-color: #BCBCCD;
+}
+
+.bg-dark-grey {
+		background-color: #ABABBC;
 }
 
 .bg-green {
@@ -180,6 +185,10 @@ a {
 
 .space-between {
 		justify-content: space-between;
+}
+
+.space-around {
+		justify-content: space-around;
 }
 
 .stretch {

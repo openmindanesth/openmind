@@ -414,11 +414,21 @@
   [{{:keys [id] :or {id ::new}} :path-params}]
   (into
    [:div.flex.flex-column.flex-start.pl2.pr2
-    [:div.flex.pb1.space-between
+    [:div.flex.space-around
      [:h2 (if (= ::new id)
             "create a new extract"
-            "modify extract")]
-     [:button.bg-grey.border-round.wide
+            "modify extract")]]
+    [:div.flex.pb1.space-between
+     [:button.bg-red.border-round.wide.text-white.p1
+      {:on-click (fn [_]
+                   (when (= id ::new)
+                     (re-frame/dispatch [::clear-extract ::new]))
+                   (re-frame/dispatch [:openmind.router/navigate
+                                       {:route :search}]))
+       :style {:opacity 0.6}}
+      "CANCEL"]
+
+     [:button.bg-dark-grey.border-round.wide.text-white.p1
       {:on-click (fn [_]
                    (re-frame/dispatch [::update-extract id]))}
       (if (= ::new id) "CREATE" "SAVE")]]]
