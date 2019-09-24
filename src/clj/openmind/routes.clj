@@ -139,16 +139,26 @@
                          (es/index-req es/index)
                          es/send-off!
                          async/<!)]
-        (if-not (<= 200 (:status res) 299)
-          (log/error "Failed to index new extact" res)
-          (when ?reply-fn
-            (?reply-fn [:openmind/index-result (:status res)])))))))
+        (when-not (<= 200 (:status res) 299)
+          (log/error "Failed to index new extact" res))
+        (respond-with-fallback [:openmind/index-result (:status res)])))))
 
 (defmethod dispatch :openmind/update
   [{:keys [client-id send-fn ?reply-fn uid tokens] [_ doc] :event}]
-  (clojure.pprint/pprint doc)
+  (let [auth (select-keys (:orcid tokens) [:name :orcid-id])]
+    (when (= uid (:orcid-id (:orcid tokens)))
+      (async/go
+        (let [res (->> doc
+                       (validate auth)
+                       remove-empty
+                       parse-dates
+                       (es/update-doc es/index (:id doc))
+                       es/send-off!
+                       async/<!)]
+          (when-not (<= 200 (:status res) 299)
+            (log/error "failed to update doc" (:id doc) res))
+          (respond-with-fallback req (:status res)))))))
 
-  )
 ;;;;; Extract editing
 
 (defn fetch-response [res]

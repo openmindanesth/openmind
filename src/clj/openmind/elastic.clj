@@ -46,6 +46,13 @@
   (assoc base-req
          :url (str base-url "/" index "/_doc/" id)))
 
+(defn update-doc [index id body]
+  (let [body (json/write-str body)]
+    (assoc base-req
+           :url (str base-url "/" index "/_doc/" id)
+           :method :put
+           :body body)))
+
 ;;;;; Init new index
 
 (defn set-mapping [index]
