@@ -12,6 +12,11 @@
  (fn [_ [_ args]]
    {::navigate! args}))
 
+(re-frame/reg-sub
+ :route
+ (fn [db]
+   (::route db)))
+
 ;;;; Nav Router
 
 (defn init! [routes]
@@ -24,12 +29,6 @@
          (re-frame/dispatch [::navigated m])))
      {:use-fragment false})))
 
-;;;;; Subs
-
-(re-frame/reg-sub
- ::route
- (fn [db]
-   (::route db)))
 
 ;;;;; Events
 
@@ -69,7 +68,7 @@
   [:h2 "You're in a bad place."])
 
 (defn page []
-  (let [route @(re-frame/subscribe [::route])]
+  (let [route @(re-frame/subscribe [:route])]
     (if route
       [(-> route :data :component) route]
       [four-o-four])))

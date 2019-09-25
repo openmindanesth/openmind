@@ -1,19 +1,26 @@
 (ns openmind.components.extract
-  (:require [re-frame.core :as re-frame]))
+  (:require [openmind.components.extract.core :as core]
+            [openmind.components.extract.editor :as editor]
+            [re-frame.core :as re-frame]))
 
-(defn figure-full-page
+(defn figure-page
   [{{:keys [id] :or {id ::new}} :path-params}]
   (let [{:keys [figure]} @(re-frame/subscribe [:extract/content id])]
     [:img.p2 {:style {:max-width "95%"} :src figure}]))
 
+(defn comments-page
+  [{{:keys [id] :or {id ::new}} :path-params}]
+  )
+
 (def routes
-  [["/:id/figure"
-    {:name :extract/figure
-     :parameters {:path {:id any?}}
-     :component  figure-full-page
-     :controllers
-     [{:parameters {:path [:id]}
-       :start      (fn [{{id :id} :path}]
-                     (re-frame/dispatch [:extract/init id]))
-       :stop       (fn [{{id :id} :path}]
-                     (re-frame/dispatch [:extract/clear id]))}]}]])
+  (concat editor/routes
+          [["/:id/figure"
+            {:name :extract/figure
+             :parameters {:path {:id any?}}
+             :component  figure-page
+             :controllers core/extract-controllers}]
+           ["/:id/comments"
+            {:name :extract/comments
+             :parameters {:path {:id any?}}
+             :component  comments-page
+             :controllers core/extract-controllers}]]))

@@ -1,6 +1,5 @@
 (ns openmind.components.window
-  (:require [openmind.components.extract-editor :as extract]
-            [openmind.components.search :as search]
+  (:require [openmind.components.search :as search]
             [openmind.events :as events]
             [openmind.subs :as subs]
             [re-frame.core :as re-frame]
@@ -111,7 +110,7 @@
 
 
 (defn title-bar []
-  (let [search-term (-> (re-frame/subscribe [:openmind.router/route])
+  (let [search-term (-> (re-frame/subscribe [:route])
                         deref
                         :parameters
                         :query

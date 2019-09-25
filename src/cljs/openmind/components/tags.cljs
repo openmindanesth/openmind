@@ -43,7 +43,7 @@
 
 (re-frame/reg-sub
  ::search-filters
- :<- [:openmind.router/route]
+ :<- [:route]
  (fn [route]
    (:filters (route->query route))))
 

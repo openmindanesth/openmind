@@ -1,6 +1,5 @@
 (ns ^:figwheel-hooks openmind.core
-  (:require [openmind.components.extract-editor :as extract-editor]
-            [openmind.components.extract :as extract]
+  (:require [openmind.components.extract :as extract]
             [openmind.components.search :as search]
             [openmind.components.window :as window]
             [openmind.config :as config]
@@ -18,7 +17,6 @@
 (def routes
   "Aggregated routing table for the app."
   (concat search/routes
-          extract-editor/routes
           extract/routes
           window/other-routes))
 

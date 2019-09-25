@@ -1,24 +1,12 @@
-(ns openmind.components.extract-editor
+(ns openmind.components.extract.editor
   (:require [cljs.spec.alpha :as s]
             [openmind.components.tags :as tags]
+            [openmind.components.extract.core :as core]
             [openmind.spec.extract :as exs]
             [re-frame.core :as re-frame]
             [reagent.core :as r]
             [taoensso.timbre :as log]))
 
-;;;;; Subs
-
-(re-frame/reg-sub
- :extract
- (fn [db [_ k]]
-   (get (::extracts db) k)))
-
-(re-frame/reg-sub
- :extract/content
- (fn [[_ dk] _]
-   (re-frame/subscribe [:extract dk]))
- (fn [extract e]
-   (:content extract)))
 
 (re-frame/reg-sub
  ::extract-form-errors
@@ -55,7 +43,7 @@
 (re-frame/reg-event-db
  ::set-editor-selection
  (fn [db [_ id path add?]]
-   (assoc-in db [::extracts id :selection]
+   (assoc-in db [::core/extracts id :selection]
              (if add?
                path
                (vec (butlast path))))))
@@ -63,12 +51,12 @@
 (re-frame/reg-event-db
  ::add-editor-tag
  (fn [db [_ id tag]]
-   (update-in db [::extracts id :content :tags] conj (:id tag))))
+   (update-in db [::core/extracts id :content :tags] conj (:id tag))))
 
 (re-frame/reg-event-db
  ::remove-editor-tag
  (fn [db [_ id & tags]]
-   (update-in db [::extracts id :content :tags]
+   (update-in db [::core/extracts id :content :tags]
               #(reduce disj % (map :id tags)))))
 
 ;;;;; Events
@@ -76,7 +64,7 @@
 (re-frame/reg-event-db
  ::form-edit
  (fn [db [_ id k v]]
-   (assoc-in db (concat [::extracts id :content] k) v)))
+   (assoc-in db (concat [::core/extracts id :content] k) v)))
 
 (defn write-file-data [id figure]
   (if (string? figure)
@@ -100,7 +88,7 @@
  (fn [cofx [_ id img-data]]
    (let [author  @(re-frame/subscribe [:openmind.subs/login-info])
          extract (-> cofx
-                     (get-in [:db ::extracts id :content])
+                     (get-in [:db ::core/extracts id :content])
                      (assoc :author author
                             :created-time (js/Date.))
                      (update-figure img-data))
@@ -111,45 +99,18 @@
        {:dispatch [:openmind.events/try-send event]}
        (let [err (s/explain-data ::exs/extract extract)]
          (log/warn "Bad extract" id err)
-         {:db (assoc-in (:db cofx) [::extracts id :errors]
+         {:db (assoc-in (:db cofx) [::core/extracts id :errors]
                         (exs/interpret-explanation err))})))))
 
 (re-frame/reg-event-fx
  ::update-extract
  (fn [cofx [_ id]]
-   (if-let [figure (get-in cofx [:db ::extracts id :content :figure])]
+   (if-let [figure (get-in cofx [:db ::core/extracts id :content :figure])]
      (write-file-data id figure)
      (re-frame/dispatch [::extract-update-figure id nil]))))
 
-
 (defn success? [status]
   (<= 200 status 299))
-
-(def blank-new-extract
-  {:selection []
-   :content   {:tags      #{}
-               :comments  [""]
-               :related   [""]
-               :contrast  [""]
-               :confirmed [""]}
-   :errors    nil})
-
-(re-frame/reg-event-db
- :extract/clear
- (fn [db [_ id]]
-   (update db ::extracts dissoc id)))
-
-(re-frame/reg-event-fx
- :extract/init
- (fn [{:keys [db]} [_ id]]
-   (if (= ::new id)
-     {:db (update-in db [::extracts ::new] #(if (nil? %) blank-new-extract %))}
-     {:dispatch [:openmind.events/try-send [:openmind/fetch-extract id]]})))
-
-(re-frame/reg-event-db
- :openmind/fetch-extract-response
- (fn [db [_ extract]]
-   (assoc-in db [::extracts (:id extract) :content] extract)))
 
 (re-frame/reg-event-fx
  :openmind/index-result
@@ -162,6 +123,7 @@
      ;;TODO: Fix notification bar.
      {:dispatch [:notify {:status :error
                           :message "Failed to create extract."}]})))
+
 (re-frame/reg-event-fx
  :openmind/update-response
  (fn [cofx [_ status]]
@@ -439,13 +401,8 @@
             :component extract-editor
             :controllers
             [{:start (fn [_]
-                       (re-frame/dispatch [:extract/init ::new]))}]}]
+                       (re-frame/dispatch [:extract/mark ::new]))}]}]
    ["/:id/edit" {:name       :extract/edit
                  :parameters {:path {:id any?}}
                  :component  extract-editor
-                 :controllers
-                 [{:parameters {:path [:id]}
-                   :start      (fn [{{id :id} :path}]
-                                 (re-frame/dispatch [:extract/init id]))
-                   :stop       (fn [{{id :id} :path}]
-                                 (re-frame/dispatch [:extract/clear id]))}]}]])
+                 :controllers core/extract-controllers}]])
