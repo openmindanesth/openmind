@@ -66,7 +66,7 @@
 (defn hover-link [text float-content route
                   {:keys [orientation style force?]}]
   (let [hover? (reagent/atom false)]
-    (fn [text float-content {:keys [orientation style force?]}]
+    (fn [text float-content route {:keys [orientation style force?]}]
       [:div
        [:a.plh.prh.link-blue {:on-click #(re-frame/dispatch
                                           [:navigate route])
@@ -80,7 +80,7 @@
             {:style (merge
                      style
                      (cond
-                       (= :left orientation)  {:left "10px"}
+                       (= :left orientation)  {:left "1rem"}
                        (= :right orientation) {:right "2rem"}
                        :else                  {:transform "translateX(-50%)"}))}
             float-content]))])))
@@ -166,7 +166,9 @@
    [edit-link extract]
    [:div.pth
     [:div.flex.flex-wrap.space-evenly
-     [hover-link "comments" [comments-hover comments] {:route :extract/comments}
+     [hover-link "comments" [comments-hover comments]
+      {:route :extract/comments
+       :path {:id (:id extract)}}
       {:orientation :left}]
      [hover-link "history"]
      [hover-link "related" #_related]

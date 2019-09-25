@@ -10,7 +10,13 @@
 
 (defn comments-page
   [{{:keys [id] :or {id ::new}} :path-params}]
-  )
+  (let [comments (:comments @(re-frame/subscribe [:extract/content id]))]
+    (into
+     [:div.flex.flex-column.border-round.bg-white.border-solid.p1.pbh]
+     (map (fn [com]
+            [:div.break-wrap.ph.border-round.border-solid.border-grey.mbh
+             com]))
+     comments)))
 
 (def routes
   (concat editor/routes
