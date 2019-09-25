@@ -157,7 +157,7 @@
                        async/<!)]
           (when-not (<= 200 (:status res) 299)
             (log/error "failed to update doc" (:id doc) res))
-          (respond-with-fallback req (:status res)))))))
+          (respond-with-fallback req [:openmind/update-response (:status res)]))))))
 
 ;;;;; Extract editing
 

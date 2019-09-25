@@ -9,28 +9,28 @@
 ;;;;; Subs
 
 (re-frame/reg-sub
- ::extract
+ :extract
  (fn [db [_ k]]
    (get (::extracts db) k)))
 
 (re-frame/reg-sub
- ::extract-content
+ :extract/content
  (fn [[_ dk] _]
-   (re-frame/subscribe [::extract dk]))
+   (re-frame/subscribe [:extract dk]))
  (fn [extract e]
    (:content extract)))
 
 (re-frame/reg-sub
  ::extract-form-errors
  (fn [[_ k]]
-   (re-frame/subscribe [::extract k]))
+   (re-frame/subscribe [:extract k]))
  (fn [extract _]
    (:errors extract)))
 
 (re-frame/reg-sub
  ::form-input-data
  (fn [[_ dk k] _]
-   [(re-frame/subscribe [::extract-content dk])
+   [(re-frame/subscribe [:extract/content dk])
     (re-frame/subscribe [::extract-form-errors dk])])
  (fn [[content errors] [_ dk k]]
    {:content (get content k)
@@ -41,14 +41,14 @@
 (re-frame/reg-sub
  ::editor-tag-view-selection
  (fn [[_ k]]
-   (re-frame/subscribe [::extract k]))
+   (re-frame/subscribe [:extract k]))
  (fn [extract _]
    (:selection extract)))
 
 (re-frame/reg-sub
  ::editor-selected-tags
  (fn [[_ k]]
-   (re-frame/subscribe [::extract-content k]))
+   (re-frame/subscribe [:extract/content k]))
  (fn [content _]
    (:tags content)))
 
@@ -135,12 +135,12 @@
    :errors    nil})
 
 (re-frame/reg-event-db
- ::clear-extract
+ :extract/clear
  (fn [db [_ id]]
    (update db ::extracts dissoc id)))
 
 (re-frame/reg-event-fx
- ::init-extract
+ :extract/init
  (fn [{:keys [db]} [_ id]]
    (if (= ::new id)
      {:db (update-in db [::extracts ::new] #(if (nil? %) blank-new-extract %))}
@@ -153,22 +153,23 @@
 
 (re-frame/reg-event-fx
  :openmind/index-result
- (fn [{:keys [db]} [_ status]]
+ (fn [_ [_ status]]
    (if (success? status)
-     {:dispatch-later [{:ms 0
-                        :dispatch [::clear-extract ::new]}
-                       {:ms 0
-                        :dispatch
-                        [:notify {:status  :success
-                                   :message "Extract Successfully Created!"}]}
-                       {:ms       2000
-                        :dispatch [:openmind.events/clear-status-message]}
-                       {:ms       500
-                        :dispatch [:openmind.router/navigate
-                                   {:route :search}]}]}
+     {:dispatch-n [[:extract/clear ::new]
+                   [:notify {:status  :success
+                             :message "Extract Successfully Created!"}]
+                   [:openmind.router/navigate {:route :search}]]}
      ;;TODO: Fix notification bar.
      {:dispatch [:notify {:status :error
                           :message "Failed to create extract."}]})))
+(re-frame/reg-event-fx
+ :openmind/update-response
+ (fn [cofx [_ status]]
+   (if (success? status)
+     {:dispatch-n [[:notify {:status :success
+                             :message "changes saved successfully"}]
+                   [:openmind.router/navigate {:route :search}]]}
+     {:dispatch [:notify {:status :error :message "failed to save changes."}]})))
 
 (re-frame/reg-event-db
  ::clear-status-message
@@ -422,7 +423,7 @@
      [:button.bg-red.border-round.wide.text-white.p1
       {:on-click (fn [_]
                    (when (= id ::new)
-                     (re-frame/dispatch [::clear-extract ::new]))
+                     (re-frame/dispatch [:extract/clear ::new]))
                    (re-frame/dispatch [:openmind.router/navigate
                                        {:route :search}]))
        :style {:opacity 0.6}}
@@ -439,13 +440,13 @@
             :component extract-editor
             :controllers
             [{:start (fn [_]
-                       (re-frame/dispatch [::init-extract ::new]))}]}]
-   ["/edit/:id" {:name :extract/edit
+                       (re-frame/dispatch [:extract/init ::new]))}]}]
+   ["/:id/edit" {:name       :extract/edit
                  :parameters {:path {:id any?}}
-                 :component extract-editor
+                 :component  extract-editor
                  :controllers
                  [{:parameters {:path [:id]}
-                   :start (fn [{{id :id} :path}]
-                            (re-frame/dispatch [::init-extract id]))
-                   :stop (fn [{{id :id} :path}]
-                           (re-frame/dispatch [::clear-extract id]))}]}]])
+                   :start      (fn [{{id :id} :path}]
+                                 (re-frame/dispatch [:extract/init id]))
+                   :stop       (fn [{{id :id} :path}]
+                                 (re-frame/dispatch [:extract/clear id]))}]}]])

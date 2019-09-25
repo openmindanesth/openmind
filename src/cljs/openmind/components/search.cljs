@@ -58,11 +58,14 @@
 
 ;;;;; Views
 
-(defn hlink [text float-content {:keys [orientation style force?]}]
+(defn hover-link [text float-content route
+                  {:keys [orientation style force?]}]
   (let [hover? (reagent/atom false)]
     (fn [text float-content {:keys [orientation style force?]}]
       [:div
-       [:a.plh.prh.link-blue {:on-mouse-over #(reset! hover? true)
+       [:a.plh.prh.link-blue {:on-click #(re-frame/dispatch
+                                          [:openmind.router/navigate route])
+                              :on-mouse-over #(reset! hover? true)
                               :on-mouse-out  #(reset! hover? false)}
         text]
        (when float-content
@@ -152,20 +155,23 @@
         "edit"]])))
 
 (defn result [{:keys [text source comments details related figure tags]
-               :as extract}]
+               :as   extract}]
   [:div.search-result.padded
    [:div.break-wrap.ph text]
    [edit-link extract]
    [:div.pth
     [:div.flex.flex-wrap.space-evenly
-     [hlink "comments" [comments-hover comments] {:orientation :left}]
-     [hlink "history"]
-     [hlink "related" #_related]
-     [hlink "details" #_details]
-     [hlink "tags" [tag-hover tags]]
-     [hlink "figure" [figure-hover figure] {:orientation :right
-                                            :style {:max-width "75%"}
-}]
+     [hover-link "comments" [comments-hover comments] {:route :extract/comments}
+      {:orientation :left}]
+     [hover-link "history"]
+     [hover-link "related" #_related]
+     [hover-link "details" #_details]
+     [hover-link "tags" [tag-hover tags]]
+     [hover-link "figure" [figure-hover figure]
+      {:route :extract/figure
+       :path {:id (:id extract)}}
+      {:orientation :right
+       :style       {:max-width "75%"}}]
      [:a.link-blue {:href source} source]]]])
 
 (defn search-results []
