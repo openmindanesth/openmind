@@ -158,7 +158,7 @@
      {:dispatch-n [[:extract/clear ::new]
                    [:notify {:status  :success
                              :message "Extract Successfully Created!"}]
-                   [:openmind.router/navigate {:route :search}]]}
+                   [:navigate {:route :search}]]}
      ;;TODO: Fix notification bar.
      {:dispatch [:notify {:status :error
                           :message "Failed to create extract."}]})))
@@ -168,7 +168,7 @@
    (if (success? status)
      {:dispatch-n [[:notify {:status :success
                              :message "changes saved successfully"}]
-                   [:openmind.router/navigate {:route :search}]]}
+                   [:navigate {:route :search}]]}
      {:dispatch [:notify {:status :error :message "failed to save changes."}]})))
 
 (re-frame/reg-event-db
@@ -424,8 +424,7 @@
       {:on-click (fn [_]
                    (when (= id ::new)
                      (re-frame/dispatch [:extract/clear ::new]))
-                   (re-frame/dispatch [:openmind.router/navigate
-                                       {:route :search}]))
+                   (re-frame/dispatch [:navigate {:route :search}]))
        :style {:opacity 0.6}}
       "CANCEL"]
 

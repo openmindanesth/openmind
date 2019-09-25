@@ -80,9 +80,7 @@
                   route->query
                   (update :filters #(reduce f % (map :id tags)))
                   (update :filters encode-url-filters))]
-    {:dispatch [:openmind.router/navigate
-                {:route :search
-                 :query query}]}))
+    {:dispatch [:navigate {:route :search :query query}]}))
 
 (re-frame/reg-event-fx
  ::add-filter-feature

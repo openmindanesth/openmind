@@ -53,8 +53,8 @@
  ::update-term
  (fn [cofx [_ term]]
    (let [query (-> cofx :db :openmind.router/route :parameters :query)]
-     {:dispatch [:openmind.router/navigate {:route :search
-                                            :query (assoc query :term term)}]})))
+     {:dispatch [:navigate {:route :search
+                            :query (assoc query :term term)}]})))
 
 ;;;;; Views
 
@@ -64,7 +64,7 @@
     (fn [text float-content {:keys [orientation style force?]}]
       [:div
        [:a.plh.prh.link-blue {:on-click #(re-frame/dispatch
-                                          [:openmind.router/navigate route])
+                                          [:navigate route])
                               :on-mouse-over #(reset! hover? true)
                               :on-mouse-out  #(reset! hover? false)}
         text]
@@ -149,7 +149,7 @@
     (when (= (:author extract) login)
       [:div.right.relative.text-grey.small
        {:style {:top "-2rem" :right "1rem"}}
-       [:a {:on-click #(re-frame/dispatch [:openmind.router/navigate
+       [:a {:on-click #(re-frame/dispatch [:navigate
                                            {:route :extract/edit
                                             :path  {:id (:id extract)}}])}
         "edit"]])))

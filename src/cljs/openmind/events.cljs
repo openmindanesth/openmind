@@ -58,7 +58,7 @@
  (fn [cofx _]
    {:storage/remove :orcid
     ::server-logout nil
-    :dispatch [:openmind.router/navigate {:route :search}]}))
+    :dispatch [:navigate {:route :search}]}))
 
 (re-frame/reg-fx
  ::server-logout

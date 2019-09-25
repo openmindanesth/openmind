@@ -4,6 +4,14 @@
             [reitit.frontend.controllers :as rfc]
             [reitit.frontend.easy :as rfe]))
 
+;; This is the "public" event. Events intended to tie the app together are not
+;; namespace qualified since that tends to tightly couple namespaces across the
+;; codebase that aren't otherwise related.
+(re-frame/reg-event-fx
+ :navigate
+ (fn [_ [_ args]]
+   {::navigate! args}))
+
 ;;;; Nav Router
 
 (defn init! [routes]
@@ -46,11 +54,6 @@
                   (assoc match :controllers
                          (rfc/apply-controllers (:controllers previous) match))))
     :dispatch [:openmind.events/close-menu]}))
-
-(re-frame/reg-event-fx
- ::navigate
- (fn [_ [_ args]]
-   {::navigate! args}))
 
 (re-frame/reg-event-fx
  ::init-router
