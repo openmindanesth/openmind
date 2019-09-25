@@ -105,6 +105,9 @@
 (re-frame/reg-event-fx
  ::update-extract
  (fn [cofx [_ id]]
+   ;; TODO: We have to use timestamps to make sure that we don't have a race
+   ;; between updating an extract and refetching it on the search page after you
+   ;; get redirected.
    (if-let [figure (get-in cofx [:db ::core/extracts id :content :figure])]
      (write-file-data id figure)
      (re-frame/dispatch [::extract-update-figure id nil]))))

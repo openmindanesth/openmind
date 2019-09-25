@@ -1,5 +1,6 @@
 (ns openmind.components.search
-  (:require [openmind.components.tags :as tags]
+  (:require [openmind.components.extract.core :as core]
+            [openmind.components.tags :as tags]
             [re-frame.core :as re-frame]
             [reagent.core :as reagent]))
 
@@ -8,7 +9,10 @@
 (re-frame/reg-sub
  ::extracts
  (fn [db]
-   (::results db)))
+   (let [ids (::results db)]
+     (->> ids
+          (map (partial core/get-extract db))
+          (map :content)))))
 
 ;; REVIEW: This is effectively global read-only state. It shouldn't be
 ;; namespaced. Or, presumably, in this namespace.
@@ -46,7 +50,8 @@
    (if (< (::response-number db) nonce)
      (-> db
          (assoc-in [::response-number] nonce)
-         (assoc ::results results))
+         (#(reduce core/add-extract db results))
+         (assoc ::results (map :id results)))
      db)))
 
 (re-frame/reg-event-fx

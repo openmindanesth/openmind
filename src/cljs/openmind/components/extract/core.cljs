@@ -1,6 +1,18 @@
 (ns openmind.components.extract.core
   (:require [re-frame.core :as re-frame]))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;; Public Utilities
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn add-extract [db extract]
+  (update-in db [::extracts (:id extract)]
+                       assoc
+                       :content extract
+                       :fetched (js/Date.)))
+
+(defn get-extract [db id]
+  (get-in db [::extracts id]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Subs
@@ -58,6 +70,8 @@
    ;; app state. When the images get moved to S3 and the broser cache is used to
    ;; handle them, then I'm not sure cleaning up the app state will be very
    ;; important at all for most users.
+   ;; TODO: Keep the server posted about what you have and don't so as to
+   ;; minimise extra traffic and have changes pushed automatically.
    (update-in db [::extracts id]
               ;; Mark extract as inessential
               assoc :gc-ready? true)))
@@ -65,10 +79,7 @@
 (re-frame/reg-event-db
  :openmind/fetch-extract-response
  (fn [db [_ extract]]
-   (update-in db [::extracts (:id extract)]
-              assoc
-              :content extract
-              :fetched (js/Date.))))
+   (add-extract db extract)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Routing
