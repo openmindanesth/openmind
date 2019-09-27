@@ -76,12 +76,12 @@
        (when float-content
          ;; dev hack
          (when (or force? @hover?)
-           [:div.absolute
+           [:div.absolute.ml1.mr1
             {:style (merge
                      style
                      (cond
-                       (= :left orientation)  {:left "1rem"}
-                       (= :right orientation) {:right "2rem"}
+                       (= :left orientation)  {:left "0"}
+                       (= :right orientation) {:right "0"}
                        :else                  {:transform "translateX(-50%)"}))}
             float-content]))])))
 
@@ -143,7 +143,7 @@
   (when figure
     [:div.border-round.border-solid.bg-white
      [:img.relative.p1 {:src figure
-                        :style {:max-width "99%"
+                        :style {:max-width "95%"
                                 :max-height "50vh"
                                 :left "2px"
                                 :top "2px"}}]
