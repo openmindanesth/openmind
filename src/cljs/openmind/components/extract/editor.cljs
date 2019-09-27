@@ -343,6 +343,10 @@
     :label       "figure"
     :key         :figure
     :placeholder [:span [:b "choose a file"] " or drag it here"]}
+   {:type        :text
+    :label       "image caption"
+    :key         :figure-caption
+    :placeholder "additional info about figure"}
    {:type        :textarea-list
     :label       "comments"
     :key         :comments
