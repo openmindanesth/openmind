@@ -145,10 +145,10 @@
   (when figure
     [:div.border-round.border-solid.bg-white
      [:img.relative.p1 {:src figure
-                     :style {:max-width "99%"
-                             :max-height "50vh"
-                             :left "2px"
-                             :top "2px"}}]
+                        :style {:max-width "99%"
+                                :max-height "50vh"
+                                :left "2px"
+                                :top "2px"}}]
      (when (seq caption)
        [:div.p1 caption])]))
 
