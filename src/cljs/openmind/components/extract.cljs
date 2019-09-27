@@ -6,19 +6,23 @@
 (defn figure-page
   [{{:keys [id] :or {id ::new}} :path-params}]
   (let [{:keys [figure figure-caption]} @(re-frame/subscribe [:extract/content id])]
-    [:div
-     [:img.p2 {:style {:max-width "95%"} :src figure}]
-     [:span.pl1.pb2 figure-caption]]))
+    (if figure
+      [:div
+       [:img.p2 {:style {:max-width "95%"} :src figure}]
+       [:span.pl1.pb2 figure-caption]]
+      [:span.p2 "This extract doesn't have an associated figure."])))
 
 (defn comments-page
   [{{:keys [id] :or {id ::new}} :path-params}]
   (let [comments (:comments @(re-frame/subscribe [:extract/content id]))]
-    (into
-     [:div.flex.flex-column.border-round.bg-white.border-solid.p1.pbh]
-     (map (fn [com]
-            [:div.break-wrap.ph.border-round.border-solid.border-grey.mbh
-             com]))
-     comments)))
+    (if (seq comments)
+      (into
+       [:div.flex.flex-column.border-round.bg-white.border-solid.p1.pbh]
+       (map (fn [com]
+              [:div.break-wrap.ph.border-round.border-solid.border-grey.mbh
+               com]))
+       comments)
+      [:span.p2 "No one has commented on this extract yet."])))
 
 (def routes
   (concat editor/routes

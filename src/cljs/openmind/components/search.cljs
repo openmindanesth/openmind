@@ -118,7 +118,7 @@
                                          :margin-left "2.5rem"}}])
 
 (defn tag-hover [tags]
-  (if (seq tags)
+  (when (seq tags)
     (let [tag-lookup @(re-frame/subscribe [:tag-lookup])
           branches   (->> tags
                           (map tag-lookup)
@@ -127,19 +127,17 @@
        (into [:div.flex.flex-column]
              (map (fn [t]
                     [tag-display tag-lookup t]))
-             (get (tree-group branches) "8PvLV2wBvYu2ShN9w4NT"))])
-    [no-content]))
+             (get (tree-group branches) "8PvLV2wBvYu2ShN9w4NT"))])))
 
 
 (defn comments-hover [comments]
-  (if (seq comments)
+  (when (seq comments)
     (into
      [:div.flex.flex-column.border-round.bg-white.border-solid.p1.pbh]
      (map (fn [com]
             [:div.break-wrap.ph.border-round.border-solid.border-grey.mbh
              com]))
-     comments)
-    [no-content]))
+     comments)))
 
 (defn figure-hover [figure caption]
   (when figure
