@@ -5,8 +5,10 @@
 
 (defn figure-page
   [{{:keys [id] :or {id ::new}} :path-params}]
-  (let [{:keys [figure]} @(re-frame/subscribe [:extract/content id])]
-    [:img.p2 {:style {:max-width "95%"} :src figure}]))
+  (let [{:keys [figure figure-caption]} @(re-frame/subscribe [:extract/content id])]
+    [:div
+     [:img.p2 {:style {:max-width "95%"} :src figure}]
+     [:span.pl1.pb2 figure-caption]]))
 
 (defn comments-page
   [{{:keys [id] :or {id ::new}} :path-params}]

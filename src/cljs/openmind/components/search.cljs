@@ -141,13 +141,14 @@
      comments)
     [no-content]))
 
-(defn figure-hover [figure]
+(defn figure-hover [figure caption]
   (when figure
     [:div.border-round.border-solid.bg-white
      [:img.relative {:src figure
-                     :style {:width "99%"
+                     :style {:max-width "99%"
                              :left "2px"
-                             :top "2px"}}]]))
+                             :top "2px"}}]
+     [:div.p1 caption]]))
 
 (defn edit-link [extract]
   (when-let [login @(re-frame/subscribe [:openmind.subs/login-info])]
@@ -174,7 +175,7 @@
      [hover-link "related" #_related]
      [hover-link "details" #_details]
      [hover-link "tags" [tag-hover tags]]
-     [hover-link "figure" [figure-hover figure]
+     [hover-link "figure" [figure-hover figure (:figure-caption extract)]
       {:route :extract/figure
        :path {:id (:id extract)}}
       {:orientation :right
