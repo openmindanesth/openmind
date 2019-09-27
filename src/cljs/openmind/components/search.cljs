@@ -160,6 +160,28 @@
                                             :path  {:id (:id extract)}}])}
         "edit"]])))
 
+(defn authors [authors date]
+  (let [full (apply str (interpose ", " authors))]
+    (str
+     (if (< (count full) 25) full (str (first authors) ", et al."))
+     " (" date ")")))
+
+(defn source-link [{:keys [source source-detail]}]
+  (let [text (if (seq source-detail)
+               (authors (:authors source-detail) (:date source-detail))
+               source)]
+    [:a.link-blue {:href source} text]))
+
+(defn source-hover [{:keys [source-detail]}]
+  (when (seq source-detail)
+    (let [{:keys [authors date journal abstract doi title]} source-detail]
+      [:div.flex.flex-column.border-round.bg-white.border-solid.p1.pbh
+       {:style {:max-width "700px"}}
+       [:h2 title]
+       [:span.smaller.pb1 (str "(" date ") " journal " doi: " doi)]
+       [:em.small.small (apply str (interpose ", " authors))]
+       [:p abstract]])))
+
 (defn result [{:keys [text source comments details related figure tags]
                :as   extract}]
   [:div.search-result.padded
@@ -180,7 +202,8 @@
        :path {:id (:id extract)}}
       {:orientation :right
        :style       {:max-width "75%"}}]
-     [:a.link-blue {:href source} source]]]])
+     [hover-link [source-link extract] [source-hover extract] {}
+      {:orientation :right}]]]])
 
 (defn search-results []
   (let [results @(re-frame/subscribe [::extracts])]
