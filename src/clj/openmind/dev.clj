@@ -1,5 +1,6 @@
 (ns openmind.dev
-  (:require [openmind.routes :as routes]))
+  (:require [openmind.routes :as routes]
+            [taoensso.timbre :as log]))
 
 (defmulti offline-dispatch :id)
 
