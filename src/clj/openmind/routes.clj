@@ -188,16 +188,27 @@
 ;;;;; Dev Kludges
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; REVIEW: We're done with this. Is there any valid reason to keep it around?
 (defn expand-source-info
   "updates an extract with extra source info from pubmed."
   [id]
-  (let [doc (->> (es/lookup es/index id)
-                 es/send-off!
-                 async/<!
-                 es/parse-response
-                 fetch-response
-                 second)]
-    (println doc)))
+  (async/go
+    (let [doc         (->> (es/lookup es/index id)
+                           es/send-off!
+                           async/<!
+                           es/parse-response
+                           fetch-response
+                           second)
+          source-info (->> doc
+                           :source
+                           pubmed/article-info
+                           async/<!)]
+      (->> (assoc doc :source-detail source-info)
+           (es/update-doc es/index id)
+           es/send-off!
+           async/<!
+           :status
+           (println id)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Tag Hierarchy
