@@ -155,12 +155,7 @@
 (defn error [text]
   [:p.text-red.small.pl1.mth.mb0 text])
 
-;; TODO: Make these into individual components. The extra layer of indirection
-;; is useless since we're just dispatching on keys in a map. We may as well put
-;; the appropriate component in the map.
-(defmulti input-component :type)
-
-(defmethod input-component :text
+(defn text
   [{:keys [label key required? placeholder spec errors content data-key]}]
   [:div
    [:input.full-width-textarea
@@ -176,7 +171,7 @@
    (when errors
      [error errors])])
 
-(defmethod input-component :textarea
+(defn textarea
   [{:keys [label key required? placeholder spec errors content data-key]}]
   [:div
    [:textarea.full-width-textarea
@@ -194,7 +189,7 @@
    (when errors
      [error errors])])
 
-(defmethod input-component :text-input-list
+(defn text-input-list
   [{:keys [key placeholder spec errors content data-key]}]
   (conj
    (into [:div.flex.flex-wrap]
@@ -220,7 +215,7 @@
                              [::form-edit data-key [key (count content)] ""]))}
     "[+]"]))
 
-(defmethod input-component :textarea-list
+(defn textarea-list
   [{:keys [key placeholder spec errors content data-key] :as e}]
   [:div
    (into [:div]
@@ -250,7 +245,7 @@
                         [::form-edit data-key [key (count content)] ""]))}
     "[+]"]])
 
-(defmethod input-component :tag-selector
+(defn tag-selector
   [{id :data-key}]
   [tags/tag-widget {:selection {:read [::editor-tag-view-selection id]
                                 :set  [::set-editor-selection id]}
@@ -278,7 +273,7 @@
   (let [f (-> e .-target .-files (aget 0))]
     (re-frame/dispatch [::form-edit dk [k] f])))
 
-(defmethod input-component :image-drop
+(defn image-drop
   [opts]
   (let [id          (str (gensym))
         drag-hover? (r/atom false)]
@@ -317,53 +312,53 @@
    [:div.right-col r]])
 
 (defn input-row
-  [{:keys [label required? full-width?] :as field}]
+  [{:keys [label required? full-width? component] :as field}]
   (let [label-span [:span [:b label] (when required?
                                        [:span.text-red.super.small " *"])]]
     (if full-width?
       [:div
        [:h4.ctext label-span]
-       [input-component field]]
+       [component field]]
       [responsive-two-column
        label-span
-       [input-component field]])))
+       [component field]])))
 
 (def extract-creation-form
-  [{:type        :textarea
+  [{:component   textarea
     :label       "extract"
     :key         :text
     :required?   true
     :placeholder "an insight or takeaway from the paper"}
-   {:type        :text
+   {:component   text
     :label       "source article"
     :key         :source
     :required?   true
     :placeholder "https://www.ncbi.nlm.nih.gov/pubmed/..."}
-   {:type        :image-drop
+   {:component   image-drop
     :label       "figure"
     :key         :figure
     :placeholder [:span [:b "choose a file"] " or drag it here"]}
-   {:type        :text
+   {:component   text
     :label       "image caption"
     :key         :figure-caption
     :placeholder "additional info about figure"}
-   {:type        :textarea-list
+   {:component   textarea-list
     :label       "comments"
     :key         :comments
     :placeholder "anything you think is important"}
-   {:type        :text-input-list
+   {:component   text-input-list
     :label       "confirmed by"
     :key         :confirmed
     :placeholder "link to paper"}
-   {:type        :text-input-list
+   {:component   text-input-list
     :label       "in contrast to"
     :key         :contrast
     :placeholder "link to paper"}
-   {:type        :text-input-list
+   {:component   text-input-list
     :label       "related results"
     :key         :related
     :placeholder "link to paper"}
-   {:type        :tag-selector
+   {:component   tag-selector
     :label       "add filter tags"
     :key         :tags
     :full-width? true}])
