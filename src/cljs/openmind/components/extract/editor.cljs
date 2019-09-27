@@ -333,48 +333,36 @@
     :label       "extract"
     :key         :text
     :required?   true
-    :placeholder "an insight or takeaway from the paper"
-    :spec        ::exs/text
-    :error-message
-    "extracts must be between 1 and 500 characters. If you need to elaborate,
-    use comments."}
+    :placeholder "an insight or takeaway from the paper"}
    {:type        :text
     :label       "source article"
     :key         :source
     :required?   true
-    :placeholder "https://www.ncbi.nlm.nih.gov/pubmed/..."
-    :spec        ::exs/source
-    :error-message "you must reference a source article."}
+    :placeholder "https://www.ncbi.nlm.nih.gov/pubmed/..."}
    {:type        :image-drop
     :label       "figure"
     :key         :figure
-    :placeholder [:span [:b "choose a file"] " or drag it here"]
-    :spec        ::exs/image}
+    :placeholder [:span [:b "choose a file"] " or drag it here"]}
    {:type        :textarea-list
     :label       "comments"
     :key         :comments
-    :placeholder "anything you think is important"
-    :spec        ::exs/comment}
+    :placeholder "anything you think is important"}
    {:type        :text-input-list
     :label       "confirmed by"
     :key         :confirmed
-    :placeholder "link to paper"
-    :spec        ::exs/reference}
+    :placeholder "link to paper"}
    {:type        :text-input-list
     :label       "in contrast to"
     :key         :contrast
-    :placeholder "link to paper"
-    :spec        ::exs/reference}
+    :placeholder "link to paper"}
    {:type        :text-input-list
     :label       "related results"
     :key         :related
-    :placeholder "link to paper"
-    :spec        ::exs/reference}
+    :placeholder "link to paper"}
    {:type        :tag-selector
     :label       "add filter tags"
     :key         :tags
-    :full-width? true
-    :spec        ::exs/tags}])
+    :full-width? true}])
 
 (defn extract-editor
   [{{:keys [id] :or {id ::new}} :path-params}]
