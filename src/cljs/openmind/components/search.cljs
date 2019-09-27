@@ -144,11 +144,13 @@
 (defn figure-hover [figure caption]
   (when figure
     [:div.border-round.border-solid.bg-white
-     [:img.relative {:src figure
+     [:img.relative.p1 {:src figure
                      :style {:max-width "99%"
+                             :max-height "50vh"
                              :left "2px"
                              :top "2px"}}]
-     [:div.p1 caption]]))
+     (when (seq caption)
+       [:div.p1 caption])]))
 
 (defn edit-link [extract]
   (when-let [login @(re-frame/subscribe [:openmind.subs/login-info])]
