@@ -3,6 +3,7 @@
             [clojure.spec.alpha :as s]
             [clojure.walk :as walk]
             [openmind.elastic :as es]
+            [openmind.pubmed :as pubmed]
             [openmind.spec.extract :as extract-spec]
             [openmind.tags :as tags]
             [taoensso.timbre :as log]))
@@ -132,10 +133,15 @@
   [{:keys [client-id send-fn ?reply-fn uid tokens] [_ doc] :event :as req}]
   (when (not= uid :taoensso.sente/nil-uid)
     (async/go
-      (let [res (some->> doc
+      (let [doc (some->> doc
                          (validate
                           (select-keys (:orcid tokens) [:name :orcid-id]))
-                         prepare
+                         prepare)
+            source-info (-> doc
+                            :source
+                            pubmed/article-info
+                            async/<!)
+            res (some->> (assoc doc :source-detail source-info)
                          (es/index-req es/index)
                          es/send-off!
                          async/<!)]
