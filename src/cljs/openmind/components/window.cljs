@@ -51,8 +51,7 @@
   (let [stay? @(re-frame/subscribe [::stay-logged-in?])]
     [:div.flex.flex-column.left.mt2.ml2
      [:button.p1 {:on-click #(re-frame/dispatch [::login stay? :orcid])}
-      [:img {:src "https://orcid.org/sites/default/files/images/orcid_24x24.png"
-
+      [:img {:src "images/orcid.png"
              :style {:vertical-align :bottom}}]
       [:span.pl1 " login with Orcid"]]
      [:button.mt1.p1 {:disabled true}

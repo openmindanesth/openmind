@@ -167,7 +167,7 @@
      " (" date ")")))
 
 (defn source-link [{:keys [source source-detail]}]
-  (let [text (if (seq source-detail)
+  (let [text (if (seq (:authors source-detail))
                (authors (:authors source-detail) (:date source-detail))
                source)]
     [:a.link-blue {:href source} text]))
