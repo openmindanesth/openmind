@@ -197,24 +197,30 @@
        [:em.small.small (apply str (interpose ", " authors))]
        [:p abstract]])))
 
+(defn ilink [text route]
+  [:a {:on-click #(re-frame/dispatch [:navigate route])}
+        text])
+
 (defn result [{:keys [text source comments details related figure tags]
                :as   extract}]
   [:div.search-result.padded
    [:div.break-wrap.ph text]
+   [delete-link extract]
    [edit-link extract]
    [:div.pth
     [:div.flex.flex-wrap.space-evenly
-     [hover-link "comments" [comments-hover comments]
-      {:route :extract/comments
-       :path {:id (:id extract)}}
+     [hover-link [ilink "comments" {:route :extract/comments
+                                    :path {:id (:id extract)}}]
+      [comments-hover comments]
       {:orientation :left}]
      [hover-link "history"]
      [hover-link "related" #_related]
      [hover-link "details" #_details]
      [hover-link "tags" [tag-hover tags]]
-     [hover-link "figure" [figure-hover figure (:figure-caption extract)]
-      {:route :extract/figure
-       :path {:id (:id extract)}}
+     [hover-link [ilink "figure" {:route :extract/figure
+                                  :path {:id (:id extract)}}]
+      [figure-hover figure (:figure-caption extract)]
+
       {:orientation :right
        :style       {:max-width "75%"}}]
      [hover-link [source-link extract] [source-hover extract] {}

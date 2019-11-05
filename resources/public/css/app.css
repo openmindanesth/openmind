@@ -231,7 +231,7 @@ f-align-start {
 		background-color: rgba(0,0,0,0.1);
 }
 
-a.link-blue {
+.link-blue {
 		text-decoration: inherit;
 		color: #1EAEDB;
 }
