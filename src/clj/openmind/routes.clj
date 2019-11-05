@@ -50,6 +50,7 @@
      :query {:bool (merge {:filter (async/<! (tags/tags-filter-query
                                               ;; FIXME: Hardcoded anaesthesia
                                               "anaesthesia" filters))}
+                          {::must_not {:term {:deleted? true}}}
                           (when (seq term)
                             ;; TODO: Better prefix search:
                             ;; https://www.elastic.co/guide/en/elasticsearch/guide/master/_index_time_search_as_you_type.html
@@ -183,6 +184,17 @@
          es/parse-response
          fetch-response
          (respond-with-fallback req))))
+
+(defmethod dispatch :openmind/delete-override
+  [{[_ extract] :event :as req}]
+  (async/go
+    ;; We're not actually deleting anything, just hiding "deleted"
+    ;; extracts. Obviates the need for confirmation.
+    (->> (es/update-doc es/index (:id extract) (assoc extract :deleted? true))
+         es/send-off!
+         ;; HACK: Don't bother responding since this is not something we should
+         ;; encourage.
+         )))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Dev Kludges

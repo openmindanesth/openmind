@@ -29,7 +29,6 @@
          (re-frame/dispatch [::navigated m])))
      {:use-fragment false})))
 
-
 ;;;;; Events
 
 (re-frame/reg-cofx

@@ -61,18 +61,27 @@
      {:dispatch [:navigate {:route :search
                             :query (assoc query :term term)}]})))
 
+(re-frame/reg-event-fx
+ ::delete
+ (fn [cofx [_ extract]]
+   (let [query (-> cofx :db :openmind.router/route :parameters :query)]
+     {:db (update (:db cofx)
+                  ::results (fn [es]
+                              (remove #(= % (:id extract)) es)))
+      :dispatch
+      [:openmind.events/try-send [:openmind/delete-override extract]]})))
+
 ;;;;; Views
 
-(defn hover-link [text float-content route
+(defn hover-link [link float-content
                   {:keys [orientation style force?]}]
   (let [hover? (reagent/atom false)]
     (fn [text float-content route {:keys [orientation style force?]}]
-      [:div
-       [:a.plh.prh.link-blue {:on-click #(re-frame/dispatch
-                                          [:navigate route])
-                              :on-mouse-over #(reset! hover? true)
-                              :on-mouse-out  #(reset! hover? false)}
-        text]
+      [:div.plh.prh
+       {:on-mouse-over #(reset! hover? true)
+        :on-mouse-out  #(reset! hover? false)
+        :style         {:cursor :pointer}}
+       [:div.link-blue link]
        (when float-content
          ;; dev hack
          (when (or force? @hover?)
@@ -159,6 +168,12 @@
                                            {:route :extract/edit
                                             :path  {:id (:id extract)}}])}
         "edit"]])))
+
+(defn delete-link [extract]
+  [:div.right.relative.text-grey.small.pl1
+       {:style {:top "-2rem" :right "1rem"}}
+       [:a {:on-click #(re-frame/dispatch [::delete extract])}
+        "delete"]])
 
 (defn authors [authors date]
   (let [full (apply str (interpose ", " authors))]
