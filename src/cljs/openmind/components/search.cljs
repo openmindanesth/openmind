@@ -170,10 +170,11 @@
         "edit"]])))
 
 (defn delete-link [extract]
-  [:div.right.relative.text-grey.small.pl1
-       {:style {:top "-2rem" :right "1rem"}}
-       [:a {:on-click #(re-frame/dispatch [::delete extract])}
-        "delete"]])
+  (when (seq @(re-frame/subscribe [:openmind.subs/login-info]))
+    [:div.right.relative.text-grey.small.pl1
+     {:style {:top "-2rem" :right "1rem"}}
+     [:a {:on-click #(re-frame/dispatch [::delete extract])}
+      "delete"]]))
 
 (defn authors [authors date]
   (let [full (apply str (interpose ", " authors))]
