@@ -322,8 +322,8 @@
 
 (def extract-types
   {:all       "all"
-   :extracts  "article extracts"
-   :lab-notes "lab notes"})
+   :extract  "article extracts"
+   :lab-note "lab notes"})
 
 (defn extract-type-filter []
   (let [open?     (re-frame/subscribe [::type-list-open?])

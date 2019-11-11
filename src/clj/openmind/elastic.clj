@@ -14,6 +14,7 @@
                 :source       {:type :text}
                 :figure       {:type :text}
                 :tags         {:type :keyword}
+                :extract-type {:type :keyword}
                 :contrast     {:type :text}
                 :related      {:type :text}
                 :author       {:type :object}
