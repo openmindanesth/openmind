@@ -83,16 +83,6 @@
      {:dispatch [:navigate {:route :search
                             :query (assoc query :term term)}]})))
 
-(re-frame/reg-event-fx
- ::delete
- (fn [cofx [_ extract]]
-   (let [query (-> cofx :db :openmind.router/route :parameters :query)]
-     {:db (update (:db cofx)
-                  ::results (fn [es]
-                              (remove #(= % (:id extract)) es)))
-      :dispatch
-      [:openmind.events/try-send [:openmind/delete-override extract]]})))
-
 ;;;;; Views
 
 (defn hover-link [link float-content
@@ -191,13 +181,6 @@
                                             :path  {:id (:id extract)}}])}
         "edit"]])))
 
-(defn delete-link [extract]
-  (when (seq @(re-frame/subscribe [:openmind.subs/login-info]))
-    [:div.right.relative.text-grey.small.pl1
-     {:style {:top "-2rem" :right "1rem"}}
-     [:a {:on-click #(re-frame/dispatch [::delete extract])}
-      "delete"]]))
-
 (defn authors [authors date]
   (let [full (apply str (interpose ", " authors))]
     (str
@@ -228,7 +211,6 @@
                :as   extract}]
   [:div.search-result.padded
    [:div.break-wrap.ph text]
-   [delete-link extract]
    [edit-link extract]
    [:div.pth
     [:div.flex.flex-wrap.space-evenly
