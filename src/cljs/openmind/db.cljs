@@ -6,6 +6,5 @@
    ::tag-tree                             ::uninitialised
    :tag-lookup                            ::uninitialised
    ::status-message                       ""
-   :openmind.components.search/sort-order :extract-creation-date
    :openmind.components.tags/search       {:search/selection []}
    :openmind.router/route                 nil})

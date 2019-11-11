@@ -22,11 +22,6 @@
    (:tag-lookup db)))
 
 (re-frame/reg-sub
- ::sort-order
- (fn [db]
-   (::sort-order db)))
-
-(re-frame/reg-sub
  ::sort-list-open?
  (fn [db]
    (::sort-list-open? db)))
@@ -35,6 +30,17 @@
  ::type-list-open?
  (fn [db]
    (::type-list-open? db)))
+
+(re-frame/reg-sub
+ ::sort-order
+ :<- [:route]
+ (fn [route]
+   (-> route
+       :parameters
+       :query
+       :sort-by
+       keyword
+       (or :extract-creation-date))))
 
 (re-frame/reg-sub
  ::extract-type
@@ -67,12 +73,13 @@
  (fn [db _]
    (assoc db ::sort-list-open? true)))
 
-(re-frame/reg-event-db
+(re-frame/reg-event-fx
  ::select-sort-order
- (fn [db [_ order]]
-   (assoc db
-          ::sort-order order
-          ::sort-list-open? false)))
+ (fn [cofx [_ type]]
+   (let [query (-> cofx :db :openmind.router/route :parameters :query)]
+     {:dispatch [:navigate {:route :search
+                            :query (assoc query :sort-by type)}]
+      :db       (assoc (:db cofx) ::sort-list-open? false)})))
 
 (defn prepare-search
   "Parse and prepare the query args for the server."
