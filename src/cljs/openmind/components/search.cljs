@@ -297,7 +297,7 @@
        (when @open?
          [:div.border-round.border-solid.p1.bg-plain.absolute
           {:style {:right   0
-                   :top     0
+                   :top     "-.9rem"
                    :width   :max-content
                    :opacity 0.9
                    :z-index 100}}
@@ -319,7 +319,7 @@
        (when @open?
          [:div.border-round.border-solid.p1.bg-plain.absolute
           {:style {:left    0
-                   :top     0
+                   :top     "-.9rem"
                    :width   :max-content
                    :opacity 0.9
                    :z-index 100}}
