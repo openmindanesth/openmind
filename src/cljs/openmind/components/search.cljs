@@ -31,7 +31,36 @@
  (fn [db]
    (::sort-list-open? db)))
 
+(re-frame/reg-sub
+ ::type-list-open?
+ (fn [db]
+   (::type-list-open? db)))
+
+(re-frame/reg-sub
+ ::extract-type
+ :<- [:route]
+ (fn [route]
+   (-> route
+       :parameters
+       :query
+       :type
+       keyword
+       (or :all))))
+
 ;;;;; Events
+
+(re-frame/reg-event-db
+ ::open-type-list
+ (fn [db _]
+   (assoc db ::type-list-open? true)))
+
+(re-frame/reg-event-fx
+ ::select-extract-type
+ (fn [cofx [_ type]]
+   (let [query (-> cofx :db :openmind.router/route :parameters :query)]
+     {:dispatch [:navigate {:route :search
+                            :query (assoc query :type type)}]
+      :db       (assoc (:db cofx) ::type-list-open? false)})))
 
 (re-frame/reg-event-db
  ::open-sort-list
@@ -236,10 +265,6 @@
     (into [:div]
           (map (fn [r] [result r]) results))))
 
-(defn extract-type-filter []
-  [:div
-   ])
-
 (defn radio [select-map event state]
   (let [n (gensym)]
     (into [:div.flex.flex-column]
@@ -278,10 +303,32 @@
                    :z-index 100}}
           [radio sort-options ::select-sort-order sort-order]])])))
 
+(def extract-types
+  {:all       "all"
+   :extracts  "article extracts"
+   :lab-notes "lab notes"})
+
+(defn extract-type-filter []
+  (let [open?     (re-frame/subscribe [::type-list-open?])
+        selection (re-frame/subscribe [::extract-type])]
+    (fn []
+      [:div.relative
+       [:button.border-round.text-white.bg-blue.ph
+        {:on-click #(re-frame/dispatch [::open-type-list])}
+        "extract type: " (get extract-types @selection)]
+       (when @open?
+         [:div.border-round.border-solid.p1.bg-plain.absolute
+          {:style {:left    0
+                   :top     0
+                   :width   :max-content
+                   :opacity 0.9
+                   :z-index 100}}
+          [radio extract-types ::select-extract-type selection]])])))
+
 (defn search-filters []
   [:div.flex.flex-column
    [tags/search-filter]
-   [:div.flex.space-between.pth
+   [:div.flex.space-between.pt1
     [extract-type-filter]
     [sort-order-selector]]])
 
