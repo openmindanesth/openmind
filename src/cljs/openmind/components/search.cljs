@@ -1,4 +1,5 @@
 (ns openmind.components.search
+  (:refer-clojure :exclude [or])
   (:require [openmind.components.extract.core :as core]
             [openmind.components.tags :as tags]
             [re-frame.core :as re-frame]
@@ -31,6 +32,9 @@
  (fn [db]
    (::type-list-open? db)))
 
+(def default-sort-order
+  :extract-creation-date)
+
 (re-frame/reg-sub
  ::sort-order
  :<- [:route]
@@ -40,7 +44,7 @@
        :query
        :sort-by
        keyword
-       (or :extract-creation-date))))
+       (cljs.core/or default-sort-order))))
 
 (re-frame/reg-sub
  ::extract-type
@@ -51,7 +55,7 @@
        :query
        :type
        keyword
-       (or :all))))
+       (cljs.core/or :all))))
 
 ;;;;; Events
 
@@ -81,22 +85,28 @@
                             :query (assoc query :sort-by type)}]
       :db       (assoc (:db cofx) ::sort-list-open? false)})))
 
+(defn or [a b]
+  (cljs.core/or a b))
+
 (defn prepare-search
   "Parse and prepare the query args for the server."
-  [term filters time nonce]
-  {::term    (or term "")
-   ::filters (tags/decode-url-filters filters)
-   ::time    (or time (js/Date.))
-   ::nonce   nonce})
+  [query nonce]
+  (-> query
+      (update :term or "")
+      (update :filters tags/decode-url-filters)
+      (update :time :or (js/Date.))
+      (update :sort-by or default-sort-order)
+      (update :type or :all)
+      (assoc :nonce nonce)))
 
 (re-frame/reg-event-fx
  ::search-request
- (fn [cofx [_ term filters time]]
+ (fn [cofx [_ query]]
    ;;TODO: Time is currently ignored, but we do want time travelling search.
    (let [nonce (-> cofx :db ::nonce inc)]
      {:db       (assoc (:db cofx) ::nonce nonce)
       :dispatch [:openmind.events/try-send
-                 [:openmind/search (prepare-search term filters time nonce)]]})))
+                 [:openmind/search (prepare-search query nonce)]]})))
 
 (re-frame/reg-event-db
  :openmind/search-response
@@ -348,8 +358,7 @@
 (def routes
   [["/" {:name        :search
          :component   search-view
-         :controllers [{:parameters {:query [:term :filters :time]}
-
-                        :start (fn [{{:keys [term filters time]} :query}]
+         :controllers [{:parameters {:query [:term :filters :time :sort-by :type]}
+                        :start (fn [route]
                                  (re-frame/dispatch
-                                  [::search-request term filters time]))}]}]])
+                                  [::search-request (:query route)]))}]}]])
