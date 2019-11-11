@@ -21,7 +21,29 @@
  (fn [db]
    (:tag-lookup db)))
 
+(re-frame/reg-sub
+ ::sort-order
+ (fn [db]
+   (::sort-order db)))
+
+(re-frame/reg-sub
+ ::sort-list-open?
+ (fn [db]
+   (::sort-list-open? db)))
+
 ;;;;; Events
+
+(re-frame/reg-event-db
+ ::open-sort-list
+ (fn [db _]
+   (assoc db ::sort-list-open? true)))
+
+(re-frame/reg-event-db
+ ::select-sort-order
+ (fn [db [_ order]]
+   (assoc db
+          ::sort-order order
+          ::sort-list-open? false)))
 
 (defn prepare-search
   "Parse and prepare the query args for the server."
@@ -232,9 +254,58 @@
     (into [:div]
           (map (fn [r] [result r]) results))))
 
+(defn extract-type-filter []
+  [:div
+   ])
+
+(defn radio [select-map event state]
+  (let [n (gensym)]
+    (into [:div.flex.flex-column]
+          (map (fn [[value label]]
+                    [:div.pth
+                     [:input (merge {:name  n
+                                     :type  :radio
+                                     :value value
+                                     :on-click #(re-frame/dispatch [event value])}
+                                    (when (= value @state)
+                                      {:checked "checked"}))]
+                     [:label.plh {:for value
+                                  :on-click #(re-frame/dispatch [event value])}
+                      label]]))
+          select-map)))
+
+(def sort-options
+  {:extract-creation-date "extract creation date"
+   :publication-date      "source publication date"
+   :???                   "magic"})
+
+(defn sort-order-selector []
+  (let [open?      (re-frame/subscribe [::sort-list-open?])
+        sort-order (re-frame/subscribe [::sort-order])]
+    (fn []
+      [:div.relative
+       [:button.border-round.text-white.bg-blue.ph
+        {:on-click #(re-frame/dispatch [::open-sort-list])}
+        "sort by: " (get sort-options @sort-order)]
+       (when @open?
+         [:div.border-round.border-solid.p1.bg-plain.absolute
+          {:style {:right   0
+                   :top     0
+                   :width   :max-content
+                   :opacity 0.9
+                   :z-index 100}}
+          [radio sort-options ::select-sort-order sort-order]])])))
+
+(defn search-filters []
+  [:div.flex.flex-column
+   [tags/search-filter]
+   [:div.flex.space-between.pth
+    [extract-type-filter]
+    [sort-order-selector]]])
+
 (defn search-view []
   [:div
-   [tags/search-filter]
+   [search-filters]
    [:hr.mb1.mt1]
    [search-results]])
 

@@ -8,6 +8,10 @@ html::-webkit-scrollbar {
 		font-size: xx-large;
 }
 
+.bg-plain {
+		background-color: #FEFEFB;
+}
+
 html {
 		scrollbar-width: none;
 		background-color: #FEFEFB;
