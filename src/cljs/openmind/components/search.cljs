@@ -321,8 +321,8 @@
           [radio sort-options ::select-sort-order sort-order]])])))
 
 (def extract-types
-  {:all       "all"
-   :extract  "article extracts"
+  {:all      "all"
+   :article  "article extracts"
    :lab-note "lab notes"})
 
 (defn extract-type-filter []
