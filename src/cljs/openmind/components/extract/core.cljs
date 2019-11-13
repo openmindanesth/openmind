@@ -7,9 +7,9 @@
 
 (defn add-extract [db extract]
   (update-in db [::extracts (:id extract)]
-                       assoc
-                       :content extract
-                       :fetched (js/Date.)))
+             assoc
+             :content extract
+             :fetched (js/Date.)))
 
 (defn get-extract [db id]
   (get-in db [::extracts id]))

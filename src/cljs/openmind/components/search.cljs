@@ -116,10 +116,9 @@
    ;; comes back, if it corresponds to a newer request than that currently
    ;; displayed, swap it in, if not, just drop it.
    (if (< (::response-number db) nonce)
-     (-> db
-         (assoc-in [::response-number] nonce)
-         (#(reduce core/add-extract db results))
-         (assoc ::results (map :id results)))
+     (-> (reduce core/add-extract db results)
+         (assoc ::results (map :id results)
+                ::response-number nonce))
      db)))
 
 (re-frame/reg-event-fx
