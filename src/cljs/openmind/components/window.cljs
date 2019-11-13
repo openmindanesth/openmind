@@ -94,6 +94,7 @@
     [:div.search-result.padded.absolute.bg-light-grey.wide.pb2.pl1.pr1
      {:style          {:top     5
                        :left    5
+                       :z-index 500
                        :opacity 0.95}
       :id             "nav-menu"
       :on-mouse-leave #(re-frame/dispatch [::events/close-menu])}
@@ -116,8 +117,9 @@
                         :term)]
     [:div
      [:div.flex.space-between.mr2
-      [:button.z100
-       {:on-click #(re-frame/dispatch (if @(re-frame/subscribe [::subs/menu-open?])
+      [:button
+       {:style {:z-index 1000}
+        :on-click #(re-frame/dispatch (if @(re-frame/subscribe [::subs/menu-open?])
                                         [::events/close-menu]
                                         [::events/open-menu]))}
        [:span.ham "Ξ"]]
