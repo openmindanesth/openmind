@@ -55,7 +55,7 @@
                                        (remove nil?)
                                        [(when (seq term)
                                          {:match_phrase_prefix {:text term}})
-                                        (when (and type (not= type "all"))
+                                        (when (and type (not= type :all))
                                           {:term {:extract-type type}})])})}}))
 ;; TODO: Better prefix search:
 ;; https://www.elastic.co/guide/en/elasticsearch/guide/master/_index_time_search_as_you_type.html

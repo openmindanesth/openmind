@@ -95,8 +95,8 @@
       (update :term or "")
       (update :filters tags/decode-url-filters)
       (update :time :or (js/Date.))
-      (update :sort-by or default-sort-order)
-      (update :type or :all)
+      (update :sort-by #(or (keyword %) default-sort-order))
+      (update :type #(or (keyword %) :all))
       (assoc :nonce nonce)))
 
 (re-frame/reg-event-fx
