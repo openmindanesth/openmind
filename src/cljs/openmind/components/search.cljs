@@ -64,26 +64,34 @@
  (fn [db _]
    (assoc db ::type-list-open? true)))
 
+(re-frame/reg-event-db
+ ::close-type-list
+ (fn [db _]
+   (assoc db ::type-list-open? false)))
+
 (re-frame/reg-event-fx
  ::select-extract-type
  (fn [cofx [_ type]]
    (let [query (-> cofx :db :openmind.router/route :parameters :query)]
      {:dispatch [:navigate {:route :search
-                            :query (assoc query :type type)}]
-      :db       (assoc (:db cofx) ::type-list-open? false)})))
+                            :query (assoc query :type type)}]})))
 
 (re-frame/reg-event-db
  ::open-sort-list
  (fn [db _]
    (assoc db ::sort-list-open? true)))
 
+(re-frame/reg-event-db
+ ::close-sort-list
+ (fn [db _]
+   (assoc db ::sort-list-open? false)))
+
 (re-frame/reg-event-fx
  ::select-sort-order
  (fn [cofx [_ type]]
    (let [query (-> cofx :db :openmind.router/route :parameters :query)]
      {:dispatch [:navigate {:route :search
-                            :query (assoc query :sort-by type)}]
-      :db       (assoc (:db cofx) ::sort-list-open? false)})))
+                            :query (assoc query :sort-by type)}]})))
 
 (defn or [a b]
   (cljs.core/or a b))
@@ -281,22 +289,48 @@
     (into [:div]
           (map (fn [r] [result r]) results))))
 
-(defn radio [select-map event state]
+(defn radio [select-map set-event close-event state]
   (let [n (gensym)]
-    (into [:div.flex.flex-column]
-          (map (fn [[value label]]
-                    [:div.pth
-                     [:input (merge {:name  n
-                                     :type  :radio
-                                     :value value
-                                     :read-only true
-                                     :on-click #(re-frame/dispatch [event value])}
-                                    (when (= value @state)
-                                      {:checked "checked"}))]
-                     [:label.plh {:for value
-                                  :on-click #(re-frame/dispatch [event value])}
-                      label]]))
-          select-map)))
+    (let [onclick (fn [value]
+                    (fn [e]
+                      (re-frame/dispatch [set-event value])
+                      (re-frame/dispatch [close-event])))]
+      (into [:div.flex.flex-column]
+            (map (fn [[value label]]
+                   [:div.pth
+                    [:input (merge {:name      n
+                                    :type      :radio
+                                    :value     value
+                                    :read-only true
+                                    :on-click  (onclick value)}
+                                   (when (= value @state)
+                                     {:checked "checked"}))]
+                    [:label.plh {:for      value
+                                 :on-click (onclick value)}
+                     label]]))
+            select-map))))
+
+(defn floating-radio-box [{:keys [open? content open! values set! close!
+                                  align]}]
+  (let [open?   (re-frame/subscribe [open?])
+        content (re-frame/subscribe [content])]
+    (fn []
+      [:div.relative
+       [:button.border-round.text-white.bg-blue.ph
+        {:on-click #(re-frame/dispatch [open!])}
+        "sort by: " (get values @content)]
+       (when @open?
+         [:div.border-round.border-solid.p1.bg-plain.absolute
+          ;; REVIEW: I don't like this. Required keywords, basically a bespoke
+          ;; and undocumented DSL...
+          {:style {align     0
+                   :top       "-.9rem"
+                   :width     "100%"
+                   :min-width :max-content
+                   :opacity   0.9
+                   :z-index   100}
+           :on-mouse-leave #(re-frame/dispatch [close!])}
+          [radio values set! close! content]])])))
 
 (def sort-options
   {:extract-creation-date "extract creation date"
@@ -304,21 +338,13 @@
    :???                   "magic"})
 
 (defn sort-order-selector []
-  (let [open?      (re-frame/subscribe [::sort-list-open?])
-        sort-order (re-frame/subscribe [::sort-order])]
-    (fn []
-      [:div.relative
-       [:button.border-round.text-white.bg-blue.ph
-        {:on-click #(re-frame/dispatch [::open-sort-list])}
-        "sort by: " (get sort-options @sort-order)]
-       (when @open?
-         [:div.border-round.border-solid.p1.bg-plain.absolute
-          {:style {:right   0
-                   :top     "-.9rem"
-                   :width   :max-content
-                   :opacity 0.9
-                   :z-index 100}}
-          [radio sort-options ::select-sort-order sort-order]])])))
+  [floating-radio-box {:content ::sort-order
+                       :open?   ::sort-list-open?
+                       :open!   ::open-sort-list
+                       :close!  ::close-sort-list
+                       :set!    ::select-sort-order
+                       :values  sort-options
+                       :align :right}])
 
 (def extract-types
   {:all      "all"
@@ -326,21 +352,13 @@
    :labnote "lab notes"})
 
 (defn extract-type-filter []
-  (let [open?     (re-frame/subscribe [::type-list-open?])
-        selection (re-frame/subscribe [::extract-type])]
-    (fn []
-      [:div.relative
-       [:button.border-round.text-white.bg-blue.ph
-        {:on-click #(re-frame/dispatch [::open-type-list])}
-        "extract type: " (get extract-types @selection)]
-       (when @open?
-         [:div.border-round.border-solid.p1.bg-plain.absolute
-          {:style {:left    0
-                   :top     "-.9rem"
-                   :width   :max-content
-                   :opacity 0.9
-                   :z-index 100}}
-          [radio extract-types ::select-extract-type selection]])])))
+  [floating-radio-box {:content ::extract-type
+                       :values  extract-types
+                       :open?   ::type-list-open?
+                       :open!   ::open-type-list
+                       :close!  ::close-type-list
+                       :set!    ::select-extract-type
+                       :align  :left}])
 
 (defn search-filters []
   [:div.flex.flex-column
