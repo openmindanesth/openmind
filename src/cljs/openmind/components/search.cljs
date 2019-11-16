@@ -311,14 +311,14 @@
             select-map))))
 
 (defn floating-radio-box [{:keys [open? content open! values set! close!
-                                  align]}]
+                                  align label]}]
   (let [open?   (re-frame/subscribe [open?])
         content (re-frame/subscribe [content])]
     (fn []
       [:div.relative
        [:button.border-round.text-white.bg-blue.ph
         {:on-click #(re-frame/dispatch [open!])}
-        "sort by: " (get values @content)]
+        label (get values @content)]
        (when @open?
          [:div.border-round.border-solid.p1.bg-plain.absolute
           ;; REVIEW: I don't like this. Required keywords, basically a bespoke
@@ -344,7 +344,8 @@
                        :close!  ::close-sort-list
                        :set!    ::select-sort-order
                        :values  sort-options
-                       :align :right}])
+                       :align   :right
+                       :label   "sort by: "}])
 
 (def extract-types
   {:all      "all"
@@ -358,7 +359,8 @@
                        :open!   ::open-type-list
                        :close!  ::close-type-list
                        :set!    ::select-extract-type
-                       :align  :left}])
+                       :align   :left
+                       :label   "extract type: "}])
 
 (defn search-filters []
   [:div.flex.flex-column
