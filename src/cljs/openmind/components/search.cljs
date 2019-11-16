@@ -289,6 +289,7 @@
                      [:input (merge {:name  n
                                      :type  :radio
                                      :value value
+                                     :read-only true
                                      :on-click #(re-frame/dispatch [event value])}
                                     (when (= value @state)
                                       {:checked "checked"}))]
@@ -322,7 +323,7 @@
 (def extract-types
   {:all      "all"
    :article  "article extracts"
-   :lab-note "lab notes"})
+   :labnote "lab notes"})
 
 (defn extract-type-filter []
   (let [open?     (re-frame/subscribe [::type-list-open?])
