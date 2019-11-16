@@ -146,7 +146,7 @@
                    (assoc :extract-type :article))]
       (update-doc index id body))))
 
-(defn add-extract-to-to-all []
+(defn add-extract-to-all []
   (async/go
     (let [ids (async/<! (all-ids))]
       (run! #(async/go

@@ -7,6 +7,26 @@
             [reagent.core :as r]
             [taoensso.timbre :as log]))
 
+(defn validate-extract
+  "Checks form data for extract creation/update against the spec."
+  [db id]
+  (let [author  @(re-frame/subscribe [:openmind.subs/login-info])
+         extract (-> db
+                     (get-in [::core/extracts id :content])
+                     (assoc :author author
+                            :created-time (js/Date.)))]
+     (if (s/valid? ::exs/extract extract)
+       {:valid extract}
+       (let [err (s/explain-data ::exs/extract extract)]
+         (log/warn "Bad extract" id err)
+         {:errors (exs/interpret-explanation err)}))))
+
+(re-frame/reg-event-fx
+ ::revalidate
+ (fn [{:keys [db]} [_ id]]
+   {:dispatch [::form-errors (:errors (validate-extract db id)) id]}))
+
+;;;;; Subs
 
 (re-frame/reg-sub
  ::extract-form-errors
@@ -66,51 +86,37 @@
  (fn [db [_ id k v]]
    (assoc-in db (concat [::core/extracts id :content] k) v)))
 
-(defn write-file-data [id figure]
-  (if (string? figure)
-    (re-frame/dispatch [::extract-update-figure id figure])
-    (let [reader (js/FileReader.)]
-      (set! (.-onload reader)
-            (fn [e]
-              (let [img (->> e
-                             .-target
-                             .-result)]
-                (re-frame/dispatch [::extract-update-figure id img]))))
-      (.readAsDataURL reader figure))))
-
-(defn update-figure [m img-data]
-  (if (seq img-data)
-    (assoc m :figure img-data)
-    m))
-
 (re-frame/reg-event-fx
- ::extract-update-figure
- (fn [cofx [_ id img-data]]
-   (let [author  @(re-frame/subscribe [:openmind.subs/login-info])
-         extract (-> cofx
-                     (get-in [:db ::core/extracts id :content])
-                     (assoc :author author
-                            :created-time (js/Date.))
-                     (update-figure img-data))
-         event   (if (= ::new id)
-                   [:openmind/index extract]
-                   [:openmind/update extract])]
-     (if (s/valid? ::exs/extract extract)
-       {:dispatch [:openmind.events/try-send event]}
-       (let [err (s/explain-data ::exs/extract extract)]
-         (log/warn "Bad extract" id err)
-         {:db (assoc-in (:db cofx) [::core/extracts id :errors]
-                        (exs/interpret-explanation err))})))))
+ ::load-figure
+ (fn [cofx [_ id extract]]
+   (println id)
+   (let [event (if (= ::new id) :openmind/index :openmind/update)
+         figure (:figure extract)]
+     (if (or (empty? figure) (string? figure))
+       {:dispatch [:openmind.events/try-send [event extract]]}
+       (let [reader (js/FileReader.)]
+         (set! (.-onload reader)
+               (fn [e]
+                 (let [img (->> e
+                                .-target
+                                .-result)]
+                   (re-frame/dispatch [:openmind.events/try-send
+                                       [event (assoc extract :figure img)]]))))
+         (.readAsDataURL reader figure))))))
+
+(re-frame/reg-event-db
+ ::form-errors
+ (fn [db [_ errors id]]
+   (assoc-in db [::core/extracts id :errors] errors)))
 
 (re-frame/reg-event-fx
  ::update-extract
- (fn [cofx [_ id]]
-   ;; TODO: We have to use timestamps to make sure that we don't have a race
-   ;; between updating an extract and refetching it on the search page after you
-   ;; get redirected.
-   (if-let [figure (get-in cofx [:db ::core/extracts id :content :figure])]
-     (write-file-data id figure)
-     (re-frame/dispatch [::extract-update-figure id nil]))))
+ (fn [{:keys [db]} [_ id]]
+   (let [{:keys [valid errors]} (validate-extract db id)]
+     (if errors
+       {:dispatch [::form-errors errors id]}
+       {:dispatch-n [[::form-errors nil id]
+                     [::load-figure id valid]]}))))
 
 (defn success? [status]
   (<= 200 status 299))
@@ -157,11 +163,13 @@
 
 (defn text
   [{:keys [label key required? placeholder spec errors content data-key]}]
-  [:div
+  [:div.full-width
    [:input.full-width-textarea
     (merge {:id        (name key)
             :type      :text
-            :on-change (pass-edit data-key [key])}
+            :on-change (juxt (pass-edit data-key [key])
+                             #(when errors
+                                (re-frame/dispatch [::revalidate data-key])))}
            (cond
              (seq content) {:value content}
              placeholder   {:value       nil
@@ -179,7 +187,9 @@
             :rows      2
             :style     {:resize :vertical}
             :type      :text
-            :on-change (pass-edit data-key [key])}
+            :on-change (juxt (pass-edit data-key [key])
+                             #(when errors
+                                (re-frame/dispatch [::revalidate data-key])))}
            (cond
              (seq content) {:value content}
              placeholder   {:value       nil
@@ -306,6 +316,53 @@
                   :accept    "image/png,image/gif,image/jpeg"
                   :on-change (partial select-upload data-key key)}]]))))
 
+(defn source-selector [{:keys [key content data-key errors] :as opts}]
+  ;; For lab notes we want to get the PI, institution (corp), and date of
+  ;; observation.
+  ;; For article extracts, we can autofill from pubmed, but if that doesn't
+  ;; work, we want the title, author list, publication, and date.
+  [:div.flex.flex-column
+   [:div.flex.flex-start
+    (when (and errors (not content))
+      {:class "form-error border-round border-solid ph"
+       :style {:width "max-content"}})
+    [:button.p1.text-white.border-round
+     {:class    (if (= content :article)
+                  "bg-dark-blue"
+                  "bg-blue")
+      :on-click #(do (re-frame/dispatch
+                       [::form-edit data-key [key] :article])
+                     (when errors
+                       (re-frame/dispatch [::revalidate data-key])))}
+     "published article"]
+    [:button.p1.ml1.text-white.border-round
+     {:class    (if (= content :labnote)
+                  "bg-dark-blue"
+                  "bg-blue")
+      :on-click #(do (re-frame/dispatch
+                      [::form-edit data-key [key] :labnote])
+                     (when errors
+                       (re-frame/dispatch [::revalidate data-key])))}
+     "lab note"]]
+   (when errors
+     [error errors])
+   (when content
+     [:div.mth.mb1.flex
+      [:div.flex.vcenter
+       [:label.pr1.pl1 {:for (name key)
+                    :style {:width "9rem"}}
+        [:b (if (= content :article)
+              "link to article"
+              "reference")
+         [:span.text-red.super.small " *"]]]]
+      (let [placeholder (if (= content :article)
+                          "www.ncbi.nlm.nih.gov/pubmed/..."
+                          "investigator, lab, institution, date of observation")
+            opts        (assoc opts
+                               :key :source
+                               :placeholder placeholder)]
+        [text (add-form-data data-key opts)])])])
+
 (defn responsive-two-column [l r]
   [:div.vcenter.mb1h.mbr2
    [:div.left-col l]
@@ -328,12 +385,11 @@
     :label       "extract"
     :key         :text
     :required?   true
-    :placeholder "an insight or takeaway from the paper"}
-   {:component   text
-    :label       "source article"
-    :key         :source
-    :required?   true
-    :placeholder "https://www.ncbi.nlm.nih.gov/pubmed/..."}
+    :placeholder "what have you discovered?"}
+   {:component   source-selector
+    :label       "source"
+    :key         :extract-type
+    :required?   true}
    {:component   image-drop
     :label       "figure"
     :key         :figure

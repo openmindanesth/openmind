@@ -171,6 +171,10 @@ a {
 		display: flex;
 }
 
+.flex-start {
+		justify-content: flex-start;
+}
+
 .flex-right {
 		align-self: flex-end;
 }
@@ -466,6 +470,10 @@ button.filter-button {
 		border-radius: 0.5rem;
 		padding: 0.5rem;
 		box-sizing: border-box;
+		width: 100%;
+}
+
+.full-width {
 		width: 100%;
 }
 

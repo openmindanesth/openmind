@@ -21,11 +21,14 @@
 (s/def ::reference ::url)
 
 (s/def ::extract
-  (s/keys :req-un [::text ::source ::tags ::created-time ::author]
+  (s/keys :req-un [::text ::source ::tags ::created-time ::author ::extract-type]
           :opt-un [::comments ::figure ::history ::related ::details
                    ::confirmed ::contrast]))
 
 ;;;;; Required
+
+(s/def ::extract-type
+  (s/and some? keyword?))
 
 (s/def ::text
   (s/and string? not-empty #(< (count %) 500)))
