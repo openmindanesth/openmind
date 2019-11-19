@@ -334,8 +334,7 @@
 
 (def sort-options
   {:extract-creation-date "extract creation date"
-   :publication-date      "source publication date"
-   :???                   "magic"})
+   :publication-date      "source publication date"})
 
 (defn sort-order-selector []
   [floating-radio-box {:content ::sort-order
@@ -348,8 +347,8 @@
                        :label   "sort by: "}])
 
 (def extract-types
-  {:all      "all"
-   :article  "article extracts"
+  {:all     "all"
+   :article "article extracts"
    :labnote "lab notes"})
 
 (defn extract-type-filter []
