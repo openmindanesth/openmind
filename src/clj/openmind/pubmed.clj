@@ -37,11 +37,21 @@
         stream (java.io.ByteArrayInputStream. (.getBytes no-dtd))]
     (xml/parse stream)))
 
+(def es-date-formatter
+  (java.text.SimpleDateFormat. "YYYY-MM-dd'T'HH:mm:ss.SSSXXX"))
+
 ;; FIXME: What a monster.
 (defn extract-article-info [xml]
   (let [main     (first (filter-by-attr :id "maincontent" xml))
         publine  (->> main (filter-by-attr :class "cit") first :content second)
-        date     (-> publine (string/split #" ") second)
+        date     (-> publine (string/split #";")
+                     first
+                     (string/split #" ")
+                     rest
+
+                     (->> (string/join " ")
+                          java.util.Date.
+                          (.format es-date-formatter)))
         doi      (-> publine
                      (string/split #"doi:")
                      last
