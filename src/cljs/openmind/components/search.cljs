@@ -242,7 +242,9 @@
 
 (defn source-link [{:keys [source source-detail]}]
   (let [text (if (seq (:authors source-detail))
-               (authors (:authors source-detail) (:date source-detail))
+               (authors (:authors source-detail) (.getFullYear
+                                                  (js/Date.
+                                                   (:date source-detail))))
                source)]
     [:a.link-blue {:href source} text]))
 
