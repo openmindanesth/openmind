@@ -9,16 +9,18 @@
 (def tag-index "tags0")
 
 (def mapping
-  {:properties {:created-time {:type :date}
-                :text         {:type :search_as_you_type}
-                :source       {:type :text}
-                :figure       {:type :text}
-                :tags         {:type :keyword}
-                :extract-type {:type :keyword}
-                :contrast     {:type :text}
-                :related      {:type :text}
-                :author       {:type :object}
-                :confirmed    {:type :text}}})
+  {:properties {:created-time  {:type :date}
+                :source-detail {:properties {:date {:type :date}}
+                                :type :nested}
+                :text          {:type :search_as_you_type}
+                :source        {:type :text}
+                :figure        {:type :text}
+                :tags          {:type :keyword}
+                :extract-type  {:type :keyword}
+                :contrast      {:type :text}
+                :related       {:type :text}
+                :author        {:type :object}
+                :confirmed     {:type :text}}})
 
 ;;;;; REST API wrapping
 
