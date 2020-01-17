@@ -1,6 +1,14 @@
 # Openmind
 
-See the [mockups](idea.pdf).
+[Try out the demo!](https://openmind-eu.herokuapp.com)
+
+Note, to create extracts, you must have, or create, an
+[Orcid](https://orcid.org) account. No login is required to search.
+
+Feedback is welcome. Please feel free to create an issue.
+
+The is still an early iteration. Take a look at the [mockups](idea.pdf) for the
+bigger idea.
 
 ## Development Mode
 
@@ -32,7 +40,7 @@ when the container is terminated.
 
 # License
 
-Copyright © 2019 Henning Reimann & Thomas Getgood
+Copyright © 2020 Henning Reimann & Thomas Getgood
 
 Distributed under the Eclipse Public License either version 1.0 or (at your
 option) any later version.
