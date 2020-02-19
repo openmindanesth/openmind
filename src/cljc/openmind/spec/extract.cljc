@@ -1,15 +1,26 @@
 (ns openmind.spec.extract
-  #?(:cljs (:require [cljs.spec.alpha :as s]
-                     [cljs.spec.gen.alpha :as gen]
-                     [clojure.test.check.generators])
-     :clj  (:require [clojure.spec.alpha :as s]
-                     [clojure.spec.gen.alpha :as gen]
-                     [clojure.test.check.generators])))
-
+  #?@
+   (:clj
+    [(:require [clojure.spec.alpha :as s]
+               [openmind.ref :as ref])]
+    :cljs
+    [(:require [cljs.spec.alpha :as s]
+               [openmind.ref :as ref])]))
 
 ;; Here's an idea of how to use specs to generate form validation:
 ;; https://medium.com/@kirill.ishanov/building-forms-with-re-frame-and-clojure-spec-6cf1df8a114d
 ;; Give it a shot
+
+(s/def ::immutable
+  (s/keys :req-un [::hash ::content]))
+
+(s/def ::hash ref/ref? ) ; FIXME: Type for hashes as in xyzzy
+
+(s/def ::content
+  (s/or
+   :comment  ::comment
+   :relation ::relation
+   :extract  ::extract))
 
 ;;;;; General
 

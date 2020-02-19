@@ -1,6 +1,5 @@
 (ns openmind.server
-  (:require clj-http.client
-            [clojure.java.io :as io]
+  (:require [clojure.java.io :as io]
             [compojure.core :as c]
             [compojure.route :as route]
             [openmind.env :as env]
@@ -8,11 +7,8 @@
             [openmind.routes :as routes]
             [org.httpkit.server :as http]
             ring.middleware.anti-forgery
-            [ring.middleware.content-type :refer [wrap-content-type]]
             [ring.middleware.defaults :refer [site-defaults wrap-defaults]]
-            [ring.middleware.keyword-params :refer [wrap-keyword-params]]
             [ring.middleware.oauth2 :refer [wrap-oauth2]]
-            [ring.middleware.params :refer [wrap-params]]
             [ring.util.response :refer [redirect]]
             [taoensso.sente :as sente]
             [taoensso.sente.server-adapters.http-kit :as sente-http-kit]
