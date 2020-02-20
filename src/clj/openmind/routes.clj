@@ -127,6 +127,8 @@
       (assoc :created-time (java.util.Date.))
       parse-dates))
 
+;; FIXME: This is doing too many things at once. We need to separate this into
+;; layers; data completion, validation, sending to elastic, and error handling.
 (defmethod dispatch :openmind/index
   [{:keys [client-id send-fn ?reply-fn uid tokens] [_ doc] :event :as req}]
   (when (not= uid :taoensso.sente/nil-uid)

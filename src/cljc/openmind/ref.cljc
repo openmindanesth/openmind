@@ -52,4 +52,6 @@
             (partition 2 hex))))
 
 #?(:cljs
+   ;;FIXME: Why does (cljs.reader/read-sting "#ref \"12\"") work, but entering
+   ;;`#ref "12"` in the repl give a "tag not found" error?
    (cljs.reader/register-tag-parser! 'ref read-ref))
