@@ -3,6 +3,7 @@
             [openmind.components.tags :as tags]
             [openmind.components.extract.core :as core]
             [openmind.spec.extract :as exs]
+            [openmind.spec.validation :as validation]
             [re-frame.core :as re-frame]
             [reagent.core :as r]
             [taoensso.timbre :as log]))
@@ -19,7 +20,7 @@
        {:valid extract}
        (let [err (s/explain-data ::exs/extract extract)]
          (log/warn "Bad extract" id err)
-         {:errors (exs/interpret-explanation err)}))))
+         {:errors (validation/interpret-explanation err)}))))
 
 (re-frame/reg-event-fx
  ::revalidate
