@@ -1,7 +1,9 @@
 (ns openmind.tags
   (:require [clojure.core.async :as async]
             [clojure.data.json :as json]
-            [openmind.elastic :as es]))
+            [clojure.spec.alpha :as s]
+            [openmind.elastic :as es]
+            [openmind.hash :as h]))
 
 (def ^:private tag-tree
   "For development purposes, I'm encoding the tress of tags here. Once we've got
@@ -133,22 +135,34 @@
 ;;;;; Initialising the DB
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn index-tag-tree [index tree parents]
-  (run! (fn [[k v]]
-          (async/go
-            (let [tag-data {:tag-name k
-                            :parents parents}
-                  id (find-id
-                      (async/<!
-                       (es/send-off!
-                        (es/index-tag index tag-data))))]
-              (tap> [k id parents])
-              (index-tag-tree index v (conj parents id)))))
-        tree))
+(defn create-tag [domain name parents]
+  (let [data {:domain  domain
+              :name    name
+              :parents parents
+              :time/created (java.util.Date.)}]
+    {:hash    (h/hash data)
+     :content data}))
+
+(defn create-tag-data [domain tree]
+  (letfn [(inner [tree parents]
+            (mapcat (fn [[k v]]
+                      (let [t (create-tag domain k parents)]
+                        (conj (inner v (conj parents (:hash t)))
+                              t)))
+                    tree))]
+    (inner tree [])))
+
+(defn create-tag-tree! [index tree]
+  (let [data (create-tag-data (key (first tag-tree)) tag-tree)]
+    (assert (every? (partial s/valid? :openmind.spec.extract/immutable) data))
+    (run! (fn [tag]
+            (es/send-off!
+             (es/index-req index tag)))
+          data)))
 
 (defn init-elastic [index tag-index]
   (async/go
     (async/<! (es/send-off! (es/create-index index)))
     (async/<! (es/send-off! (es/set-mapping index)))
     (async/<! (es/send-off! (es/create-index tag-index)))
-    (index-tag-tree tag-index tag-tree [])))
+    (create-tag-tree! tag-index tag-tree)))

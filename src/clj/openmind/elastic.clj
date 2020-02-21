@@ -67,14 +67,6 @@
          :url (str base-url "/" index)
          :method :put))
 
-;;;;; Tags in elastic
-
-(defn index-tag [index tag-data]
-  (assoc base-req
-         :url (str base-url "/" index "/_doc/")
-         :method :post
-         :body (json/write-str tag-data)))
-
 ;;;;; Wheel #6371
 
 (defn parse-response
