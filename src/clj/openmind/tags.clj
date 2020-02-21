@@ -156,8 +156,11 @@
   (let [data (create-tag-data (key (first tag-tree)) tag-tree)]
     (assert (every? (partial s/valid? :openmind.spec.extract/immutable) data))
     (run! (fn [tag]
-            (es/send-off!
-             (es/index-req index tag)))
+            (async/go
+              (tap>
+               (async/<!
+                (es/send-off!
+                 (es/index-req index tag))))))
           data)))
 
 (defn init-elastic [index tag-index]

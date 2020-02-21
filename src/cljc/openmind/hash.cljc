@@ -1,19 +1,16 @@
 (ns openmind.hash
   (:refer-clojure :exclude [hash])
-  (:require [clojure.data.json]
-            [hasch.core :as h]
+  (:require [hasch.core :as h]
             [hasch.base64 :as b64]
             [hasch.benc :as benc]
-            [hasch.platform :as platform]
             #?(:cljs [cljs.reader])))
 
 (def b64-chars
   (into #{} "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/="))
 
-(defn b64-str [r]
-  (b64/encode (#?(:clj byte-array :cljs clj->js) (.-bytes r))))
-
 (def tag 'openmind.hash/sha512)
+
+(declare b64-str)
 
 (deftype ValueRef [bytes]
   benc/PHashCoercion
@@ -25,11 +22,14 @@
      (if (identical? this o)
        true
        (when (instance? ValueRef o)
-         (= (.-bytes this) (.-bytes o))))))
+         (= (.-bytes this) (.-bytes ^ValueRef o))))))
   (hashCode [_]
     (.hashCode bytes))
   (toString [this]
     (str "#" (str tag) " \"" (b64-str this) "\"")))
+
+(defn b64-str [r]
+  (b64/encode (#?(:clj byte-array :cljs clj->js) (.-bytes ^ValueRef r))))
 
 #?(:clj
    (defn- print-ref

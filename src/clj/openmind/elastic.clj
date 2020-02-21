@@ -1,7 +1,7 @@
 (ns openmind.elastic
   (:require [clojure.core.async :as async]
-            [clojure.data.json :as json]
             [openmind.env :as env]
+            [openmind.json :as json]
             [org.httpkit.client :as http]
             [taoensso.timbre :as log]))
 
@@ -19,6 +19,11 @@
                 :related      {:type :text}
                 :author       {:type :object}
                 :confirmed    {:type :text}}})
+
+(def tag-mapping
+  {:properties
+   {:hash    :text
+    :content :object}})
 
 ;;;;; REST API wrapping
 
@@ -56,7 +61,7 @@
 
 ;;;;; Init new index
 
-(defn set-mapping [index]
+(defn set-mapping [index mapping]
   (merge base-req
          {:method :put
           :url (str base-url "/" index "/_mapping")
