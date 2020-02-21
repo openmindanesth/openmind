@@ -2,10 +2,10 @@
   #?@
    (:clj
     [(:require [clojure.spec.alpha :as s]
-               [openmind.ref :as ref])]
+               [openmind.hash :as h])]
     :cljs
     [(:require [cljs.spec.alpha :as s]
-               [openmind.ref :as ref])]))
+               [openmind.hash :as h])]))
 
 ;; Here's an idea of how to use specs to generate form validation:
 ;; https://medium.com/@kirill.ishanov/building-forms-with-re-frame-and-clojure-spec-6cf1df8a114d
@@ -14,31 +14,34 @@
 (s/def ::immutable
   (s/keys :req-un [::hash ::content]))
 
-(s/def ::hash ref/ref? ) ; FIXME: Type for hashes as in xyzzy
+(s/def ::hash
+  h/value-ref?)
 
 (s/def ::content
   (s/or
    :comment  ::comment
    :relation ::relation
-   :extract  ::extract))
+   :extract  ::extract
+   :tag      ::tag))
 
 ;;;;; General
 
 (s/def ::extract
   (s/keys :req-un [::text
                    ::source
-                   ::tags
                    ::created-time
                    ::author
+                   :extract/tags
                    :extract/type
-                   ::figure
-                   ::previous-version]))
+                   ::figure]
+          :opt-un [::previous-version]))
 
 (s/def ::comment
   (s/keys :req-un [::text
                    ::author
                    ::created-time
-                   ::refers-to]))
+                   ::refers-to]
+          :opt-un [::previous-version]))
 
 (s/def ::relation
   (s/keys :req-un [:relation/type
@@ -46,6 +49,12 @@
                    :relation/object
                    ::author
                    ::created-time]))
+
+(s/def ::tag
+  (s/keys :req-un [:tag/name
+                   :tag/domain]
+          :req [:time/created]
+          :opt-un [::previous-version]))
 
 ;;;;; Required
 
@@ -57,7 +66,7 @@
 
 (s/def ::source
   (s/or
-   :url ::url
+   :url        ::url
    :pubmed-ref :pubmed/details))
 
 (s/def ::author
@@ -71,13 +80,8 @@
 
 (s/def ::created-time inst?)
 
-(s/def ::tags
-  (s/coll-of ::tag :distinct true))
-
-(s/def ::tag
-  ;; Tags are elastic hashes pointing to tag documents.
-  ;; TODO: Spec for those tags.
-  string?)
+(s/def :extract/tags
+  (s/coll-of ::hash :distinct true))
 
 ;;;; Optional
 
@@ -123,4 +127,3 @@
      :tags      {:species  :human
                  :modality :cortex
                  :depth    :moderate}}))
-

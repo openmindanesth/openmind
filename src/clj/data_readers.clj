@@ -1,1 +1,1 @@
-{ref openmind.ref/read-ref}
+{openmind.hash/sha512 openmind.hash/read-hash}
