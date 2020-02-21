@@ -6,7 +6,7 @@
             [taoensso.timbre :as log]))
 
 (def index (env/read :elastic-extract-index))
-(def tag-index "tags0")
+(def tag-index (env/read :elastic-tag-index))
 
 (def mapping
   {:properties {:created-time {:type :date}
