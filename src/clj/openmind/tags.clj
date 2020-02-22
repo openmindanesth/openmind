@@ -3,7 +3,8 @@
             [clojure.data.json :as json]
             [clojure.spec.alpha :as s]
             [openmind.elastic :as es]
-            [openmind.hash :as h]))
+            [openmind.hash :as h]
+            [openmind.spec.tag :as tag]))
 
 (def ^:private tag-tree
   "For development purposes, I'm encoding the tress of tags here. Once we've got
@@ -135,18 +136,12 @@
 ;;;;; Initialising the DB
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn create-tag [domain name parents]
-  (let [data {:domain  domain
-              :name    name
-              :parents parents
-              :time/created (java.util.Date.)}]
-    {:hash    (h/hash data)
-     :content data}))
-
 (defn create-tag-data [domain tree]
   (letfn [(inner [tree parents]
             (mapcat (fn [[k v]]
-                      (let [t (create-tag domain k parents)]
+                      (let [t (tag/create {:domain  domain
+                                           :name    k
+                                           :parents parents})]
                         (conj (inner v (conj parents (:hash t)))
                               t)))
                     tree))]
@@ -154,7 +149,7 @@
 
 (defn create-tag-tree! [index tree]
   (let [data (create-tag-data (key (first tag-tree)) tag-tree)]
-    (assert (every? (partial s/valid? :openmind.spec.extract/immutable) data))
+    (assert (every? (partial s/valid? :openmind.spec/immutable) data))
     (run! (fn [tag]
             (async/go
               (tap>
@@ -163,7 +158,7 @@
                  (es/index-req index tag))))))
           data)))
 
-(defn init-elastic [index tag-index]
+#_(defn init-elastic [index tag-index]
   (async/go
     (async/<! (es/send-off! (es/create-index index)))
     (async/<! (es/send-off! (es/set-mapping index)))
