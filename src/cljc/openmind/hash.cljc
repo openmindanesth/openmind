@@ -5,31 +5,32 @@
             [hasch.benc :as benc]
             #?(:cljs [cljs.reader])))
 
-(def b64-chars
-  (into #{} "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/="))
+(def hex-chars
+  (into #{} "abcdef0123456789"))
 
-(def tag 'openmind.hash/sha512)
+(def ^:private byte-length
+  "Length of hashes in bytes"
+  16)
 
-(declare b64-str)
+(def tag
+  "128 bit prefix of sha512."
+  'openmind.hash/sha512-128)
 
-(deftype ValueRef [bytes]
+(deftype ValueRef [hash-string]
   benc/PHashCoercion
   (-coerce [this md-create-fn write-handlers]
-    (benc/-coerce (b64-str this) md-create-fn write-handlers))
+    (benc/-coerce hash-string md-create-fn write-handlers))
   Object
   (equals [this o]
     (boolean
      (if (identical? this o)
        true
        (when (instance? ValueRef o)
-         (= (.-bytes this) (.-bytes ^ValueRef o))))))
+         (= hash-string (.hash-string ^ValueRef o))))))
   (hashCode [_]
-    (.hashCode bytes))
-  (toString [this]
-    (str "#" (str tag) " \"" (b64-str this) "\"")))
-
-(defn b64-str [r]
-  (b64/encode (#?(:clj byte-array :cljs clj->js) (.-bytes ^ValueRef r))))
+    (.hashCode hash-string))
+  (toString [_]
+    (str "#" (str tag) " \"" hash-string "\"")))
 
 #?(:clj
    (defn- print-ref
@@ -52,21 +53,17 @@
      (-pr-writer [obj writer _]
        (write-all writer (str obj)))))
 
-(defn bytes->ref [bytes]
-  (ValueRef. bytes))
-
 (defn value-ref? [x]
   (instance? ValueRef x))
 
 (defn read-hash [s]
   {:pre [(string? s)
-         (= 0 (mod (count s) 4))
-         (every? b64-chars s)]}
-  (bytes->ref (map #(mod % 256) (b64/decode s))))
+         (every? hex-chars s)]}
+  (ValueRef. s))
 
 (defn hash
   [edn]
-  (bytes->ref (h/edn-hash edn)))
+  (read-hash (h/hash->str (take byte-length (h/edn-hash edn)))))
 
 #?(:cljs
    ;;FIXME: Why does (cljs.reader/read-sting "#ref \"12\"") work, but entering
