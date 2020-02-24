@@ -18,10 +18,11 @@
                    :extract/type
                    ::source
                    ::figure]
-          :req [:time/created]
-          :opt [:history/previous-version]))
+          :opt-un [::figure-caption]))
 
 ;;;;; Required
+
+(s/def ::figure-caption :openmind.spec.core/text)
 
 (s/def :extract/type
   (s/and some? keyword?))
@@ -55,13 +56,5 @@
 
 (s/def ::reference ::url)
 
-(comment
-  (def example
-    {:text      "Medetomidine has no dose-dependent effect on the BOLD response to subcutaneous electrostimulation (0.5, 0.7, 1 mA) in mice for doses of 0.1, 0.3, 0.7, 1.0, 2.0 mg/kg/h."
-     :reference "Nasrallah et al., 2012"
-     :created   (js/Date.)
-     :author    "me"
-     :type      :extract
-     :tags      {:species  :human
-                 :modality :cortex
-                 :depth    :moderate}}))
+(s/def ::source
+  (s/keys ))

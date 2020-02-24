@@ -7,25 +7,16 @@
     [(:require [cljs.spec.alpha :as s]
                [openmind.hash :as h])]))
 
-(s/def ::hash
-  h/value-ref?)
-
-(s/def ::immutable
-  (s/keys :req-un [::hash ::content]))
-
-(s/def ::content
-  (s/or
-   :comment  :openmind.spec.comment/comment
-   :relation :openmind.spec.relation/relation
-   :extract  :openmind.spec.extract/extract
-   :tag      :openmind.spec.tag/tag))
-
 (s/def :time/created inst?)
 
 (s/def ::author
   (s/keys :req-un [:author/name ::orcid-id]))
 
 (s/def :author/name string?)
+
+;; TODO: What makes a valid Orcid ID? Is this the right place to validate it?
+(s/def ::orcid-id
+  (s/and string? not-empty))
 
 (s/def :history/previous-version
   ::hash)
@@ -40,9 +31,7 @@
 (s/def :openmind.spec.comment/comment
   (s/keys :req-un [:openmind.spec.core/text
                    :openmind.spec.core/author
-                   :openmind.spec.comment/refers-to]
-          :req [:time/created]
-          :opt [:history/previous-version]))
+                   :openmind.spec.comment/refers-to]))
 
 (s/def :openmind.spec.comment/refers-to
   ::hash)

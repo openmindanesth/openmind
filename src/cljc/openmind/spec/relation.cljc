@@ -9,8 +9,7 @@
   (s/keys :req-un [::type
                    ::subject
                    ::object
-                   :openmind.spec.core/author]
-          :req [:time/created]))
+                   :openmind.spec.core/author]))
 
 (s/def ::type
   string?)

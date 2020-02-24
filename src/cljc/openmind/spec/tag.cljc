@@ -1,18 +1,13 @@
 (ns openmind.spec.tag
-  #?@
-   (:clj
-    [(:require [clojure.spec.alpha :as s]
-               [openmind.hash :as h])]
-    :cljs
-    [(:require [cljs.spec.alpha :as s]
-               [openmind.hash :as h])]))
+  (:require [taoensso.timbre :as log]
+            [openmind.hash :as h]
+            #?(:clj  [clojure.spec.alpha :as s]
+               :cljs [cljs.spec.alpha :as s])))
 
 (s/def ::tag
   (s/keys :req-un [::name
                    ::parents
-                   ::domain]
-          :req [:time/created]
-          :opt-un [::previous-version]))
+                   ::domain]))
 
 (s/def ::name
   string?)
@@ -23,10 +18,7 @@
 (s/def ::parents
   (s/coll-of :openmind.spec.core/hash :distinct true :type vector))
 
-(defn create [{:keys [domain name parents]}]
-  (let [data {:domain  domain
-              :name    name
-              :parents parents
-              :time/created (java.util.Date.)}]
-    {:hash    (h/hash data)
-     :content data}))
+(defn validate [tag]
+  (if (s/valid? ::tag tag)
+    tag
+    (log/error "Invalid tag: " (s/explain ::tag tag))))
