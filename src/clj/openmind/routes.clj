@@ -4,7 +4,7 @@
             [clojure.walk :as walk]
             [openmind.elastic :as es]
             [openmind.pubmed :as pubmed]
-            [openmind.spec.extract :as extract-spec]
+            [openmind.spec :as spec]
             [openmind.tags :as tags]
             [taoensso.timbre :as log]))
 
@@ -106,9 +106,9 @@
     (not= author (:author doc))
     (log/error "Login mismatch, possible attack:" author doc)
 
-    (not (s/valid? ::extract-spec/extract doc))
+    (not (s/valid? ::spec/extract doc))
     (log/warn "Invalid extract received from client:"
-              author doc (s/explain-data ::extract-spec/extract doc))
+              author doc (s/explain-data ::spec/extract doc))
 
     :else doc))
 

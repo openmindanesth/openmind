@@ -1,6 +1,7 @@
 (ns openmind.spec.tag
   (:require [taoensso.timbre :as log]
             [openmind.hash :as h]
+            [openmind.spec.shared :as u]
             #?(:clj  [clojure.spec.alpha :as s]
                :cljs [cljs.spec.alpha :as s])))
 
@@ -16,7 +17,7 @@
   string?)
 
 (s/def ::parents
-  (s/coll-of :openmind.spec.core/hash :distinct true :type vector))
+  (s/coll-of ::u/hash :distinct true :type vector))
 
 (defn validate [tag]
   (if (s/valid? ::tag tag)

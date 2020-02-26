@@ -1,9 +1,7 @@
 (ns openmind.spec.extract
-  #?@
-   (:clj
-    [(:require [clojure.spec.alpha :as s])]
-    :cljs
-    [(:require [cljs.spec.alpha :as s])]))
+  (:require [openmind.spec.shared :as u]
+            #?(:clj  [clojure.spec.alpha :as s]
+               :cljs [cljs.spec.alpha :as s])))
 
 ;; Here's an idea of how to use specs to generate form validation:
 ;; https://medium.com/@kirill.ishanov/building-forms-with-re-frame-and-clojure-spec-6cf1df8a114d
@@ -12,8 +10,8 @@
 ;;;;; General
 
 (s/def ::extract
-  (s/keys :req-un [:openmind.spec.core/text
-                   :openmind.spec.core/author
+  (s/keys :req-un [::u/text
+                   ::u/author
                    :extract/tags
                    :extract/type
                    ::source
@@ -22,7 +20,7 @@
 
 ;;;;; Required
 
-(s/def ::figure-caption :openmind.spec.core/text)
+(s/def ::figure-caption ::u/text)
 
 (s/def :extract/type
   (s/and some? keyword?))
@@ -37,7 +35,7 @@
   (s/and string? not-empty))
 
 (s/def :extract/tags
-  (s/coll-of ::hash :distinct true))
+  (s/coll-of ::u/hash :distinct true))
 
 ;;;; Optional
 

@@ -1,5 +1,6 @@
 (ns openmind.json
-  (:require  [clojure.data.json :as json])
+  (:require  [clojure.data.json :as json]
+             openmind.hash)
   (:import [openmind.hash ValueRef]))
 
 (extend-protocol json/JSONWriter

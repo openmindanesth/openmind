@@ -1,21 +1,19 @@
 (ns openmind.spec.relation
-  #?@
-   (:clj
-    [(:require [clojure.spec.alpha :as s])]
-    :cljs
-    [(:require [cljs.spec.alpha :as s])]))
+  (:require [openmind.spec.shared :as u]
+            #?(:clj  [clojure.spec.alpha :as s]
+               :cljs [cljs.spec.alpha :as s])))
 
 (s/def ::relation
   (s/keys :req-un [::type
                    ::subject
                    ::object
-                   :openmind.spec.core/author]))
+                   ::u/author]))
 
 (s/def ::type
   string?)
 
 (s/def ::subject
-  :openmind.spec.core/hash)
+  ::u/hash)
 
 (s/def ::object
-  :openmind.spec.core/hash)
+  ::u/hash)

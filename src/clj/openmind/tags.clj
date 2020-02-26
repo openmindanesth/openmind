@@ -139,9 +139,9 @@
 (defn create-tag-data [domain tree]
   (letfn [(inner [tree parents]
             (mapcat (fn [[k v]]
-                      (let [t (tag/create {:domain  domain
-                                           :name    k
-                                           :parents parents})]
+                      (when-let [t (tag/validate {:domain  domain
+                                                  :name    k
+                                                  :parents parents})]
                         (conj (inner v (conj parents (:hash t)))
                               t)))
                     tree))]
