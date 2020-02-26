@@ -1,12 +1,12 @@
 (ns openmind.elastic
+  (:refer-clojure :exclude [intern])
   (:require [clojure.core.async :as async]
+            [clojure.spec.alpha :as s]
             [openmind.env :as env]
+            [openmind.hash :as h]
             [openmind.json :as json]
             [org.httpkit.client :as http]
             [taoensso.timbre :as log]))
-
-(def index (env/read :elastic-extract-index))
-(def tag-index (env/read :elastic-tag-index))
 
 (def mapping
   {:properties {:created-time {:type :date}
@@ -112,6 +112,22 @@
        parse-response
        :hits
        :hits))
+
+(def ^:private index-map
+  {:extract (env/read :elastic-extract-index)
+   :tag     (env/read :elastic-tag-index)})
+
+(defn intern [obj]
+  (let [c (s/conform :openmind.spec/content obj)]
+    (if (= ::s/invalid c)
+      (log/warn "Malformed data rejected." obj)
+      (let [index (get index-map (first c))
+            wrapper {:content obj
+                     :hash (h/hash obj)
+                     :time/created (java.util.Date.)}]
+        (async/go
+          (send-off! (index-req index wrapper)))
+        (:hash wrapper)))))
 
 ;;;;; Testing helpers
 
