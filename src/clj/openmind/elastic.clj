@@ -8,6 +8,14 @@
             [org.httpkit.client :as http]
             [taoensso.timbre :as log]))
 
+
+(def ^:private index-map
+  {:extract (env/read :elastic-extract-index)
+   :tag     (env/read :elastic-tag-index)})
+
+(def index (:extract index-map))
+(def tag-index (:tag index-map))
+
 (def mapping
   {:properties {:created-time {:type :date}
                 :text         {:type :search_as_you_type}
