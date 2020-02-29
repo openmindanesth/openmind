@@ -4,4 +4,4 @@ ADD target/openmind.jar openmind.jar
 
 EXPOSE ${PORT}
 
-ENTRYPOINT java $JAVA_OPTS -server -cp openmind.jar clojure.main -m openmind.server
+ENTRYPOINT java $JVM_OPTS -server -cp openmind.jar clojure.main -m openmind.server

@@ -24,5 +24,5 @@ variable "host-port" {
 
 variable "jvm-opts" {
   type    = string
-  default = "-Xms900m -Xmx900m"
+  default = "-Xmx900m"
 }

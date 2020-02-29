@@ -59,6 +59,24 @@ resource "aws_security_group" "lb" {
   }
 }
 
+resource "aws_security_group" "ecs" {
+  name   = "ECS security group"
+  vpc_id = aws_vpc.openmind.id
+
+  ingress {
+    from_port   = var.container-port
+    to_port     = var.container-port
+    protocol    = 6
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
 ##### Load Balancer
 
 ## vpc
@@ -184,9 +202,9 @@ resource "aws_lb_target_group" "openmind" {
     enabled  = true
     path     = "/"
     port     = "traffic-port"
-    interval = 45
-    timeout  = 10
-    matcher  = "200"
+    interval = 120
+    timeout  = 90
+    matcher  = "200-299"
   }
 }
 
@@ -244,9 +262,9 @@ resource "aws_ecs_service" "openmind" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    assign_public_ip = false
+    assign_public_ip = true
     subnets          = [aws_subnet.www.id, aws_subnet.www2.id]
-    security_groups  = [aws_security_group.lb.id]
+    security_groups  = [aws_security_group.ecs.id]
   }
 
   load_balancer {
