@@ -18,6 +18,15 @@ jobs:
         id: install-clojure-cli
         run: curl -O https://download.clojure.org/install/linux-install-1.10.1.462.sh && chmod +x linux-install-1.10.1.462.sh && sudo ./linux-install-1.10.1.462.sh
 
+      - name: Build Production CLJS
+        id: prod-cljs
+        run: |
+          rm -rf resources/public/js
+          clojure -m cljs.main -O advanced \
+            -o "resources/public/js/app.js" \
+            -co "{:closure-defines {goog.DEBUG false}}" \
+            -c openmind.core
+
       - name: build uberjar
         id: uberjar
         run: clojure -A:uberjar -e '(println "success")'
@@ -27,7 +36,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-2
+          aws-region: eu-central-a
 
       - name: Login to Amazon ECR
         id: login-ecr
