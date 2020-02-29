@@ -51,4 +51,5 @@ jobs:
         env:
           IMAGE_TAG: ${{ github.sha }}
         run: |
+          cd tf
           terraform apply -auto-approve -var "image_id=${IMAGE_TAG}"

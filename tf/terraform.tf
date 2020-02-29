@@ -228,7 +228,12 @@ resource "aws_ecr_repository" "openmind" {
 }
 
 resource "aws_ecs_cluster" "openmind" {
-  name = "openmind"
+  name               = "openmind"
+  capacity_providers = ["FARGATE"]
+
+  default_capacity_provider_strategy {
+    capacity_provider = "FARGATE"
+  }
 }
 
 resource "aws_ecs_service" "openmind" {
@@ -255,30 +260,57 @@ output "ECR-URL" {
   value = aws_ecr_repository.openmind.repository_url
 }
 
-# resource "aws_iam_role" "ecs-task-role" {
-#   name = "ecs-task-role"
+resource "aws_iam_role" "ecs-task-role" {
+  name = "ecs-task-role"
 
-#   assume_role_policy = <<EOF
-#     {
-#       "Version": "2012-10-17",
-#       "Statement": [
-#         {
-#           "Action": "sts:AssumeRole",
-#           "Principal": {
-#             "Service": "ec2.amazonaws.com"
-#           },
-#           "Effect": "Allow",
-#           "Sid": ""
-#         }
-#       ]
-#     }
-# EOF
-# }
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": "sts:AssumeRole",
+      "Principal": {
+        "Service": [
+          "ecs.amazonaws.com",
+          "ecs-tasks.amazonaws.com"
+        ]
+      },
+      "Effect": "Allow",
+      "Sid": ""
+    }
+  ]
+}
+EOF
 
-# resource "aws_iam_role_policy_attachment" "attach-ecs-task-execution-policy" {
-#   role       = aws_iam_role.ecs-task-role.name
-#   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
-# }
+}
+
+resource "aws_iam_role" "ecs-execution-role" {
+  name = "ecs-execution-role"
+
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": "sts:AssumeRole",
+      "Principal": {
+        "Service": [
+          "ecs.amazonaws.com",
+          "ecs-tasks.amazonaws.com"
+        ]
+      },
+      "Effect": "Allow",
+      "Sid": ""
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_iam_role_policy_attachment" "attach-ecs-task-execution-policy" {
+  role       = aws_iam_role.ecs-execution-role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
 
 resource "aws_ecs_task_definition" "openmind-web" {
   family                   = "openmind"
@@ -286,9 +318,9 @@ resource "aws_ecs_task_definition" "openmind-web" {
   requires_compatibilities = ["FARGATE"]
   cpu                      = var.cpu
   memory                   = var.memory
-  # task_role_arn            = aws_iam_role.ecs-task-role.arn
-  execution_role_arn    = "arn:aws:iam::445482884655:role/aws-service-role/ecs.amazonaws.com/AWSServiceRoleForECS"
-  container_definitions = <<DEF
+  task_role_arn            = aws_iam_role.ecs-task-role.arn
+  execution_role_arn       = aws_iam_role.ecs-execution-role.arn
+  container_definitions    = <<DEF
 [{"name": "openmind-webserver",
 	 "essential": true,
 	 "image": "${aws_ecr_repository.openmind.repository_url}:${var.image_id}",
