@@ -61,7 +61,11 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
         run: |
           cd tf
-          terraform init
-          terraform apply -auto-approve \
+          wget -O terraform.zip 'https://releases.hashicorp.com/terraform/0.12.21/terraform_0.12.21_linux_amd64.zip'
+          unzip terraform.zip
+          chmod +x terraform
+
+          ./terraform init
+          ./terraform apply -auto-approve \
             -var "image_id=${IMAGE_TAG}" \
             -target=aws_ecs_service.openmind
