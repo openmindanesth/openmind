@@ -27,11 +27,6 @@ resource "aws_s3_bucket" "openmind-tf-state" {
   }
 }
 
-resource "aws_s3_bucket_object" "terraform-state-folder" {
-  bucket = "${aws_s3_bucket.openmind-tf-state.id}"
-  key    = "terraform-aws/"
-}
-
 resource "aws_dynamodb_table" "openmind-terraform-lock" {
   name           = "openmind-tf-lock-table"
   billing_mode   = "PROVISIONED"
