@@ -61,6 +61,7 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
         run: |
           cd tf
+          terraform init
           terraform apply -auto-approve \
             -var "image_id=${IMAGE_TAG}" \
             -target=aws_ecs_service.openmind
