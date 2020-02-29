@@ -57,10 +57,6 @@ jobs:
             echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
       - name: Update Task and Service
         id: terraform-update
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: eu-central-1
         env:
           IMAGE_TAG: ${{ github.sha }}
         run: |
