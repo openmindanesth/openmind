@@ -36,7 +36,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: eu-central-a
+          aws-region: eu-central-1
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -57,8 +57,14 @@ jobs:
             echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
       - name: Update Task and Service
         id: terraform-update
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-central-1
         env:
           IMAGE_TAG: ${{ github.sha }}
         run: |
           cd tf
-          terraform apply -auto-approve -var "image_id=${IMAGE_TAG}"
+          terraform apply -auto-approve \
+            -var "image_id=${IMAGE_TAG}" \
+            -target=aws_ecs_service.openmind

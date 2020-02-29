@@ -2,6 +2,7 @@ provider "aws" {
   profile = "openmind-eu"
   region  = "eu-central-1"
 }
+
 #### DIY backend
 
 resource "random_id" "tc-rmstate" {
