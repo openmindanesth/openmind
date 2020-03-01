@@ -1,4 +1,5 @@
 provider "aws" {
+  profile = "openmind-eu"
   region  = "eu-central-1"
 }
 

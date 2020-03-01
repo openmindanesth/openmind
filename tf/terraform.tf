@@ -212,7 +212,7 @@ resource "aws_lb_listener" "openmind" {
   load_balancer_arn = aws_lb.openmind.arn
   port              = "443"
   protocol          = "HTTPS"
-  ssl_policy        = "ELBSecurityPolicy-2016-08"
+  ssl_policy        = "ELBSecurityPolicy-TLS-1-2-Ext-2018-06"
   certificate_arn   = "arn:aws:acm:eu-central-1:445482884655:certificate/4eca6545-374a-43aa-88fc-9a4c74f1c7d6"
   depends_on        = [aws_lb_target_group.openmind]
 
