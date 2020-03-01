@@ -1,4 +1,3 @@
-
 terraform {
   backend "s3" {
     region         = "eu-central-1"
@@ -67,7 +66,7 @@ resource "aws_security_group" "ecs" {
     from_port   = var.container-port
     to_port     = var.container-port
     protocol    = 6
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["10.0.0.0/16"]
   }
   egress {
     from_port   = 0
@@ -129,7 +128,7 @@ resource "aws_route_table_association" "www2" {
   route_table_id = aws_route_table.public.id
 }
 
-## logs 
+## logs
 
 resource "aws_s3_bucket" "prod-lb-logs" {
   bucket = "openmind-prod-lb-logs"
@@ -151,23 +150,23 @@ resource "aws_s3_bucket_policy" "prod-lb-logs" {
 
   policy = <<POLICY
 {
-  "Id": "load-balancer-access",
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "Stmt1429136633762",
-      "Action": [
-        "s3:PutObject"
-      ],
-      "Effect": "Allow",
-      "Resource": "arn:aws:s3:::${aws_s3_bucket.prod-lb-logs.id}/*",
-      "Principal": {
-        "AWS": [
-          "985666609251"
-        ]
-      }
-    }
-  ]
+	"Id": "load-balancer-access",
+	"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Sid": "Stmt1429136633762",
+			"Action": [
+				"s3:PutObject"
+			],
+			"Effect": "Allow",
+			"Resource": "arn:aws:s3:::${aws_s3_bucket.prod-lb-logs.id}/*",
+			"Principal": {
+				"AWS": [
+					"985666609251"
+				]
+			}
+		}
+	]
 }
 POLICY
 }
@@ -238,11 +237,88 @@ resource "aws_lb_listener" "redirect_http_to_https" {
   }
 }
 
+##### Elastic Search
+
+resource "aws_iam_service_linked_role" "es" {
+  aws_service_name = "es.amazonaws.com"
+}
+
+resource "aws_security_group" "es" {
+  name   = "openmind-elasticsearch"
+  vpc_id = aws_vpc.openmind.id
+
+  ingress {
+    from_port = 443
+    to_port   = 443
+    protocol  = "tcp"
+
+    cidr_blocks = ["10.0.0.0/16", ]
+  }
+}
+
+resource "aws_elasticsearch_domain" "openmind" {
+  domain_name           = "openmind-production"
+  elasticsearch_version = "7.1"
+
+  cluster_config {
+    instance_type  = "t2.small.elasticsearch"
+    instance_count = 1
+  }
+
+  snapshot_options {
+    automated_snapshot_start_hour = 0
+  }
+
+  ebs_options {
+    ebs_enabled = true
+    volume_type = "standard"
+    volume_size = 10
+  }
+
+  domain_endpoint_options {
+    enforce_https       = true
+    tls_security_policy = "Policy-Min-TLS-1-2-2019-07"
+  }
+
+  vpc_options {
+    subnet_ids         = [aws_subnet.www.id, aws_subnet.www2.id]
+    security_group_ids = [aws_security_group.es.id]
+  }
+
+  depends_on = [aws_iam_service_linked_role.es]
+}
+
+resource "aws_elasticsearch_domain_policy" "access" {
+  domain_name = aws_elasticsearch_domain.openmind.domain_name
+
+  access_policies = <<POLICIES
+{
+		"Version": "2012-10-17",
+		"Statement": [
+				{
+						"Action": "es:*",
+						"Principal": "*",
+						"Effect": "Allow",
+						"Resource": "${aws_elasticsearch_domain.openmind.arn}/*"
+				}
+		]
+}
+POLICIES
+}
+
+output "ES_URL" {
+  value = aws_elasticsearch_domain.openmind.endpoint
+}
+
 ##### ECS
 
 resource "aws_ecr_repository" "openmind" {
   name                 = "openmind"
   image_tag_mutability = "IMMUTABLE"
+}
+
+output "ECR-URL" {
+  value = aws_ecr_repository.openmind.repository_url
 }
 
 resource "aws_ecs_cluster" "openmind" {
@@ -274,29 +350,25 @@ resource "aws_ecs_service" "openmind" {
   }
 }
 
-output "ECR-URL" {
-  value = aws_ecr_repository.openmind.repository_url
-}
-
 resource "aws_iam_role" "ecs-task-role" {
   name = "ecs-task-role"
 
   assume_role_policy = <<EOF
 {
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Action": "sts:AssumeRole",
-      "Principal": {
-        "Service": [
-          "ecs.amazonaws.com",
-          "ecs-tasks.amazonaws.com"
-        ]
-      },
-      "Effect": "Allow",
-      "Sid": ""
-    }
-  ]
+	"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Action": "sts:AssumeRole",
+			"Principal": {
+				"Service": [
+					"ecs.amazonaws.com",
+					"ecs-tasks.amazonaws.com"
+				]
+			},
+			"Effect": "Allow",
+			"Sid": ""
+		}
+	]
 }
 EOF
 }
@@ -306,20 +378,20 @@ resource "aws_iam_role" "ecs-execution-role" {
 
   assume_role_policy = <<EOF
 {
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Action": "sts:AssumeRole",
-      "Principal": {
-        "Service": [
-          "ecs.amazonaws.com",
-          "ecs-tasks.amazonaws.com"
-        ]
-      },
-      "Effect": "Allow",
-      "Sid": ""
-    }
-  ]
+	"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Action": "sts:AssumeRole",
+			"Principal": {
+				"Service": [
+					"ecs.amazonaws.com",
+					"ecs-tasks.amazonaws.com"
+				]
+			},
+			"Effect": "Allow",
+			"Sid": ""
+		}
+	]
 }
 EOF
 }
@@ -341,7 +413,7 @@ resource "aws_ecs_task_definition" "openmind-web" {
 [{"name": "openmind-webserver",
 	 "essential": true,
 	 "image": "${aws_ecr_repository.openmind.repository_url}:${var.image-id}",
-   "networkMode": "awsvpc",
+	 "networkMode": "awsvpc",
 	 "cpu": ${var.cpu},
 	 "memory": ${var.memory},
 	 "startTimeout": 120,
@@ -349,15 +421,14 @@ resource "aws_ecs_task_definition" "openmind-web" {
 										 "hostPort":${var.host-port}}],
 		"environment": [{"name": "JVM_OPTS",
 										 "value": "${var.jvm-opts}"},
-                    {"name": "PORT",
-                     "value": "${var.host-port}"},
-                    {"name": "ORCID_CLIENT_ID",
-                     "value": "${var.orcid-client-id}"},
-                    {"name": "ORCID_CLIENT_SECRET",
-                     "value": "${var.orcid-client-secret}"},
+										{"name": "PORT",
+										 "value": "${var.host-port}"},
+										{"name": "ORCID_CLIENT_ID",
+										 "value": "${var.orcid-client-id}"},
+										{"name": "ORCID_CLIENT_SECRET",
+										 "value": "${var.orcid-client-secret}"},
 										{"name": "ORCID_REDIRECT_URI",
 										 "value": "${var.orcid-redirect-uri}"}]
 	}]
 DEF
 }
-
