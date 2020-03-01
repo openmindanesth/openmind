@@ -59,6 +59,8 @@ jobs:
         id: terraform-update
         env:
           IMAGE_TAG: ${{ github.sha }}
+          ORCID_CLIENT_ID: ${{ secrets.ORCID_CLIENT_ID }}
+          ORCID_CLIENT_SECRET: ${{ secrets.ORCID_CLIENT_SECRET }}
         run: |
           cd tf
           wget -O terraform.zip 'https://releases.hashicorp.com/terraform/0.12.21/terraform_0.12.21_linux_amd64.zip'
@@ -67,5 +69,7 @@ jobs:
 
           ./terraform init
           ./terraform apply -auto-approve \
-            -var "image_id=${IMAGE_TAG}" \
+            -var "image-id=${IMAGE_TAG}" \
+            -var "orcid-client-id=${ORCID_CLIENT_ID}" \
+            -var "orcid-client-secret=${ORCID_CLIENT_SECRET}" \
             -target=aws_ecs_service.openmind

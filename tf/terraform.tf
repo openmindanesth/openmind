@@ -299,7 +299,6 @@ resource "aws_iam_role" "ecs-task-role" {
   ]
 }
 EOF
-
 }
 
 resource "aws_iam_role" "ecs-execution-role" {
@@ -341,7 +340,7 @@ resource "aws_ecs_task_definition" "openmind-web" {
   container_definitions    = <<DEF
 [{"name": "openmind-webserver",
 	 "essential": true,
-	 "image": "${aws_ecr_repository.openmind.repository_url}:${var.image_id}",
+	 "image": "${aws_ecr_repository.openmind.repository_url}:${var.image-id}",
    "networkMode": "awsvpc",
 	 "cpu": ${var.cpu},
 	 "memory": ${var.memory},
@@ -352,10 +351,13 @@ resource "aws_ecs_task_definition" "openmind-web" {
 										 "value": "${var.jvm-opts}"},
                     {"name": "PORT",
                      "value": "${var.host-port}"},
+                    {"name": "ORCID_CLIENT_ID",
+                     "value": "${var.orcid-client-id}"},
+                    {"name": "ORCID_CLIENT_SECRET",
+                     "value": "${var.orcid-client-secret}"},
 										{"name": "ORCID_REDIRECT_URI",
-										 "value": "/oauth2/orcid/redirect"}]
+										 "value": "${var.orcid-redirect-uri}"}]
 	}]
 DEF
 }
 
-##### CI User

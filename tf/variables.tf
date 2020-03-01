@@ -1,4 +1,4 @@
-variable "image_id" {
+variable "image-id" {
   type = string
 }
 
@@ -25,4 +25,17 @@ variable "host-port" {
 variable "jvm-opts" {
   type    = string
   default = "-Xmx900m"
+}
+
+variable "orcid-redirect-uri" {
+	type = string
+	default = "/oauth2/orcid/redirect"
+}
+
+variable "orcid-client-id" {
+	type = string
+}
+
+variable "orcid-client-secret" {
+	type = string
 }
