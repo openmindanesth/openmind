@@ -450,7 +450,7 @@ resource "aws_ecs_task_definition" "openmind-web" {
 										{"name": "ORCID_CLIENT_ID",
 										 "value": "${var.orcid-client-id}"},
 										{"name": "ELASTIC_URL",
-										 "value": "${aws_elasticsearch_domain.endpoint}"},
+										 "value": "${aws_elasticsearch_domain.openmind.endpoint}"},
 										{"name": "S3_DATA_BUCKET",
 										 "value": "${aws_s3_bucket.openmind-data.bucket}"},
 										{"name": "ORCID_CLIENT_SECRET",
