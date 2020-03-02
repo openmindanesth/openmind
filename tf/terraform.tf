@@ -281,7 +281,7 @@ resource "aws_elasticsearch_domain" "openmind" {
   }
 
   vpc_options {
-    subnet_ids         = [aws_subnet.www.id, aws_subnet.www2.id]
+    subnet_ids         = [aws_subnet.www.id]
     security_group_ids = [aws_security_group.es.id]
   }
 
@@ -361,16 +361,40 @@ resource "aws_iam_role" "ecs-task-role" {
 			"Action": "sts:AssumeRole",
 			"Principal": {
 				"Service": [
+					"s3.amazonaws.com",
+					"ec2.amazonaws.com",
 					"ecs.amazonaws.com",
 					"ecs-tasks.amazonaws.com"
 				]
 			},
 			"Effect": "Allow",
-			"Sid": ""
+			"Sid": "base"
 		}
 	]
 }
 EOF
+}
+
+resource "aws_iam_role_policy" "s3-data" {
+  name = "openmind-s3-data-access"
+  role = aws_iam_role.ecs-task-role.id
+
+  policy = <<-EOF
+  {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+			"Action": "s3:*",
+			"Resource": [
+         "${aws_s3_bucket.openmind-data.arn}",
+         "${aws_s3_bucket.openmind-data.arn}/*"
+       ],
+			"Effect": "Allow",
+			"Sid": "S3Access"
+      }
+    ]
+  }
+  EOF
 }
 
 resource "aws_iam_role" "ecs-execution-role" {
@@ -425,6 +449,10 @@ resource "aws_ecs_task_definition" "openmind-web" {
 										 "value": "${var.host-port}"},
 										{"name": "ORCID_CLIENT_ID",
 										 "value": "${var.orcid-client-id}"},
+										{"name": "ELASTIC_URL",
+										 "value": "${aws_elasticsearch_domain.endpoint}"},
+										{"name": "S3_DATA_BUCKET",
+										 "value": "${aws_s3_bucket.openmind-data.bucket}"},
 										{"name": "ORCID_CLIENT_SECRET",
 										 "value": "${var.orcid-client-secret}"},
 										{"name": "ORCID_REDIRECT_URI",
