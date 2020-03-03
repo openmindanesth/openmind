@@ -4,7 +4,7 @@ variable "image-id" {
 
 variable "cpu" {
   type    = number
-  default = 512
+  default = 256
 }
 
 variable "memory" {
