@@ -325,12 +325,11 @@ resource "aws_ecr_lifecycle_policy" "retention-policy" {
     "rules": [
         {
             "rulePriority": 1,
-            "description": "Expire images older than 14 days",
+            "description": "Only keep 5 most recent images",
             "selection": {
                 "tagStatus": "untagged",
-                "countType": "sinceImagePushed",
-                "countUnit": "days",
-                "countNumber": 14
+                "countType": "imageCountMoreThan",
+                "countNumber": 5
             },
             "action": {
                 "type": "expire"
