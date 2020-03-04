@@ -7,7 +7,6 @@
            org.clojure/clojure       {:mvn/version "1.10.1"}
            org.clojure/clojurescript {:mvn/version "1.10.520"}
            org.clojure/spec.alpha    {:mvn/version "0.2.176"}
-           org.clojure/test.check    {:mvn/version "0.9.0"}
            reagent                   {:mvn/version "0.8.1"}
            re-frame                  {:mvn/version "0.10.6"}
            metosin/reitit            {:mvn/version "0.3.9"}
@@ -16,5 +15,8 @@
            ring/ring-defaults        {:mvn/version "0.3.2"}
            ring-oauth2               {:mvn/version "0.1.4"}}
  :paths   ["src/clj" "src/cljs" "src/cljc" "resources"]
- :aliases {:uberjar {:extra-deps {uberdeps {:mvn/version "0.1.4"}}
-                     :main-opts  ["-m" "uberdeps.uberjar" "--target" "target/openmind.jar"]}}}
+ :aliases {:uberjar
+           {:extra-deps {uberdeps {:mvn/version "0.1.4"}}
+            :main-opts  ["-m" "uberdeps.uberjar" "--target" "target/openmind.jar"]}
+           :test
+           {:extra-deps [org.clojure/test.check {:mvn/version "0.9.0"}]}}}
