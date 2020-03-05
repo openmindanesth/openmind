@@ -178,7 +178,8 @@
              (reset! connecting? false)
              (sente/start-client-chsk-router! (:ch-recv chsk)
               (fn [message]
-                (re-frame/dispatch (:event message))))
+                (when-let [event (:event message)]
+                  (re-frame/dispatch event))))
              (re-frame/dispatch-sync [::server-connection chsk]))))))))
 
 ;;;;; Sente internal events.
