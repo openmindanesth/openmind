@@ -14,7 +14,7 @@
 
 (def tag
   "128 bit prefix of sha512."
-  'openmind.hash/sha512-128)
+  'openmind.hash/ref)
 
 (deftype ValueRef [hash-string]
   benc/PHashCoercion
