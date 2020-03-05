@@ -3,8 +3,8 @@
             [clojure.data.json :as json]
             [clojure.spec.alpha :as s]
             [openmind.elastic :as es]
-            [openmind.hash :as h]
-            [openmind.spec.tag :as tag]))
+            [openmind.s3 :as s3]
+            [openmind.util :as util]))
 
 (def ^:private tag-tree
   "For development purposes, I'm encoding the tress of tags here. Once we've got
@@ -139,24 +139,13 @@
 (defn create-tag-data [domain tree]
   (letfn [(inner [tree parents]
             (mapcat (fn [[k v]]
-                      (when-let [t (tag/validate {:domain  domain
-                                                  :name    k
-                                                  :parents parents})]
+                      (when-let [t (util/immutable {:domain  domain
+                                                    :name    k
+                                                    :parents parents})]
                         (conj (inner v (conj parents (:hash t)))
                               t)))
                     tree))]
     (inner tree [])))
-
-(defn create-tag-tree! [index tree]
-  (let [data (create-tag-data (key (first tag-tree)) tag-tree)]
-    (assert (every? (partial s/valid? :openmind.spec/immutable) data))
-    (run! (fn [tag]
-            (async/go
-              (tap>
-               (async/<!
-                (es/send-off!
-                 (es/index-req index tag))))))
-          data)))
 
 #_(defn init-elastic [index tag-index]
   (async/go
@@ -164,3 +153,39 @@
     (async/<! (es/send-off! (es/set-mapping index)))
     (async/<! (es/send-off! (es/create-index tag-index)))
     (create-tag-tree! tag-index tag-tree)))
+
+(def old-tags (read-string (slurp "tags.edn")))
+(def old-tag-map
+  (into {"anaesthesia" (key (first old-tags))}
+        (map (fn [[k {:keys [tag-name]}]]
+               [tag-name k]))
+        (val (first old-tags))))
+
+(def new-tags (create-tag-data (key (first tag-tree)) tag-tree ))
+
+(def tag-id-map
+  (into {}
+        (map (fn [t]
+               (let [tname (-> t :content :name)]
+                 [(get old-tag-map tname) (:hash t)])))
+        new-tags))
+
+(defn write-tags-to-s3! []
+  (run! s3/intern new-tags))
+
+(def old-tag-tree
+  (invert-tag-tree
+   (assoc (val (first old-tags)) "8PvLV2wBvYu2ShN9w4NT"
+          {:tag-name "anaesthesia" :parents []})
+   {:tag-name "anaesthesia" :id "8PvLV2wBvYu2ShN9w4NT"}))
+
+(def new-tag-map
+  (into {} (map (fn [x] [(:hash x) (:content x)])) new-tags) )
+
+(def new-tag-tree
+  (invert-tag-tree new-tag-map
+                   {:id #openmind.hash/ref "ad5f984737860c4602f4331efeb17463"
+                    :name "anaesthesia" :domain "anaesthesia" :parents []}))
+
+(def new-tags-imm
+  (util/immutable new-tag-tree))

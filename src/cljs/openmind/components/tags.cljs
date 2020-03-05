@@ -54,11 +54,11 @@
 
 ;;;;; Events
 
-(defn build-tag-lookup [{:keys [tag-name id children] :as tag}]
+(defn build-tag-lookup [{:keys [name id children] :as tag}]
   (into {id tag} (map build-tag-lookup) (vals children)))
 
 (re-frame/reg-event-db
- :openmind/tag-tree
+ ::tree
  (fn [db [_ tree]]
    (assoc db
           :tag-tree tree
@@ -92,7 +92,8 @@
  (fn [cofx [_ & tags]]
    (update-filter-tags cofx tags disj)))
 
-;;;;; REVIEW: Are Protocols really the way to encapsulate chunks of re-frame state?
+;;;;; REVIEW: Are Protocols really the way to encapsulate chunks of re-frame
+;;;;; state?
 
 (defprotocol TagDisplay
   "Methods to control the visual state of the tag selector."
@@ -135,7 +136,7 @@
 (defn nested-filter
   "Defines the view component for a filter that has subcategories that can be
   navigated."
-  [{:keys [tag-name id children] :as tag} display data]
+  [{:keys [name id children] :as tag} display data]
   (let [selected? (contains? (tags data) (:id tag))]
     [:button.filter-button.border-round.mb1.text-white.mrh.mlh
      {:on-click (fn [_]
@@ -153,28 +154,28 @@
       (when selected?
         [cancel-button tag display data])
       [:div.flex.flex-centre
-       [:span  tag-name]]
+       [:span  name]]
       (when selected?
         [:div
          [:span {:style {:margin-right "20px"}}
           (let [selected-children (->> children
                                        vals
                                        (filter #(contains? (tags data) (:id %)))
-                                       (map :tag-name))]
+                                       (map :name))]
             (str "("
                  (if (seq selected-children)
                    (apply str (interpose " | " selected-children))
                    "ANY")
                  ")"))]])]]))
 
-(defn leaf-filter [{:keys [tag-name id] :as tag} display data]
+(defn leaf-filter [{:keys [name id] :as tag} display data]
   (let [active? (contains? (tags data) (:id tag))]
     [:button.border-round.mb1.filter-button.text-white.mrh.mlh
      {:class    (if active? "bg-light-blue" "bg-grey")
       :on-click #(if active?
                    (unselect data [tag])
                    (select data tag))}
-     [:span.p2 tag-name]]))
+     [:span.p2 name]]))
 
 (defn filter-button [tag display data]
   (if (seq (:children tag))

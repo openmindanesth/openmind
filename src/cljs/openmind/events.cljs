@@ -100,10 +100,26 @@
 ;;;; Tag tree (taxonomy)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(re-frame/reg-fx
+ ::grab-tags-from-s3
+ (fn [[bucket hash]]
+   (goog.net.XhrIo/send (str "https://"
+                             bucket
+                             ".s3.eu-central-1.amazonaws.com/"
+                             hash)
+                        (fn [e]
+                          (let [tree (->> e
+                                          .-target
+                                          .getResponseText
+                                          cljs.reader/read-string
+                                          :content)]
+                            (re-frame/dispatch
+                             [:openmind.components.tags/tree tree]))))))
+
 (re-frame/reg-event-fx
- ::update-tag-tree
- (fn [{{:keys [chsk openmind.db/domain]} :db} _]
-   {:dispatch [::try-send [:openmind/tag-tree domain]]}))
+ ::update-indicies
+ (fn [{{:keys [tag-tree-hash s3-bucket]} :db} _]
+   {::grab-tags-from-s3 [s3-bucket tag-tree-hash]}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Connection management
