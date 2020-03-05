@@ -11,7 +11,8 @@
   "Takes the URL filter list and returns a sorted set of filter tags."
   [filters]
   (if (seq filters)
-    (into (sorted-set)
+    (into #{}
+          (map cljs.reader/read-string)
           (string/split filters #","))
     #{}))
 
