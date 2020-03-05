@@ -26,11 +26,15 @@
      (if (identical? this o)
        true
        (when (instance? ValueRef o)
-         (= hash-string (.hash-string ^ValueRef o))))))
+         (= hash-string (.-hash-string ^ValueRef o))))))
   (hashCode [_]
     (.hashCode hash-string))
   (toString [_]
-    (str "#" (str tag) " \"" hash-string "\"")))
+    (str "#" (str tag) " \"" hash-string "\""))
+
+  #?@(:cljs
+      [IEquiv
+       (-equiv [this o] (.equals this o))]))
 
 #?(:clj
    (defn- print-ref
