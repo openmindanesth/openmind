@@ -2,6 +2,7 @@
   (:require [openmind.hash :as h]
             [openmind.spec.comment :as comment]
             [openmind.spec.extract :as extract]
+            [openmind.spec.indexical :as indexical]
             [openmind.spec.relation :as relation]
             [openmind.spec.shared :as u]
             [openmind.spec.tag :as tag]
@@ -15,10 +16,11 @@
 
 (s/def ::content
   (s/or
-   :comment  ::comment/comment
-   :relation ::relation/relation
-   :extract  ::extract/extract
-   :tag      ::tag/tag))
+   :comment   ::comment/comment
+   :relation  ::relation/relation
+   :extract   ::extract/extract
+   :tag       ::tag/tag
+   :indexical ::indexical/indexical))
 
 (s/def ::hash ::u/hash)
 

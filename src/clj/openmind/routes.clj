@@ -43,20 +43,19 @@
 ;;;;; Search
 
 (defn search->elastic [{:keys [term filters sort-by type]}]
-  (async/go
-    {:sort  {:created-time {:order :desc}}
-     :from  0
-     :size  20
-     :query {:bool (merge {:filter (async/<! (tags/tags-filter-query
-                                              ;; FIXME: Hardcoded anaesthesia
-                                              "anaesthesia" filters))}
-                          {:must_not {:term {:deleted? true}}
-                           :must (into []
-                                       (remove nil?)
-                                       [(when (seq term)
-                                         {:match_phrase_prefix {:text term}})
-                                        (when (and type (not= type :all))
-                                          {:term {:extract-type type}})])})}}))
+  {:sort  {:created-time {:order :desc}}
+   :from  0
+   :size  20
+   :query {:bool (merge {:filter (tags/tags-filter-query
+                                  ;; FIXME: Hardcoded anaesthesia
+                                  "anaesthesia" filters)}
+                        {:must_not {:term {:deleted? true}}
+                         :must (into []
+                                     (remove nil?)
+                                     [(when (seq term)
+                                        {:match_phrase_prefix {:text term}})
+                                      (when (and type (not= type :all))
+                                        {:term {:extract-type type}})])})}})
 ;; TODO: Better prefix search:
 ;; https://www.elastic.co/guide/en/elasticsearch/guide/master/_index_time_search_as_you_type.html
 ;; or
@@ -65,8 +64,7 @@
 ;; https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-edgengram-tokenizer.html
 
 (defn search-req [query]
-  (async/go
-    (es/search es/index (async/<! query))))
+  (es/search es/index query))
 
 (defn parse-search-response [res]
   (mapv (fn [ex]
@@ -78,7 +76,6 @@
   (async/go
     (let [res   (-> (search->elastic query)
                     search-req
-                    async/<!
                     es/request<!
                     parse-search-response)
           event [:openmind/search-response

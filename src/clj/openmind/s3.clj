@@ -20,7 +20,7 @@
 
     (AmazonS3ClientBuilder/defaultClient)))
 
-(defn- lookup [^String key]
+(defn lookup [^String key]
   (try
     (-> (.getObject client bucket key)
         .getObjectContent
@@ -28,7 +28,7 @@
         read-string)
     (catch Exception e nil)))
 
-(defn- exists? [^String key]
+(defn exists? [^String key]
   (try
     (.doesObjectExist client bucket key)
     (catch Exception e nil)))
