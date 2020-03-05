@@ -27,8 +27,72 @@ resource "aws_s3_bucket" "openmind-data" {
     allowed_methods = ["GET"]
     allowed_origins = ["https://openmind.macroexpanse.com"]
     expose_headers  = ["ETag"]
-    max_age_seconds = 100000
   }
+}
+
+resource "aws_s3_bucket_policy" "openmind-data-public-access" {
+  bucket = aws_s3_bucket.openmind-data.id
+
+  policy = <<EOF
+{
+  "Version":"2012-10-17",
+  "Statement":[
+    {
+      "Sid":"PublicRead",
+      "Effect":"Allow",
+      "Principal": "*",
+      "Action":["s3:GetObject"],
+      "Resource":["${aws_s3_bucket.openmind-data.arn}/*"]
+    },
+    {
+      "Sid":"PublicList",
+      "Effect":"Allow",
+      "Principal": "*",
+      "Action":["s3:ListBucket"],
+      "Resource":["${aws_s3_bucket.openmind-data.arn}"]
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_s3_bucket" "openmind-test-data" {
+  bucket = "test-data-17623"
+  region = "eu-central-1"
+
+
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["GET"]
+    allowed_origins = ["*"]
+    expose_headers  = ["ETag"]
+  }
+}
+
+resource "aws_s3_bucket_policy" "test-data-public-access" {
+  bucket = aws_s3_bucket.openmind-test-data.id
+
+  policy = <<EOF
+{
+  "Version":"2012-10-17",
+  "Statement":[
+    {
+      "Sid":"PublicRead",
+      "Effect":"Allow",
+      "Principal": "*",
+      "Action":["s3:GetObject"],
+      "Resource":["${aws_s3_bucket.openmind-test-data.arn}/*"]
+    },
+    {
+      "Sid":"PublicList",
+      "Effect":"Allow",
+      "Principal": "*",
+      "Action":["s3:ListBucket"],
+      "Resource":["${aws_s3_bucket.openmind-test-data.arn}"]
+    }
+  ]
+}
+EOF
 }
 
 ##### Security
@@ -407,11 +471,8 @@ resource "aws_iam_role_policy" "s3-data" {
     "Version": "2012-10-17",
     "Statement": [
       {
-			"Action": "s3:*",
-			"Resource": [
-         "${aws_s3_bucket.openmind-data.arn}",
-         "${aws_s3_bucket.openmind-data.arn}/*"
-       ],
+			"Action": "s3:PutObject",
+			"Resource": ["${aws_s3_bucket.openmind-data.arn}/*"],
 			"Effect": "Allow",
 			"Sid": "S3Access"
       }
@@ -419,6 +480,48 @@ resource "aws_iam_role_policy" "s3-data" {
   }
   EOF
 }
+
+resource "aws_iam_role" "dev-access" {
+  name = "openmind-dev-role"
+
+  assume_role_policy = <<EOF
+{
+	"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Action": "sts:AssumeRole",
+			"Principal": {
+				"Service": [
+					"s3.amazonaws.com"
+				]
+			},
+			"Effect": "Allow",
+			"Sid": ""
+		}
+	]
+}
+EOF
+}
+
+resource "aws_iam_role_policy" "s3-test-data" {
+  name = "openmind-s3-test-data-access"
+  role = aws_iam_role.dev-access.id
+
+  policy = <<-EOF
+  {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+			"Action": "s3:PutObject",
+			"Resource": ["${aws_s3_bucket.openmind-data.arn}/*"],
+			"Effect": "Allow",
+			"Sid": "S3Access"
+      }
+    ]
+  }
+  EOF
+}
+
 
 resource "aws_iam_role" "ecs-execution-role" {
   name = "ecs-execution-role"
@@ -482,4 +585,35 @@ resource "aws_ecs_task_definition" "openmind-web" {
 										 "value": "${var.orcid-redirect-uri}"}]
 	}]
 DEF
+}
+
+## CI User
+
+
+resource "aws_iam_group" "ci" {
+  name = "ci"
+}
+
+resource "aws_iam_group_policy" "access-to-ecs" {
+  name  = "openmind-ci-access-ecs"
+  group = aws_iam_group.ci.id
+
+  policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+		"Action": [
+              "ecs:DescribeServices",
+              "ecs:CreateTaskSet",
+              "ecs:UpdateServicePrimaryTaskSet",
+              "ecs:DeleteTaskSet"
+              ],
+		"Resource": ["${aws_ecs_service.openmind.id}"],
+		"Effect": "Allow",
+		"Sid": "S3Access"
+		}
+  ]
+}
+EOF
 }
