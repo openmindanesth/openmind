@@ -13,10 +13,10 @@
   (s/keys :req-un [::u/text
                    ::u/author
                    :extract/tags
-                   :extract/type
-                   ::source
-                   ::figures]
-          :req [:time/created]))
+                   ::source]
+          :req [:time/created
+                :extract/type]
+          :opt-un [::figures]))
 
 ;;;;; Required
 
@@ -25,11 +25,6 @@
 
 (s/def :extract/type
   (s/and some? keyword?))
-
-(s/def ::source
-  (s/or
-   :url        ::url
-   :pubmed-ref :pubmed/details))
 
 ;; TODO: What makes a valid Orcid ID? Is this the right place to validate it?
 (s/def ::orcid-id
@@ -53,7 +48,9 @@
           :req-un [::authors ::doi ::title ::abstract ::journal ::url]))
 
 (s/def :publication/date
-  inst?)
+  ;; As per scraping in general, these dates aren't generally well formatted, so
+  ;; strings are the best I can do at present.
+  string?)
 
 (s/def ::authors
   (s/coll-of string?))
@@ -68,4 +65,10 @@
   string?)
 
 (s/def ::journal
+  string?)
+
+(s/def ::labnote-source
+  (s/keys :req-un [:lab/name]))
+
+(s/def :lab/name
   string?)

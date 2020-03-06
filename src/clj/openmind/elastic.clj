@@ -5,28 +5,22 @@
             [openmind.env :as env]
             [openmind.hash :as h]
             [openmind.json :as json]
+            [openmind.s3 :as s3]
+            [openmind.tags :as tags]
+            [openmind.util :as util]
             [org.httpkit.client :as http]
             [taoensso.timbre :as log]))
 
-
-(def ^:private index-map
-  {:extract (env/read :elastic-extract-index)
-   :tag     (env/read :elastic-tag-index)})
-
-(def index (:extract index-map))
-(def tag-index (:tag index-map))
+(def index (env/read :elastic-extract-index))
 
 (def mapping
   {:properties {:created-time {:type :date}
                 :text         {:type :search_as_you_type}
-                :source       {:type :text}
+                :source       {:type :object}
                 :figure       {:type :text}
                 :tags         {:type :keyword}
                 :extract-type {:type :keyword}
-                :contrast     {:type :text}
-                :related      {:type :text}
-                :author       {:type :object}
-                :confirmed    {:type :text}}})
+                :author       {:type :object}}})
 
 (def tag-mapping
   {:properties
@@ -176,3 +170,85 @@
                  (async/<!
                   (send-off! (async/<! (update-type-req index %)))))))
             ids))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;; Initialising the DB
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+#_(defn init-elastic [index tag-index]
+  (async/go
+    (async/<! (es/send-off! (es/create-index index)))
+    (async/<! (es/send-off! (es/set-mapping index)))))
+
+(def extracts*
+  (-> "extracts.edn" slurp read-string))
+
+(def eids
+  "IDs of the extracts I know are correct."
+  #{"V_tDYW0BvYu2ShN9-IQM"
+    "WftGYW0BvYu2ShN9_4Ra"
+    "W_vcZG0BvYu2ShN90ITc"
+    "VvtDYW0BvYu2ShN9pYRI"
+    "b_shRG4BvYu2ShN9qYQU"})
+
+(def extracts
+  (filter #(contains? eids (:id %)) extracts*))
+
+
+(def figrep
+  "https://github.com/openmindanesth/openmind/raw/27d246d42bbe8512ec3db67d75a820307ffe2e14/B8D82E08-3E2C-4F48-9A7A-ED7B92DBE7F6.png")
+
+(defn extract-figure [{:keys [figure figure-caption author text]}]
+  (when figure
+    (merge
+     {:image-data (if (< (count figure) 200) figrep figure)
+      :author     (or author
+                      {:orcid-id "0000-0003-1053-9256"
+                       :name     "Henning Matthias Reimann"})}
+     (when figure-caption
+       {:caption figure-caption}))))
+
+(def figures
+  (into {}
+        (map (fn [extract]
+               (let [f (extract-figure extract)]
+                 (when f
+                   [(:id extract) (util/immutable f)]))))
+        extracts))
+
+(defn write-figures-to-s3! []
+  (run! s3/intern (vals figures)))
+
+(def tags
+  tags/tag-id-map)
+
+(def dateformat
+  (java.text.SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss.SSS"))
+
+(def new-extracts
+  (map (fn [extract]
+         (let [sd (:source-detail extract)]
+           (merge
+            {:text         (:text extract)
+             :source       (-> sd
+                               (assoc  :url (:source extract))
+                               (assoc :publication/date
+                                      (:date sd))
+                               (dissoc :date))
+             :tags         (mapv tags (:tags extract))
+             :author       (or (:author extract)
+                               {:orcid-id "0000-0003-1053-9256"
+                                :name "Henning Matthias Reimann"})
+             :extract/type (keyword (:extract-type extract))
+             :comments     [] ;TODO: Send them off
+             }
+            (when-let [f (:hash (get figures (:id extract)))]
+              {:figures [f]})
+            {:time/created (if-let [t (:created-time extract)]
+                             (.parse dateformat t)
+                             (java.util.Date.))})))
+       (filter #(contains? eids (:id %))
+               extracts)))
+
+(def imm-extracts
+  (mapv util/immutable new-extracts))

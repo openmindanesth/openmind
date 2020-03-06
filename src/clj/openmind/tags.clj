@@ -156,14 +156,3 @@
          vals
          (map #(map :tag %))
          (map (fn [ts] {:terms {:tags ts}})))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;; Initialising the DB
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-#_(defn init-elastic [index tag-index]
-  (async/go
-    (async/<! (es/send-off! (es/create-index index)))
-    (async/<! (es/send-off! (es/set-mapping index)))
-    (async/<! (es/send-off! (es/create-index tag-index)))
-    (create-tag-tree! tag-index tag-tree)))
