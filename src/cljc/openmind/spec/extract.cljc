@@ -15,12 +15,13 @@
                    :extract/tags
                    :extract/type
                    ::source
-                   ::figure]
-          :opt-un [::figure-caption]))
+                   ::figures]
+          :req [:time/created]))
 
 ;;;;; Required
 
-(s/def ::figure-caption ::u/text)
+(s/def ::figures
+  (s/coll-of ::u/hash :distinct true))
 
 (s/def :extract/type
   (s/and some? keyword?))
@@ -37,22 +38,34 @@
 (s/def :extract/tags
   (s/coll-of ::u/hash :distinct true))
 
-;;;; Optional
+(s/def ::source
+  (s/or
+   :pubmed  ::pubmed-reference
+   :labnote ::labnote-source
+   :link    ::url))
 
-;; FIXME: collection of figures
-(s/def ::figure
-  (s/or :link ::url
-        :upload ::file-reference))
-
-(s/def ::file-reference
-  ;; Base64 encoded image at present. Will upgrade to item from S3 Bucket
-  ;; eventually.
+(s/def ::url
+  ;; TODO: Validate url
   string?)
 
-;; TODO: URL spec
-(s/def ::url string?)
+(s/def ::pubmed-reference
+  (s/keys :req [:publication/date]
+          :req-un [::authors ::doi ::title ::abstract ::journal ::url]))
 
-(s/def ::reference ::url)
+(s/def :publication/date
+  inst?)
 
-(s/def ::source
-  (s/keys ))
+(s/def ::authors
+  (s/coll-of string?))
+
+(s/def ::doi
+  string?)
+
+(s/def ::title
+  string?)
+
+(s/def ::abstract
+  string?)
+
+(s/def ::journal
+  string?)
