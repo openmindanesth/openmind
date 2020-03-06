@@ -93,7 +93,7 @@
 ;;;;; Create extract
 
 (defn parse-dates [doc]
-  (let [formatter (java.text.SimpleDateFormat. "YYYY-MM-dd'T'HH:mm:ss.SSSXXX")]
+  (let [formatter (java.text.SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss.SSSXXX")]
     (walk/prewalk
      (fn [x] (if (inst? x) (.format formatter x) x))
      doc)))
