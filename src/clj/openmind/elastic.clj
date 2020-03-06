@@ -2,8 +2,8 @@
   (:refer-clojure :exclude [intern])
   (:require [clojure.core.async :as async]
             [clojure.spec.alpha :as s]
+            [clojure.walk :as walk]
             [openmind.env :as env]
-            [openmind.hash :as h]
             [openmind.json :as json]
             [openmind.s3 :as s3]
             [openmind.tags :as tags]
@@ -15,17 +15,14 @@
 
 (def mapping
   {:properties {:created-time {:type :date}
-                :text         {:type :search_as_you_type}
+                ;; FIXME: Going back to 7.1 means no search_as_you_type
+                ;; that could be something of a problem.
+                :text         {:type :text}
                 :source       {:type :object}
                 :figure       {:type :text}
                 :tags         {:type :keyword}
                 :extract-type {:type :keyword}
                 :author       {:type :object}}})
-
-(def tag-mapping
-  {:properties
-   {:hash    :text
-    :content :object}})
 
 ;;;;; REST API wrapping
 
@@ -63,7 +60,7 @@
 
 ;;;;; Init new index
 
-(defn set-mapping [index mapping]
+(defn set-mapping [index]
   (merge base-req
          {:method :put
           :url (str base-url "/" index "/_mapping")
@@ -81,7 +78,7 @@
   [{:keys [status body] :as res}]
   (if status
     (cond
-      (<= 200 status 299) (json/read-str body :key-fn keyword)
+      (<= 200 status 299) (json/read-str body)
       (= 404 status)      []
       :else               (log/error "Elastic Search error response:" res) )
     (log/error "No response from Elastic Search:" res)))
@@ -115,21 +112,29 @@
        :hits
        :hits))
 
-(def ^:private index-map
-  {:extract (env/read :elastic-extract-index)
-   :tag     (env/read :elastic-tag-index)})
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;; Extract indexing
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn intern [obj]
-  (let [c (s/conform :openmind.spec/content obj)]
-    (if (= ::s/invalid c)
-      (log/warn "Malformed data rejected." obj)
-      (let [index (get index-map (first c))
-            wrapper {:content obj
-                     :hash (h/hash obj)
-                     :time/created (java.util.Date.)}]
-        (async/go
-          (send-off! (index-req index wrapper)))
-        (:hash wrapper)))))
+(def dateformat
+  (java.text.SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss.SSSXXX"))
+
+(defn parse-dates [doc]
+  (walk/prewalk
+   (fn [x] (if (inst? x) (.format dateformat x) x))
+   doc))
+
+(defn prepare-extract [ext]
+  (-> ext
+      parse-dates))
+
+(defn index-extract!
+  "Given an immutable, index the contained extract in es."
+  [imm]
+  (if (s/valid? :openmind.spec.extract/extract (:content imm))
+    (let [ext (assoc (:content imm) :hash (:hash imm))]
+      (send-off! (index-req index (prepare-extract ext))))
+    (log/error "Trying to index invalid extract:" imm)))
 
 ;;;;; Testing helpers
 
@@ -175,10 +180,11 @@
 ;;;;; Initialising the DB
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#_(defn init-elastic [index tag-index]
+(defn init-elastic []
   (async/go
-    (async/<! (es/send-off! (es/create-index index)))
-    (async/<! (es/send-off! (es/set-mapping index)))))
+    ;; These have to happen sequentially.
+    (println (async/<! (send-off! (create-index index))))
+    (println (async/<! (send-off! (set-mapping index))))))
 
 (def extracts*
   (-> "extracts.edn" slurp read-string))
@@ -221,9 +227,6 @@
 
 (def tags
   tags/tag-id-map)
-
-(def dateformat
-  (java.text.SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss.SSS"))
 
 (def new-extracts
   (map (fn [extract]

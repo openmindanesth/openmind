@@ -1,11 +1,11 @@
 (ns openmind.routes
   (:require [clojure.core.async :as async]
             [clojure.spec.alpha :as s]
-            [clojure.walk :as walk]
             [openmind.elastic :as es]
             [openmind.pubmed :as pubmed]
-            [openmind.spec :as spec]
+            [openmind.s3 :as s3]
             [openmind.tags :as tags]
+            [openmind.util :as util]
             [taoensso.timbre :as log]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -92,37 +92,16 @@
 
 ;;;;; Create extract
 
-(defn parse-dates [doc]
-  (let [formatter (java.text.SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss.SSSXXX")]
-    (walk/prewalk
-     (fn [x] (if (inst? x) (.format formatter x) x))
-     doc)))
-
-(defn validate [author doc]
+(defn valid? [author doc]
   (cond
     (not= author (:author doc))
     (log/error "Login mismatch, possible attack:" author doc)
 
-    (not (s/valid? ::spec/extract doc))
+    (not (s/valid? :openmind.spec.extract/extract doc))
     (log/warn "Invalid extract received from client:"
-              author doc (s/explain-data ::spec/extract doc))
+              author doc (s/explain-data :openmind.spec.extract/extract doc))
 
     :else doc))
-
-(defn remove-empty [doc]
-  (let [map-keys [:comments :contrast :confirmed :related]]
-    (reduce (fn [doc k]
-              (update doc k #(remove empty? %)))
-            doc map-keys)))
-
-(defn prepare [doc]
-  (-> (if (empty? (:figure doc))
-        (dissoc doc :figure)
-        doc)
-      remove-empty
-      ;; Prefer server timestamp over what came from client
-      (assoc :created-time (java.util.Date.))
-      parse-dates))
 
 ;; FIXME: This is doing too many things at once. We need to separate this into
 ;; layers; data completion, validation, sending to elastic, and error handling.
@@ -130,22 +109,20 @@
   [{:keys [client-id send-fn ?reply-fn uid tokens] [_ doc] :event :as req}]
   (when (not= uid :taoensso.sente/nil-uid)
     (async/go
-      (let [doc (some->> doc
-                         (validate
-                          (select-keys (:orcid tokens) [:name :orcid-id]))
-                         prepare)
-            source-info (-> doc
-                            :source
-                            pubmed/article-info
-                            async/<!)
-            res (some->> (assoc doc :source-detail source-info)
-                         (es/index-req es/index)
-                         es/send-off!
-                         async/<!)]
-        (when-not (<= 200 (:status res) 299)
-          (log/error "Failed to index new extact" res))
-        (respond-with-fallback req [:openmind/index-result (:status res)])))))
+      (when (valid? (select-keys (:orcid tokens) [:name :orcid-id]) doc)
+        (let [source-info (-> doc
+                              :source
+                              pubmed/article-info
+                              async/<!)
+              extract     (util/immutable
+                           (assoc doc :source-detail source-info))
+              _           (s3/intern extract)
+              res         (async/<! (es/index-extract! extract))]
+          (when-not (<= 200 (:status res) 299)
+            (log/error "Failed to index new extact" res))
+          (respond-with-fallback req [:openmind/index-result (:status res)]))))))
 
+;; TODO: We shouldn't allow updating extracts until we get this sorted.
 (defmethod dispatch :openmind/update
   [{:keys [client-id send-fn ?reply-fn uid tokens] [_ doc] :event :as req}]
   (let [auth (select-keys (:orcid tokens) [:name :orcid-id])]
