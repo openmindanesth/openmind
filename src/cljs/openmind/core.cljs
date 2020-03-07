@@ -4,6 +4,7 @@
             [openmind.components.window :as window]
             [openmind.config :as config]
             [openmind.events :as events]
+            [openmind.hash]
             [openmind.router :as router]
             [re-frame.core :as re-frame]
             [reagent.core :as reagent]

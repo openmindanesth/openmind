@@ -9,7 +9,9 @@
             [openmind.tags :as tags]
             [openmind.util :as util]
             [org.httpkit.client :as http]
-            [taoensso.timbre :as log]))
+            [taoensso.timbre :as log])
+  (:import [java.text SimpleDateFormat]
+           [openmind.hash ValueRef]))
 
 (def index (env/read :elastic-extract-index))
 
@@ -18,6 +20,7 @@
                 ;; FIXME: Going back to 7.1 means no search_as_you_type
                 ;; that could be something of a problem.
                 :text         {:type :text}
+                :hash         {:type :keyword}
                 :source       {:type :object}
                 :figure       {:type :text}
                 :tags         {:type :keyword}
@@ -34,10 +37,10 @@
 (def base-url
   (env/read :elastic-url))
 
-(defn index-req [index doc]
+(defn index-req [index doc & [key]]
   (merge base-req
          {:method :post
-          :url (str base-url "/" index "/_doc/")
+          :url (str base-url "/" index "/_doc/" key)
           :body (json/write-str doc)}))
 
 (defn search [index body]
@@ -117,11 +120,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def dateformat
-  (java.text.SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss.SSSXXX"))
+  (SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss.SSSXXX"))
 
 (defn parse-dates [doc]
   (walk/prewalk
-   (fn [x] (if (inst? x) (.format dateformat x) x))
+   (fn [x] (if (inst? x) (.format ^SimpleDateFormat dateformat x) x))
    doc))
 
 (defn prepare-extract [ext]
@@ -131,10 +134,14 @@
 (defn index-extract!
   "Given an immutable, index the contained extract in es."
   [imm]
-  (if (s/valid? :openmind.spec.extract/extract (:content imm))
-    (let [ext (assoc (:content imm) :hash (:hash imm))]
-      (send-off! (index-req index (prepare-extract ext))))
-    (log/error "Trying to index invalid extract:" imm)))
+  (async/go
+    (if (s/valid? :openmind.spec.extract/extract (:content imm))
+      (let [ext (assoc (:content imm) :hash (:hash imm))
+            key (.-hash-string ^ValueRef (:hash imm))
+            res (async/<! (send-off!
+                           (index-req index (prepare-extract ext) key)))]
+        (log/info res))
+      (log/error "Trying to index invalid extract:" imm))))
 
 ;;;;; Testing helpers
 
@@ -183,6 +190,7 @@
 (defn init-elastic []
   (async/go
     ;; These have to happen sequentially.
+    (println (async/<! (send-off! (assoc (create-index index) :method :delete))))
     (println (async/<! (send-off! (create-index index))))
     (println (async/<! (send-off! (set-mapping index))))))
 
@@ -248,10 +256,10 @@
             (when-let [f (:hash (get figures (:id extract)))]
               {:figures [f]})
             {:time/created (if-let [t (:created-time extract)]
-                             (.parse dateformat t)
+                             (.parse ^SimpleDateFormat dateformat t)
                              (java.util.Date.))})))
        (filter #(contains? eids (:id %))
                extracts)))
 
-(def imm-extracts
+(defonce imm-extracts
   (mapv util/immutable new-extracts))

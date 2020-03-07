@@ -68,7 +68,7 @@
 
 (defn parse-search-response [res]
   (mapv (fn [ex]
-          (assoc (:_source ex) :id (:_id ex)))
+          (assoc (:_source ex)))
         res))
 
 (defmethod dispatch :openmind/search
@@ -103,6 +103,12 @@
 
     :else doc))
 
+(defn write-extract!
+  "Saves extract to S3 and indexes it in elastic."
+  [extract]
+  (s3/intern extract)
+  (es/index-extract! extract))
+
 ;; FIXME: This is doing too many things at once. We need to separate this into
 ;; layers; data completion, validation, sending to elastic, and error handling.
 (defmethod dispatch :openmind/index
@@ -115,9 +121,8 @@
                               pubmed/article-info
                               async/<!)
               extract     (util/immutable
-                           (assoc doc :source-detail source-info))
-              _           (s3/intern extract)
-              res         (async/<! (es/index-extract! extract))]
+                           (assoc doc :source source-info))
+              res         (async/<! (write-extract! extract))]
           (when-not (<= 200 (:status res) 299)
             (log/error "Failed to index new extact" res))
           (respond-with-fallback req [:openmind/index-result (:status res)]))))))
@@ -195,5 +200,5 @@
       (let [tree    (async/<! (tags/get-tag-tree root-id))
             event   [:openmind/tag-tree (tags/invert-tag-tree
                                          tree
-                                         {:tag-name root :id root-id})]]
+                                         {:name root :id root-id})]]
         (respond-with-fallback req event)))))

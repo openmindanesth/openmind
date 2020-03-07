@@ -30,11 +30,8 @@
   (hashCode [_]
     (.hashCode hash-string))
   (toString [_]
-    (str "#" (str tag) " \"" hash-string "\""))
+    (str "#" (str tag) " \"" hash-string "\"")))
 
-  #?@(:cljs
-      [IEquiv
-       (-equiv [this o] (.equals this o))]))
 
 #?(:clj
    (defn- print-ref
@@ -52,10 +49,21 @@
      (print-ref r w)))
 
 #?(:cljs
-   (extend-protocol IPrintWithWriter
-     ValueRef
+   (extend-type ValueRef
+     IPrintWithWriter
      (-pr-writer [obj writer _]
-       (write-all writer (str obj)))))
+       (write-all writer (str obj)))
+
+     IEquiv
+     (-equiv [this o]
+       (boolean
+        (if (identical? this o)
+          true
+          (when (instance? ValueRef o)
+            (= (.-hash-string this) (.-hash-string o))))))
+     IHash
+     (-hash [this]
+       (cljs.core/hash (.-hash-string this)))))
 
 (defn value-ref? [x]
   (instance? ValueRef x))

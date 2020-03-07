@@ -23,6 +23,11 @@
    (:tag-lookup db)))
 
 (re-frame/reg-sub
+ :tag-root
+ (fn [db]
+   (:tag-root-id db)))
+
+(re-frame/reg-sub
  ::sort-list-open?
  (fn [db]
    (::sort-list-open? db)))
@@ -125,7 +130,7 @@
    ;; displayed, swap it in, if not, just drop it.
    (if (< (::response-number db) nonce)
      (-> (reduce core/add-extract db results)
-         (assoc ::results (map :id results)
+         (assoc ::results (map :hash results)
                 ::response-number nonce))
      db)))
 
@@ -177,12 +182,12 @@
           (tg1 bs))))
 
 (defn tag-display [tag-lookup [k children]]
-  (when (seq k)
+  (when k
     [:div.flex
      [:div {:class (str "bg-blue border-round p1 mbh mrh "
                         "text-white flex flex-column flex-centre")}
       [:div
-       (:tag-name (tag-lookup k))]]
+       (:name (tag-lookup k))]]
      (into [:div.flex.flex-column]
            (map (fn [b] [tag-display tag-lookup b]))
            children)]))
@@ -194,6 +199,7 @@
 (defn tag-hover [tags]
   (when (seq tags)
     (let [tag-lookup @(re-frame/subscribe [:tag-lookup])
+          tag-root @(re-frame/subscribe [:tag-root])
           branches   (->> tags
                           (map tag-lookup)
                           (map (fn [{:keys [id parents]}] (conj parents id))))]
@@ -201,7 +207,7 @@
        (into [:div.flex.flex-column]
              (map (fn [t]
                     [tag-display tag-lookup t]))
-             (get (tree-group branches) "8PvLV2wBvYu2ShN9w4NT"))])))
+             (get (tree-group branches) tag-root))])))
 
 
 (defn comments-hover [comments]
@@ -213,16 +219,18 @@
              com]))
      comments)))
 
-(defn figure-hover [figure caption]
-  (when figure
-    [:div.border-round.border-solid.bg-white
-     [:img.relative.p1 {:src figure
-                        :style {:max-width "95%"
-                                :max-height "50vh"
-                                :left "2px"
-                                :top "2px"}}]
-     (when (seq caption)
-       [:div.p1 caption])]))
+(defn figure-hover [figures]
+  (into [:div.border-round.border-solid.bg-white]
+        (map (fn [{:keys [image-data caption ]}]
+               (when image-data
+                 [:img.relative.p1 {:src image-data
+                                    :style {:max-width "95%"
+                                            :max-height "50vh"
+                                            :left "2px"
+                                            :top "2px"}}]
+                 (when (seq caption)
+                   [:div.p1 caption]))))
+        figures))
 
 (defn edit-link [extract]
   (when-let [login @(re-frame/subscribe [:openmind.subs/login-info])]
@@ -231,26 +239,24 @@
        {:style {:top "-2rem" :right "1rem"}}
        [:a {:on-click #(re-frame/dispatch [:navigate
                                            {:route :extract/edit
-                                            :path  {:id (:id extract)}}])}
+                                            :path  {:id (:hash extract)}}])}
         "edit"]])))
 
-(defn authors [authors date]
+(defn citation [authors date]
   (let [full (apply str (interpose ", " authors))]
     (str
      (if (< (count full) 25) full (str (first authors) ", et al."))
      " (" date ")")))
 
-(defn source-link [{:keys [source source-detail]}]
-  (let [text (if (seq (:authors source-detail))
-               (authors (:authors source-detail) (.getFullYear
-                                                  (js/Date.
-                                                   (:date source-detail))))
-               source)]
-    [:a.link-blue {:href source} text]))
+(defn source-link [{{:keys [authors url date] :as source} :source}]
+  (let [text (if (seq authors)
+               (citation authors (.getFullYear (js/Date. date)))
+               url)]
+    [:a.link-blue {:href url} text]))
 
-(defn source-hover [{:keys [source-detail]}]
-  (when (seq source-detail)
-    (let [{:keys [authors date journal abstract doi title]} source-detail]
+(defn source-hover [{:keys [source]}]
+  (when (seq source)
+    (let [{:keys [authors date journal abstract doi title]} source]
       [:div.flex.flex-column.border-round.bg-white.border-solid.p1.pbh
        {:style {:max-width "700px"}}
        [:h2 title]
@@ -262,7 +268,7 @@
   [:a {:on-click #(re-frame/dispatch [:navigate route])}
         text])
 
-(defn result [{:keys [text source comments details related figure tags]
+(defn result [{:keys [text source comments details related figures tags]
                :as   extract}]
   [:div.search-result.padded
    [:div.break-wrap.ph text]
@@ -270,7 +276,7 @@
    [:div.pth
     [:div.flex.flex-wrap.space-evenly
      [hover-link [ilink "comments" {:route :extract/comments
-                                    :path {:id (:id extract)}}]
+                                    :path {:id (:hash extract)}}]
       [comments-hover comments]
       {:orientation :left}]
      [hover-link "history"]
@@ -278,8 +284,8 @@
      [hover-link "details" #_details]
      [hover-link "tags" [tag-hover tags]]
      [hover-link [ilink "figure" {:route :extract/figure
-                                  :path {:id (:id extract)}}]
-      [figure-hover figure (:figure-caption extract)]
+                                  :path {:id (:hash extract)}}]
+      [figure-hover figures]
 
       {:orientation :right
        :style       {:max-width "75%"}}]
