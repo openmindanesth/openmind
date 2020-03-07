@@ -42,6 +42,8 @@
 
 ;;;;; Search
 
+;;FIXME: This is a rather crummy search. We want to at least split on tokens in
+;;the query and match all of them...
 (defn search->elastic [{:keys [term filters sort-by type]}]
   {:sort  {:created-time {:order :desc}}
    :from  0
@@ -150,7 +152,6 @@
   [:openmind/fetch-extract-response
    (-> res
        :_source
-       (assoc :id (:_id res))
        (update :tags set))])
 
 (defmethod dispatch :openmind/fetch-extract
