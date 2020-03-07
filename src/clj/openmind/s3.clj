@@ -7,9 +7,6 @@
            [com.amazonaws.services.s3 AmazonS3Client AmazonS3ClientBuilder]
            openmind.hash.ValueRef))
 
-(set! *warn-on-reflection* true)
-(set! *read-eval* false)
-
 (def ^String bucket
   (env/read :s3-data-bucket))
 
