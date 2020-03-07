@@ -1,5 +1,6 @@
 (ns openmind.json
   (:require  [clojure.data.json :as json]
+             [clojure.walk :as walk]
              openmind.hash)
   (:import [openmind.hash ValueRef]))
 
@@ -20,9 +21,8 @@
 (set! *read-eval* nil)
 
 (defn read-str [s]
-  (json/read-str s
-                 :key-fn keyword
-                 :value-fn (fn [k v]
-                             (if (contains? json-tags k)
-                               (read-string v)
-                               v))))
+  (walk/postwalk (fn [o]
+                   (if (and (string? o) (.startsWith ^String o "#"))
+                     (read-string o)
+                     o))
+   (json/read-str s :key-fn keyword)))
