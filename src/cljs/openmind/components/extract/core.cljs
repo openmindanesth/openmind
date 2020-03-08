@@ -76,10 +76,16 @@
               ;; Mark extract as inessential
               assoc :gc-ready? true)))
 
-(re-frame/reg-event-db
+(re-frame/reg-fx
+ ::fetch-sub-data
+ (fn [{:keys [figures]}]
+   ))
+
+(re-frame/reg-event-fx
  :openmind/fetch-extract-response
- (fn [db [_ extract]]
-   (add-extract db extract)))
+ (fn [{:keys [db]} [_ extract]]
+   {:db (add-extract db extract)
+    ::fetch-sub-data extract}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Routing
