@@ -18,11 +18,10 @@
 (def json-tags
   #{:hash :time/created})
 
-(set! *read-eval* nil)
-
 (defn read-str [s]
-  (walk/postwalk (fn [o]
-                   (if (and (string? o) (.startsWith ^String o "#"))
-                     (read-string o)
-                     o))
-   (json/read-str s :key-fn keyword)))
+  (binding [*read-eval* nil]
+    (walk/postwalk (fn [o]
+                     (if (and (string? o) (.startsWith ^String o "#"))
+                       (read-string o)
+                       o))
+                   (json/read-str s :key-fn keyword))))

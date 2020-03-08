@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [intern])
   (:require [clojure.spec.alpha :as s]
             [openmind.env :as env]
+            [openmind.hash]
             [taoensso.timbre :as log])
   (:import com.amazonaws.auth.BasicAWSCredentials
            [com.amazonaws.services.s3 AmazonS3Client AmazonS3ClientBuilder]
@@ -19,10 +20,11 @@
 
 (defn lookup [^String key]
   (try
-    (-> (.getObject client bucket key)
-        .getObjectContent
-        slurp
-        read-string)
+    (let [content (-> (.getObject client bucket key)
+                      .getObjectContent
+                      slurp)]
+      (binding [*read-eval* nil]
+        (read-string content)))
     (catch Exception e nil)))
 
 (defn exists? [^String key]

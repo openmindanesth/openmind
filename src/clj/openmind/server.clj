@@ -14,9 +14,6 @@
             [taoensso.sente.server-adapters.http-kit :as sente-http-kit]
             [taoensso.timbre :as log]))
 
-(set! *warn-on-reflection* true)
-(set! *read-eval* false)
-
 ;;;;; Hacks
 
 (defonce
@@ -115,6 +112,8 @@
 
 
 (defn start-server! []
+  (when (env/read :dev-mode)
+    (set! *warn-on-reflection* true))
   (when (fn? @stop-server!)
     (@stop-server!))
   (let [port (env/port)]

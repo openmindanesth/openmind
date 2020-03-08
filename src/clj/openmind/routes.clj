@@ -69,9 +69,7 @@
   (es/search es/index query))
 
 (defn parse-search-response [res]
-  (mapv (fn [ex]
-          (assoc (:_source ex)))
-        res))
+  (mapv :_source res))
 
 (defmethod dispatch :openmind/search
   [{[_ query] :event :as req}]
@@ -130,7 +128,7 @@
           (respond-with-fallback req [:openmind/index-result (:status res)]))))))
 
 ;; TODO: We shouldn't allow updating extracts until we get this sorted.
-(defmethod dispatch :openmind/update
+#_(defmethod dispatch :openmind/update
   [{:keys [client-id send-fn ?reply-fn uid tokens] [_ doc] :event :as req}]
   (let [auth (select-keys (:orcid tokens) [:name :orcid-id])]
     (when (= uid (:orcid-id (:orcid tokens)))
@@ -154,7 +152,7 @@
        :_source
        (update :tags set))])
 
-(defmethod dispatch :openmind/fetch-extract
+#_(defmethod dispatch :openmind/fetch-extract
   [{[_ id] :event :as req}]
   (async/go
     (->> (es/lookup es/index id)
@@ -194,7 +192,7 @@
 ;;;;; Tag Hierarchy
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod dispatch :openmind/tag-tree
+#_(defmethod dispatch :openmind/tag-tree
   [{[_ root] :event :as req}]
   (async/go
     (when-let [root-id (get (async/<! (tags/get-top-level-tags)) root)]

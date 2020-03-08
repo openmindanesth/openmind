@@ -1,6 +1,6 @@
 (ns openmind.tags
-  (:require [clojure.spec.alpha :as s]
-            [openmind.s3 :as s3]
+  (:require [openmind.s3 :as s3]
+            [openmind.spec :as spec]
             [openmind.util :as util]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
