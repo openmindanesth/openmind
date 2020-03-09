@@ -628,8 +628,7 @@ resource "aws_iam_group_policy" "access-to-ecs" {
               "ecs:UpdateServicePrimaryTaskSet",
               "ecs:DeleteTaskSet"
               ],
-		"Resource": ["${aws_ecs_service.openmind.id}",
-                 "${aws_ecr_repository.openmind.arn}"],
+		"Resource": ["*"],
 		"Effect": "Allow",
 		"Sid": "S3Access"
 		}
