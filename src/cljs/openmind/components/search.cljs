@@ -121,18 +121,18 @@
       :dispatch [:openmind.events/try-send
                  [:openmind/search (prepare-search query nonce)]]})))
 
-(re-frame/reg-event-db
+(re-frame/reg-event-fx
  :openmind/search-response
- (fn [db [_ {:keys [::results ::nonce] :as e}]]
+ (fn [{:keys [db]} [_ {:keys [::results ::nonce] :as e}]]
    ;; This is for slow connections: when typing, a new search is requested at
    ;; each keystroke, and these could come back out of order. When a response
    ;; comes back, if it corresponds to a newer request than that currently
    ;; displayed, swap it in, if not, just drop it.
    (if (< (::response-number db) nonce)
-     (-> (reduce core/add-extract db results)
-         (assoc ::results (map :hash results)
-                ::response-number nonce))
-     db)))
+     {:db         (assoc db
+                         ::results (map :hash results)
+                         ::response-number nonce)
+      :dispatch-n (mapv (fn [e] [::core/add-extract e]) results)})))
 
 (re-frame/reg-event-fx
  ::update-term
@@ -146,7 +146,7 @@
 (defn hover-link [link float-content
                   {:keys [orientation style force?]}]
   (let [hover? (reagent/atom false)]
-    (fn [text float-content route {:keys [orientation style force?]}]
+    (fn [text float-content {:keys [orientation style force?]}]
       [:div.plh.prh
        {:on-mouse-over #(reset! hover? true)
         :on-mouse-out  #(reset! hover? false)
@@ -220,17 +220,21 @@
      comments)))
 
 (defn figure-hover [figures]
-  (into [:div.border-round.border-solid.bg-white]
-        (map (fn [{:keys [image-data caption ]}]
-               (when image-data
-                 [:img.relative.p1 {:src image-data
-                                    :style {:max-width "95%"
-                                            :max-height "50vh"
-                                            :left "2px"
-                                            :top "2px"}}]
-                 (when (seq caption)
-                   [:div.p1 caption]))))
-        figures))
+  (when (seq figures)
+    (into [:div.border-round.border-solid.bg-white]
+          (map (fn [id]
+                 (let [{:keys [image-data caption] :as fig}
+                       @(re-frame/subscribe [:extract/content id])]
+                   [:div
+                    (when image-data
+                      [:img.relative.p1 {:src image-data
+                                         :style {:max-width "95%"
+                                                 :max-height "50vh"
+                                                 :left "2px"
+                                                 :top "2px"}}])
+                    (when (seq caption)
+                      [:div.p1 caption])])))
+          figures)))
 
 (defn edit-link [extract]
   (when-let [login @(re-frame/subscribe [:openmind.subs/login-info])]
@@ -276,26 +280,26 @@
    [:div.pth
     [:div.flex.flex-wrap.space-evenly
      [hover-link [ilink "comments" {:route :extract/comments
-                                    :path {:id (:hash extract)}}]
+                                    :path  {:id (:hash extract)}}]
       [comments-hover comments]
       {:orientation :left}]
      [hover-link "history"]
      [hover-link "related" #_related]
      [hover-link "details" #_details]
-     [hover-link "tags" [tag-hover tags]]
+     [hover-link "tags" [tag-hover tags] ]
      [hover-link [ilink "figure" {:route :extract/figure
-                                  :path {:id (:hash extract)}}]
+                                  :path  {:id (:hash extract)}}]
       [figure-hover figures]
-
       {:orientation :right
        :style       {:max-width "75%"}}]
-     [hover-link [source-link extract] [source-hover extract] {}
+     [hover-link [source-link extract] [source-hover extract]
       {:orientation :right}]]]])
 
 (defn search-results []
   (let [results @(re-frame/subscribe [::extracts])]
     (into [:div]
-          (map (fn [r] [result r]) results))))
+          (map (fn [r] [result r]))
+          results)))
 
 (defn radio [select-map set-event close-event state]
   (let [n (gensym)]

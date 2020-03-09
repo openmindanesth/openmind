@@ -5,14 +5,30 @@
 ;;;;; Public Utilities
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn add-extract [db extract]
-  (update-in db [::extracts (:hash extract)]
-             assoc
-             :content extract
-             :fetched (js/Date.)))
+(re-frame/reg-event-fx
+ ::add-data
+ (fn [{:keys [db]} [_ {:keys [hash] :as rec}]]
+   (when hash
+     {:db (assoc-in db [::table hash]
+                    (assoc rec :fetched (js/Date.)))})))
+
+(re-frame/reg-event-fx
+ ::add-extract
+ (fn [{:keys [db]} [_ extract]]
+   {:dispatch-n [[::add-data {:hash    (:hash extract)
+                              :content extract}]
+                 [::fetch-sub-data extract]]}))
+
+(re-frame/reg-event-fx
+ ::fetch-sub-data
+ (fn [{:keys [db]} [_ {:keys [figures]}]]
+   {:dispatch-n (into [] (comp (remove #(nil? %))
+                               (map #(.-hash-string %))
+                               (map (fn [f] [:s3-get f ::add-data])))
+                      figures)}))
 
 (defn get-extract [db id]
-  (get-in db [::extracts id]))
+  (get-in db [::table id]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Subs
@@ -21,7 +37,7 @@
 (re-frame/reg-sub
  :extract
  (fn [db [_ k]]
-   (get (::extracts db) k)))
+   (get-extract db k)))
 
 (re-frame/reg-sub
  :extract/content
@@ -46,18 +62,18 @@
 (re-frame/reg-event-db
  :extract/clear
  (fn [db [_ id]]
-   (update db ::extracts dissoc id)))
+   (update db ::table dissoc id)))
 
 (re-frame/reg-event-fx
  :extract/mark
  (fn [{:keys [db]} [_ id]]
    (if (= :openmind.components.extract.editor/new id)
-     {:db (update-in db [::extracts id] #(if (nil? %) blank-new-extract %))}
-     (if-not (contains? (::extracts db) id)
+     {:db (update-in db [::table id] #(if (nil? %) blank-new-extract %))}
+     (if-not (contains? (::table db) id)
        ;; If we don't have it, get it
        {:dispatch [:openmind.events/try-send [:openmind/fetch-extract id]]}
        ;; If we still have it, make sure we don't drop it
-       {:db (update-in db [::extracts id]
+       {:db (update-in db [::table id]
                        assoc
                        :last-access (js/Date.)
                        :gc-ready? false)}))))
@@ -72,20 +88,15 @@
    ;; important at all for most users.
    ;; TODO: Keep the server posted about what you have and don't so as to
    ;; minimise extra traffic and have changes pushed automatically.
-   (update-in db [::extracts id]
+   (update-in db [::table id]
               ;; Mark extract as inessential
+              ;; TODO: mark references recursively
               assoc :gc-ready? true)))
-
-(re-frame/reg-fx
- ::fetch-sub-data
- (fn [{:keys [figures]}]
-   ))
 
 (re-frame/reg-event-fx
  :openmind/fetch-extract-response
- (fn [{:keys [db]} [_ extract]]
-   {:db (add-extract db extract)
-    ::fetch-sub-data extract}))
+ (fn [_ [_ extract]]
+   {:dispatch [::add-extract extract]}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Routing

@@ -60,10 +60,10 @@
 
 (re-frame/reg-event-db
  ::tree
- (fn [db [_ tree]]
+ (fn [db [_ {:keys [content]}]]
    (assoc db
-          :tag-tree tree
-          :tag-lookup (build-tag-lookup tree))))
+          :tag-tree content
+          :tag-lookup (build-tag-lookup content))))
 
 (re-frame/reg-event-db
  ::set-filter-edit

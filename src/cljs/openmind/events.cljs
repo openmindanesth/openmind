@@ -100,26 +100,35 @@
 ;;;; Tag tree (taxonomy)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(re-frame/reg-sub
+ ::s3-bucket
+ (fn [db]
+   (:s3-bucket db)))
+
 (re-frame/reg-fx
- ::grab-tags-from-s3
- (fn [[bucket hash]]
-   (goog.net.XhrIo/send (str "https://"
-                             bucket
-                             ".s3.eu-central-1.amazonaws.com/"
-                             hash)
-                        (fn [e]
-                          (let [tree (->> e
-                                          .-target
-                                          .getResponseText
-                                          cljs.reader/read-string
-                                          :content)]
-                            (re-frame/dispatch
-                             [:openmind.components.tags/tree tree]))))))
+ ::s3-get
+ (fn [[hash res-event]]
+   (let [bucket @(re-frame/subscribe [::s3-bucket])]
+     (goog.net.XhrIo/send (str "https://"
+                               bucket
+                               ".s3.eu-central-1.amazonaws.com/"
+                               hash)
+                          (fn [e]
+                            (let [response (->> e
+                                                .-target
+                                                .getResponseText)]
+                              (re-frame/dispatch
+                               [res-event (edn/read-string response)])))))))
+
+(re-frame/reg-event-fx
+ :s3-get
+ (fn [_ [_ hash res-event]]
+   {::s3-get [hash res-event]}))
 
 (re-frame/reg-event-fx
  ::update-indicies
- (fn [{{:keys [tag-tree-hash s3-bucket]} :db} _]
-   {::grab-tags-from-s3 [s3-bucket tag-tree-hash]}))
+ (fn [{{:keys [tag-tree-hash]} :db} _]
+   {:dispatch [:s3-get tag-tree-hash :openmind.components.tags/tree]}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Connection management

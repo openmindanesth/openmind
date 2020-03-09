@@ -13,7 +13,7 @@
   [db id]
   (let [author  @(re-frame/subscribe [:openmind.subs/login-info])
          extract (-> db
-                     (get-in [::core/extracts id :content])
+                     (get-in [::core/table id :content])
                      (assoc :author author
                             :created-time (js/Date.)))]
      (if (s/valid? ::exs/extract extract)
@@ -64,7 +64,7 @@
 (re-frame/reg-event-db
  ::set-editor-selection
  (fn [db [_ id path add?]]
-   (assoc-in db [::core/extracts id :selection]
+   (assoc-in db [::core/table id :selection]
              (if add?
                path
                (vec (butlast path))))))
@@ -72,12 +72,12 @@
 (re-frame/reg-event-db
  ::add-editor-tag
  (fn [db [_ id tag]]
-   (update-in db [::core/extracts id :content :tags] conj (:id tag))))
+   (update-in db [::core/table id :content :tags] conj (:id tag))))
 
 (re-frame/reg-event-db
  ::remove-editor-tag
  (fn [db [_ id & tags]]
-   (update-in db [::core/extracts id :content :tags]
+   (update-in db [::core/table id :content :tags]
               #(reduce disj % (map :id tags)))))
 
 ;;;;; Events
@@ -85,12 +85,11 @@
 (re-frame/reg-event-db
  ::form-edit
  (fn [db [_ id k v]]
-   (assoc-in db (concat [::core/extracts id :content] k) v)))
+   (assoc-in db (concat [::core/table id :content] k) v)))
 
 (re-frame/reg-event-fx
  ::load-figure
  (fn [cofx [_ id extract]]
-   (println id)
    (let [event (if (= ::new id) :openmind/index :openmind/update)
          figure (:figure extract)]
      (if (or (empty? figure) (string? figure))
@@ -108,7 +107,7 @@
 (re-frame/reg-event-db
  ::form-errors
  (fn [db [_ errors id]]
-   (assoc-in db [::core/extracts id :errors] errors)))
+   (assoc-in db [::core/table id :errors] errors)))
 
 (re-frame/reg-event-fx
  ::update-extract

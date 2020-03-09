@@ -1,15 +1,21 @@
 (ns openmind.components.extract
-  (:require [openmind.components.extract.core :as core]
+  (:require [clojure.edn :as edn]
+            [openmind.components.extract.core :as core]
             [openmind.components.extract.editor :as editor]
             [re-frame.core :as re-frame]))
 
 (defn figure-page
   [{{:keys [id] :or {id ::new}} :path-params}]
-  (let [{:keys [figure figure-caption]} @(re-frame/subscribe [:extract/content id])]
-    (if figure
-      [:div
-       [:img.p2 {:style {:max-width "95%"} :src figure}]
-       [:span.pl1.pb2 figure-caption]]
+  (let [id                (edn/read-string id)
+        {:keys [figures]} @(re-frame/subscribe [:extract/content id])]
+    (if (seq figures)
+      (into [:div]
+            (map (fn [fid]
+                   (let [{:keys [image-data caption]} @(re-frame/subscribe [:extract/content fid])]
+                     [:div
+                      [:img.p2 {:style {:max-width "95%"} :src image-data}]
+                      [:p.pl1.pb2 caption]])))
+            figures)
       [:span.p2 "This extract doesn't have an associated figure."])))
 
 (defn comments-page
