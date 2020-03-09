@@ -56,40 +56,38 @@ jobs:
             docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
             echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
+      - name: Fill in the new image ID in the Amazon ECS task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: openmind
+          image: ${{ steps.build-image.outputs.image }}
 
 
-      # - name: Fill in the new image ID in the Amazon ECS task definition
-      #   id: task-def
-      #   uses: aws-actions/amazon-ecs-render-task-definition@v1
-      #   with:
-      #     task-definition: task-definition.json
-      #     container-name: openmind
-      #     image: ${{ steps.build-image.outputs.image }}
+      - name: Deploy Amazon ECS task definition
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: openmind
+          cluster: openmind
+          wait-for-service-stability: true
 
+      # - name: Update Task and Service
+      #   id: terraform-update
+      #   env:
+      #     IMAGE_TAG: ${{ github.sha }}
+      #     ORCID_CLIENT_ID: ${{ secrets.ORCID_CLIENT_ID }}
+      #     ORCID_CLIENT_SECRET: ${{ secrets.ORCID_CLIENT_SECRET }}
+      #   run: |
+      #     cd tf
+      #     wget -O terraform.zip 'https://releases.hashicorp.com/terraform/0.12.21/terraform_0.12.21_linux_amd64.zip'
+      #     unzip terraform.zip
+      #     chmod +x terraform
 
-      # - name: Deploy Amazon ECS task definition
-      #   uses: aws-actions/amazon-ecs-deploy-task-definition@v1
-      #   with:
-      #     task-definition: ${{ steps.task-def.outputs.task-definition }}
-      #     service: openmind
-      #     cluster: default
-      #     wait-for-service-stability: true
-
-      - name: Update Task and Service
-        id: terraform-update
-        env:
-          IMAGE_TAG: ${{ github.sha }}
-          ORCID_CLIENT_ID: ${{ secrets.ORCID_CLIENT_ID }}
-          ORCID_CLIENT_SECRET: ${{ secrets.ORCID_CLIENT_SECRET }}
-        run: |
-          cd tf
-          wget -O terraform.zip 'https://releases.hashicorp.com/terraform/0.12.21/terraform_0.12.21_linux_amd64.zip'
-          unzip terraform.zip
-          chmod +x terraform
-
-          ./terraform init
-          ./terraform apply -auto-approve \
-            -var "image-id=${IMAGE_TAG}" \
-            -var "orcid-client-id=${ORCID_CLIENT_ID}" \
-            -var "orcid-client-secret=${ORCID_CLIENT_SECRET}" \
-            -target=aws_ecs_service.openmind
+      #     ./terraform init
+      #     ./terraform apply -auto-approve \
+      #       -var "image-id=${IMAGE_TAG}" \
+      #       -var "orcid-client-id=${ORCID_CLIENT_ID}" \
+      #       -var "orcid-client-secret=${ORCID_CLIENT_SECRET}" \
+      #       -target=aws_ecs_service.openmind
