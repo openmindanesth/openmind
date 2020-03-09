@@ -27,6 +27,7 @@ resource "aws_s3_bucket" "openmind-data" {
     allowed_methods = ["GET"]
     allowed_origins = ["https://openmind.macroexpanse.com"]
     expose_headers  = ["ETag"]
+		max_age_seconds = 32000000
   }
 }
 
@@ -66,6 +67,7 @@ resource "aws_s3_bucket" "openmind-test-data" {
     allowed_methods = ["GET"]
     allowed_origins = ["*"]
     expose_headers  = ["ETag"]
+		max_age_seconds = 32000000
   }
 }
 
