@@ -606,12 +606,30 @@ resource "aws_iam_group_policy" "access-to-ecs" {
   "Statement": [
     {
 		"Action": [
+              "ecr:GetAuthorizationToken",
+              "ecr:BatchCheckLayerAvailability",
+              "ecr:GetDownloadUrlForLayer",
+              "ecr:GetRepositoryPolicy",
+              "ecr:DescribeRepositories",
+              "ecr:ListImages",
+              "ecr:DescribeImages",
+              "ecr:BatchGetImage",
+              "ecr:GetLifecyclePolicy",
+              "ecr:GetLifecyclePolicyPreview",
+              "ecr:ListTagsForResource",
+              "ecr:DescribeImageScanFindings",
+              "ecr:InitiateLayerUpload",
+              "ecr:UploadLayerPart",
+              "ecr:CompleteLayerUpload",
+              "ecr:PutImage",
+
               "ecs:DescribeServices",
               "ecs:CreateTaskSet",
               "ecs:UpdateServicePrimaryTaskSet",
               "ecs:DeleteTaskSet"
               ],
-		"Resource": ["${aws_ecs_service.openmind.id}"],
+		"Resource": ["${aws_ecs_service.openmind.id}",
+                 "${aws_ecr_repository.openmind.id}"],
 		"Effect": "Allow",
 		"Sid": "S3Access"
 		}
