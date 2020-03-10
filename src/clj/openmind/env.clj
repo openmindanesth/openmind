@@ -33,3 +33,7 @@
       (number? p) p
       (string? p) (Integer/parseInt p)
       :else       (throw (Exception. "Invalid port specified.")))))
+
+(def dev-mode?
+  (let [m (read :dev-mode)]
+    (or (true? m) (= "TRUE" m))))

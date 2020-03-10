@@ -12,7 +12,7 @@
   (env/read :s3-data-bucket))
 
 (def ^AmazonS3Client client
-  (if (true? (env/read :dev-mode))
+  (if env/dev-mode?
     (AmazonS3Client. (BasicAWSCredentials.
                       (env/read :aws-key) (env/read :aws-secret)))
 

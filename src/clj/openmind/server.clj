@@ -112,7 +112,7 @@
 
 
 (defn start-server! []
-  (when (env/read :dev-mode)
+  (when env/dev-mode?
     (set! *warn-on-reflection* true))
   (when (fn? @stop-server!)
     (@stop-server!))
