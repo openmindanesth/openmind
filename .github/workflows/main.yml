@@ -95,7 +95,7 @@ jobs:
                      "value": "${ORCID_CLIENT_SECRET}"},
                     {"name": "ORCID_REDIRECT_URI",
                      "value": "https://openmind.macroexpanse.com/oauth2/orcid/redirect"}]
-  }]
+          }]
           EOF > task-definition.json
   
         
