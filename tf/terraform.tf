@@ -578,7 +578,7 @@ resource "aws_ecs_task_definition" "openmind-web" {
 										{"name": "DEV_MODE",
 										 "value": ""},
 										{"name": "ELASTIC_URL",
-										 "value": "${aws_elasticsearch_domain.openmind.endpoint}"},
+										 "value": "https://${aws_elasticsearch_domain.openmind.endpoint}"},
 										{"name": "ELASTIC_EXTRACT_INDEX",
 										 "value": "extracts"},
 										{"name": "S3_DATA_BUCKET",
