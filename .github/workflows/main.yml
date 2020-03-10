@@ -68,16 +68,16 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
         run: |
           echo <<EOF
-[{"name": "openmind-webserver",
-  "image": "${$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG}"
-   "essential": true,
-   "networkMode": "awsvpc",
-   "cpu": 256,
-   "memory": 1024,
-   "startTimeout": 120,
-   "portMappings": [{"containerPort":8080,
+          [{"name": "openmind-webserver",
+          "image": "${$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG}"
+          "essential": true,
+          "networkMode": "awsvpc",
+          "cpu": 256,
+          "memory": 1024,
+          "startTimeout": 120,
+          "portMappings": [{"containerPort":8080,
                      "hostPort":8080,
-    "environment": [{"name": "JVM_OPTS",
+          "environment": [{"name": "JVM_OPTS",
                      "value": "-Xmx900m"},
                     {"name": "PORT",
                      "value": "8080"},
@@ -96,7 +96,7 @@ jobs:
                     {"name": "ORCID_REDIRECT_URI",
                      "value": "https://openmind.macroexpanse.com/oauth2/orcid/redirect"}]
   }]
-EOF > task-definition.json
+          EOF > task-definition.json
   
         
       - name: Fill in the new image ID in the Amazon ECS task definition
