@@ -33,7 +33,7 @@
   (merge
    {:headers {"Content-Type" "application/json"}
     :user-agent "Openmind server"}
-   (when (env/read :dev-mode)
+   (when env/dev-mode?
      {:basic-auth [(env/read :elastic-username) (env/read :elastic-password)]})))
 
 (def base-url
@@ -199,72 +199,10 @@
     (println (async/<! (send-off! (create-index index))))
     (println (async/<! (send-off! (set-mapping index))))))
 
-(def extracts*
-  (-> "extracts.edn" slurp read-string))
+;; TODO: Invaluable dev helpers.
+;;
+;; we should dump all of the extracts from ES as well as any chucks they depend
+;; on.
+(defn dump-es! [filename])
 
-(def eids
-  "IDs of the extracts I know are correct."
-  #{"V_tDYW0BvYu2ShN9-IQM"
-    "WftGYW0BvYu2ShN9_4Ra"
-    "W_vcZG0BvYu2ShN90ITc"
-    "VvtDYW0BvYu2ShN9pYRI"
-    "b_shRG4BvYu2ShN9qYQU"})
-
-(def extracts
-  (filter #(contains? eids (:id %)) extracts*))
-
-
-(def figrep
-  "https://github.com/openmindanesth/openmind/raw/27d246d42bbe8512ec3db67d75a820307ffe2e14/B8D82E08-3E2C-4F48-9A7A-ED7B92DBE7F6.png")
-
-(defn extract-figure [{:keys [figure figure-caption author text]}]
-  (when figure
-    (merge
-     {:image-data (if (< (count figure) 200) figrep figure)
-      :author     (or author
-                      {:orcid-id "0000-0003-1053-9256"
-                       :name     "Henning Matthias Reimann"})}
-     (when figure-caption
-       {:caption figure-caption}))))
-
-(def figures
-  (into {}
-        (map (fn [extract]
-               (let [f (extract-figure extract)]
-                 (when f
-                   [(:id extract) (util/immutable f)]))))
-        extracts))
-
-(defn write-figures-to-s3! []
-  (run! s3/intern (vals figures)))
-
-(def tags
-  tags/tag-id-map)
-
-(def new-extracts
-  (map (fn [extract]
-         (let [sd (:source-detail extract)]
-           (merge
-            {:text         (:text extract)
-             :source       (-> sd
-                               (assoc  :url (:source extract))
-                               (assoc :publication/date
-                                      (:date sd))
-                               (dissoc :date))
-             :tags         (mapv tags (:tags extract))
-             :author       (or (:author extract)
-                               {:orcid-id "0000-0003-1053-9256"
-                                :name "Henning Matthias Reimann"})
-             :extract/type (keyword (:extract-type extract))
-             :comments     [] ;TODO: Send them off
-             }
-            (when-let [f (:hash (get figures (:id extract)))]
-              {:figures [f]})
-            {:time/created (if-let [t (:created-time extract)]
-                             (.parse ^SimpleDateFormat dateformat t)
-                             (java.util.Date.))})))
-       (filter #(contains? eids (:id %))
-               extracts)))
-
-(defonce imm-extracts
-  (mapv util/immutable new-extracts))
+(defn restore-es! [filename])

@@ -77,34 +77,11 @@
                                  "hemodynamics"   {}
                                  "breathing rate" {}
                                  "other effects"  {}}}})
-;;;;; Transitional logic
 
-(def old-tags (read-string (slurp "tags.edn")))
+;;;;; Initialisation logic
 
-(def old-tag-map
-  (into {"anaesthesia" (key (first old-tags))}
-        (map (fn [[k {:keys [tag-name]}]]
-               [tag-name k]))
-        (val (first old-tags))))
-
-(def old-tag-tree
-  (invert-tag-tree
-   (assoc (val (first old-tags)) "8PvLV2wBvYu2ShN9w4NT"
-          {:tag-name "anaesthesia" :parents []})
-   {:tag-name "anaesthesia" :id "8PvLV2wBvYu2ShN9w4NT"}))
-
-(def new-tags (create-tag-data (key (first demo-tag-tree)) demo-tag-tree ))
-
-(def tag-id-map
-  "Map from old es tag ids to hashes"
-  (into {}
-        (map (fn [t]
-               (let [tname (-> t :content :name)]
-                 [(get old-tag-map tname) (:hash t)])))
-        new-tags))
-
-(defn write-tags-to-s3! []
-  (run! s3/intern new-tags))
+(def tags
+  (create-tag-data (key (first demo-tag-tree)) demo-tag-tree ))
 
 (def new-tag-map
   (into {} (map (fn [x] [(:hash x) (:content x)])) new-tags) )
