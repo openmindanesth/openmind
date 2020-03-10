@@ -35,7 +35,10 @@
    :user-agent "Openmind server"})
 
 (def base-url
-  (env/read :elastic-url))
+  (let [^String url (env/read :elastic-url)]
+    (if (.endsWith url "/")
+      (apply str (butlast url))
+      url)))
 
 (defn index-req [index doc & [key]]
   (merge base-req
