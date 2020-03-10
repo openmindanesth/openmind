@@ -1,10 +1,9 @@
 (ns openmind.events
   (:require [cljs.core.async :as async]
-            [cljs.spec.alpha :as s]
             [clojure.edn :as edn]
             goog.net.XhrIo
+            [openmind.config :as config]
             [openmind.db :as db]
-            [openmind.spec.extract :as extract-spec]
             [re-frame.core :as re-frame]
             [taoensso.sente :as sente]
             [taoensso.timbre :as log])
@@ -100,15 +99,14 @@
 ;;;; Tag tree (taxonomy)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(re-frame/reg-sub
- ::s3-bucket
- (fn [db]
-   (:s3-bucket db)))
-
 (re-frame/reg-fx
  ::s3-get
  (fn [[hash res-event]]
-   (let [bucket @(re-frame/subscribe [::s3-bucket])]
+   (let [bucket config/s3-bucket]
+     (println "fetch" (str "https://"
+                               bucket
+                               ".s3.eu-central-1.amazonaws.com/"
+                               hash))
      (goog.net.XhrIo/send (str "https://"
                                bucket
                                ".s3.eu-central-1.amazonaws.com/"

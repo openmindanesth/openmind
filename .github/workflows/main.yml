@@ -24,7 +24,9 @@ jobs:
           rm -rf resources/public/js
           clojure -m cljs.main -O advanced \
             -o "resources/public/js/app.js" \
-            -co "{:closure-defines {goog.DEBUG false}}" \
+            -co "{:closure-defines
+                  {goog.DEBUG false
+                   openmind.config/s3-bucket \"openmind-datastore-bucket-1\"}}" \
             -c openmind.core
 
       - name: build uberjar
