@@ -76,7 +76,7 @@ jobs:
           "memory": 1024,
           "startTimeout": 120,
           "portMappings": [{"containerPort":8080,
-                     "hostPort":8080,
+                            "hostPort":8080}],
           "environment": [{"name": "JVM_OPTS",
                      "value": "-Xmx900m"},
                     {"name": "PORT",
