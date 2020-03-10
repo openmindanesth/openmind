@@ -62,11 +62,11 @@
    :body    "Goodbye"})
 
 (def redirect-response
-  {:status 301
-   session nil
+  {:status  301
+   :session nil
    :headers {"Content-Type" "text/html"
-             "Location" "https://openmind.macroexpanse.com:443/"}
-   :body "<html><head><title>301 Moved Permanently</title></head><body bgcolor="white"><center><h1>301 Moved Permanently</h1></center></body></html>"})
+             "Location"     "https://openmind.macroexpanse.com:443/"}
+   :body    "<html><head><title>301 Moved Permanently</title></head><body bgcolor=" white "><center><h1>301 Moved Permanently</h1></center></body></html>"})
 
 (defn orcid-login [req]
   (update (redirect "/oauth2/orcid")
