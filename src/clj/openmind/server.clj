@@ -61,25 +61,20 @@
    :headers {"Content-Type" "text/html"}
    :body    "Goodbye"})
 
+(def redirect-response
+  {:status 301
+   session nil
+   :headers {"Content-Type" "text/html"
+             "Location" "https://openmind.macroexpanse.com:443/"}
+   :body "<html><head><title>301 Moved Permanently</title></head><body bgcolor="white"><center><h1>301 Moved Permanently</h1></center></body></html>"})
+
 (defn orcid-login [req]
   (update (redirect "/oauth2/orcid")
           :session assoc
           :stay-logged-in (-> req :query-params (get "stay"))))
 
 (c/defroutes routes
-  (route/resources "/")
-
-  (c/GET "/login/orcid" req (orcid-login req))
-  (c/GET "/logout" req  logout-response)
-
-  (c/GET "/elmyr" req (force ring.middleware.anti-forgery/*anti-forgery-token*))
-  (c/GET "/chsk" req ((:ajax-get-or-ws-handshake-fn socket) req))
-  (c/POST "/chsk" req ((:ajax-post-fn socket) req))
-
-  (c/GET "/favicon.ico" req {:status 404})
-  ;; REVIEW: defer to the SPA code to route everything else. Are there any
-  ;; problems with this? Particularly regarding security?
-  (c/GET "*" req index))
+  (c/GET "*" req redirect-response))
 
 (def app
   (-> routes
