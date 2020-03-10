@@ -58,12 +58,53 @@ jobs:
             docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
             echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
+      - name: Task Definition
+        id: task-def-file
+        env:
+          ORCID_CLIENT_ID: ${{ secrets.ORCID_CLIENT_ID }}
+          ORCID_CLIENT_SECRET: ${{ secrets.ORCID_CLIENT_SECRET }}
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: openmind
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          echo <<EOF
+[{"name": "openmind-webserver",
+  "image": "${$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG}"
+   "essential": true,
+   "networkMode": "awsvpc",
+   "cpu": 256,
+   "memory": 1024,
+   "startTimeout": 120,
+   "portMappings": [{"containerPort":8080,
+                     "hostPort":8080,
+    "environment": [{"name": "JVM_OPTS",
+                     "value": "-Xmx900m"},
+                    {"name": "PORT",
+                     "value": "8080"},
+                    {"name": "DEV_MODE",
+                     "value": ""},
+                    {"name": "ELASTIC_URL",
+                     "value": "https://https://vpc-openmind-production-ejir7d2pw6wnxbmyw56lohfjku.eu-central-1.es.amazonaws.com/"},
+                    {"name": "ELASTIC_EXTRACT_INDEX",
+                     "value": "extracts"},
+                    {"name": "S3_DATA_BUCKET",
+                     "value": "openmind-datastore-bucket-1"},
+                    {"name": "ORCID_CLIENT_ID",
+                     "value": "${ORCID_CLIENT_ID}"},
+                    {"name": "ORCID_CLIENT_SECRET",
+                     "value": "${ORCID_CLIENT_SECRET}"},
+                    {"name": "ORCID_REDIRECT_URI",
+                     "value": "https://openmind.macroexpanse.com/oauth2/orcid/redirect"}]
+  }]
+EOF > task-definition.json
+  
+        
       - name: Fill in the new image ID in the Amazon ECS task definition
         id: task-def
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
           task-definition: task-definition.json
-          container-name: openmind
+          container-name: openmind-webserver
           image: ${{ steps.build-image.outputs.image }}
 
 
@@ -79,8 +120,6 @@ jobs:
       #   id: terraform-update
       #   env:
       #     IMAGE_TAG: ${{ github.sha }}
-      #     ORCID_CLIENT_ID: ${{ secrets.ORCID_CLIENT_ID }}
-      #     ORCID_CLIENT_SECRET: ${{ secrets.ORCID_CLIENT_SECRET }}
       #   run: |
       #     cd tf
       #     wget -O terraform.zip 'https://releases.hashicorp.com/terraform/0.12.21/terraform_0.12.21_linux_amd64.zip'
