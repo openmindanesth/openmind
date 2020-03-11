@@ -28,14 +28,14 @@ variable "jvm-opts" {
 }
 
 variable "orcid-redirect-uri" {
-	type = string
-	default = "https://openmind.macroexpanse.com/oauth2/orcid/redirect"
+  type    = string
+  default = "https://openmind.macroexpanse.com/oauth2/orcid/redirect"
 }
 
 variable "orcid-client-id" {
-	type = string
+  type = string
 }
 
 variable "orcid-client-secret" {
-	type = string
+  type = string
 }

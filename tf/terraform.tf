@@ -27,7 +27,7 @@ resource "aws_s3_bucket" "openmind-data" {
     allowed_methods = ["GET"]
     allowed_origins = ["https://openmind.macroexpanse.com"]
     expose_headers  = ["ETag"]
-		max_age_seconds = 32000000
+    max_age_seconds = 32000000
   }
 }
 
@@ -67,7 +67,7 @@ resource "aws_s3_bucket" "openmind-test-data" {
     allowed_methods = ["GET"]
     allowed_origins = ["*"]
     expose_headers  = ["ETag"]
-		max_age_seconds = 32000000
+    max_age_seconds = 32000000
   }
 }
 
@@ -594,11 +594,11 @@ DEF
 }
 
 output "task-arn" {
-	value = aws_iam_role.ecs-task-role.arn
+  value = aws_iam_role.ecs-task-role.arn
 }
 
 output "execution-arn" {
-	value = aws_iam_role.ecs-execution-role.arn
+  value = aws_iam_role.ecs-execution-role.arn
 }
 
 ## CI User
@@ -616,6 +616,35 @@ resource "aws_iam_group_policy" "access-to-ecs" {
 {
   "Version": "2012-10-17",
   "Statement": [
+   {
+
+	 	"Action": [
+               "iam:PassRole"
+              ],
+		"Resource": ["${aws_iam_role.ecs-task-role.arn}",
+                 "${aws_iam_role.ecs-execution-role.arn}"],
+		"Effect": "Allow",
+		"Sid": "passrole"
+	 },
+   {
+
+	 	"Action": [
+               "ecs:RegisterTaskDefinition"
+              ],
+		"Resource": ["*"],
+		"Effect": "Allow",
+		"Sid": "regisitertask"
+	 },
+   {
+
+	 	"Action": [
+              "ecs:DescribeServices",
+              "ecs:UpdateService"
+              ],
+		"Resource": ["${aws_ecs_service.openmind.id}"],
+		"Effect": "Allow",
+		"Sid": "ECSAccess"
+		},
     {
 		"Action": [
               "ecr:GetAuthorizationToken",
@@ -633,16 +662,11 @@ resource "aws_iam_group_policy" "access-to-ecs" {
               "ecr:InitiateLayerUpload",
               "ecr:UploadLayerPart",
               "ecr:CompleteLayerUpload",
-              "ecr:PutImage",
-
-              "ecs:DescribeServices",
-              "ecs:CreateTaskSet",
-              "ecs:UpdateServicePrimaryTaskSet",
-              "ecs:DeleteTaskSet"
+              "ecr:PutImage"
               ],
 		"Resource": ["*"],
 		"Effect": "Allow",
-		"Sid": "S3Access"
+		"Sid": "ECRAccess"
 		}
   ]
 }
