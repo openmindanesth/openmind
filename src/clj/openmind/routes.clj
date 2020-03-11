@@ -4,6 +4,7 @@
             [openmind.elastic :as es]
             [openmind.pubmed :as pubmed]
             [openmind.s3 :as s3]
+            [openmind.spec :as spec]
             [openmind.tags :as tags]
             [openmind.util :as util]
             [taoensso.timbre :as log]))
@@ -144,60 +145,9 @@
             (log/error "failed to update doc" (:id doc) res))
           (respond-with-fallback req [:openmind/update-response (:status res)]))))))
 
-;;;;; Extract editing
+(defmethod dispatch :openmind/intern
+  [{[_ imm] :event :as req}]
+  (let [type (first (:content (s/conform ::spec/immutable imm)))]
 
-(defn fetch-response [res]
-  [:openmind/fetch-extract-response
-   (-> res
-       :_source
-       (update :tags set))])
 
-#_(defmethod dispatch :openmind/fetch-extract
-  [{[_ id] :event :as req}]
-  (async/go
-    (->> (es/lookup es/index id)
-         es/send-off!
-         async/<!
-         es/parse-response
-         fetch-response
-         (respond-with-fallback req))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;; Dev Kludges
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; REVIEW: We're done with this. Is there any valid reason to keep it around?
-(defn expand-source-info
-  "updates an extract with extra source info from pubmed."
-  [id]
-  (async/go
-    (let [doc         (->> (es/lookup es/index id)
-                           es/send-off!
-                           async/<!
-                           es/parse-response
-                           fetch-response
-                           second)
-          source-info (->> doc
-                           :source
-                           pubmed/article-info
-                           async/<!)]
-      (->> (assoc doc :source-detail source-info)
-           (es/update-doc es/index id)
-           es/send-off!
-           async/<!
-           :status
-           (println id)))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;; Tag Hierarchy
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-#_(defmethod dispatch :openmind/tag-tree
-  [{[_ root] :event :as req}]
-  (async/go
-    (when-let [root-id (get (async/<! (tags/get-top-level-tags)) root)]
-      (let [tree    (async/<! (tags/get-tag-tree root-id))
-            event   [:openmind/tag-tree (tags/invert-tag-tree
-                                         tree
-                                         {:name root :id root-id})]]
-        (respond-with-fallback req event)))))
+    (println type)))
