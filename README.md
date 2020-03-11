@@ -1,6 +1,6 @@
 # Openmind
 
-[Try out the demo!](https://openmind-eu.herokuapp.com)
+[Try out the demo!](https://openmind.macroexpanse.com)
 
 Note, to create extracts, you must have, or create, an
 [Orcid](https://orcid.org) account. No login is required to search.
@@ -12,31 +12,25 @@ bigger idea.
 
 ## Development Mode
 
-The script `bin/dev-setup.sh` will start docker containers for web containers
-and generate a config file to access them if one isn't already present.
+Steps:
 
-Now start a repl in your favourite editor, wait for the js to compile, and run
-`(openmind.server/init!)` to start the webserver.
+1. Start Elasticsearch. Either use the script `dev/setup.sh`, or start your own.
+2. Copy `example.conf.edn` to `conf.edn` in the root dir. Edit the config
+   variables to point to your Elasticsearch cluster, your S3 bucket (the default
+   one is publicly readable, so feel free to leave it if you're just working on
+   the front end), and your AWS credentials if you're using your own S3 bucket.
+3. Start the clj/cljs repls in your favourite editor. In emacs that's just a
+   matter of `cider-jack-in-clj&cljs`.
+4. In the clj repl, load the `openmind.server` namespace and run `(init!)` to
+   start the server.
+5. To initialise a local ElasticSearch instance, run
+   `(openmind.elastic/init-cluster!)`.
+6. There is a dump of example es data in `dev/es-data.edn` which can be loaded
+   via `(openmind.elastic/restore!  "dev/es-data.edn")`.
+6. Navigate to http://localhost:3003 in your browser (if you didn't change the
+   `:port` config in `conf.edn`.
+7. Have at it.
 
-To run the app standalone, you need to have the clj command line tools
-installed. Compile the javascript with
-
-```
-clj -e cljs.main --optimizations advanced --output-to "resources/public/cljs-out/dev-main.js -c openmind.core
-```
-
-And run the server with
-
-```
-clj -e openmind.server
-```
-
-From the command line.
-
-That's it. Go to http://localhost:3003 in your browser to see the page.
-
-Note that when running a local elastic instance, data stored will be deleted
-when the container is terminated.
 
 # License
 

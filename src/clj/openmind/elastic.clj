@@ -192,7 +192,7 @@
 ;;;;; Initialising the DB
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn init-elastic []
+(defn init-cluster! []
   (async/go
     ;; These have to happen sequentially.
     (println (async/<! (send-off! (assoc (create-index index) :method :delete))))
@@ -203,7 +203,7 @@
 ;;
 ;; we should dump all of the extracts from ES as well as any chucks they depend
 ;; on.
-(defn dump-es! [filename]
+(defn dump! [filename]
   (async/go
     (->> most-recent
          send-off!
@@ -214,7 +214,7 @@
          (mapv :_source)
          (spit filename))))
 
-(defn restore-es! [filename]
+(defn restore! [filename]
   (binding [*read-eval* false]
     (->> filename
          slurp
