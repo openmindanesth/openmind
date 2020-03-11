@@ -629,22 +629,14 @@ resource "aws_iam_group_policy" "access-to-ecs" {
    {
 
 	 	"Action": [
-               "ecs:RegisterTaskDefinition"
+               "ecs:RegisterTaskDefinition",
+               "ecs:DescribeServices",
+               "ecs:UpdateService"
               ],
 		"Resource": ["*"],
 		"Effect": "Allow",
-		"Sid": "regisitertask"
+		"Sid": "ecsaccess"
 	 },
-   {
-
-	 	"Action": [
-              "ecs:DescribeServices",
-              "ecs:UpdateService"
-              ],
-		"Resource": ["${aws_ecs_service.openmind.id}"],
-		"Effect": "Allow",
-		"Sid": "ECSAccess"
-		},
     {
 		"Action": [
               "ecr:GetAuthorizationToken",
