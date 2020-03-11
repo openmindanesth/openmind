@@ -2,5 +2,4 @@
  :s3-data-bucket        "test-data-17623"
  :port                  3003
  :elastic-extract-index "extracts"
- :elastic-tag-index     "tags"
  :dev-mode              true}
