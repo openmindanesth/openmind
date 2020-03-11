@@ -15,7 +15,7 @@
   (try
     (if env/dev-mode?
       (AmazonS3Client. (BasicAWSCredentials.
-                        (env/read :aws-key) (env/read :aws-secret)))
+                        (env/read :aws-access-key) (env/read :aws-secret-key)))
 
       (AmazonS3ClientBuilder/defaultClient))
     (catch Exception e nil)))

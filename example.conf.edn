@@ -1,5 +1,7 @@
 {:elastic-url           "http://localhost:9200"
  :s3-data-bucket        "test-data-17623"
+ :aws-access-key        "AWS_ACCESS_KEY_ID"
+ :aws-secret-key        "AWS_SECRET_KEY"
  :port                  3003
  :elastic-extract-index "extracts"
  :dev-mode              true}
