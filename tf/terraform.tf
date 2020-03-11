@@ -593,6 +593,14 @@ resource "aws_ecs_task_definition" "openmind-web" {
 DEF
 }
 
+output "task-arn" {
+	value = aws_iam_role.ecs-task-role.arn
+}
+
+output "execution-arn" {
+	value = aws_iam_role.ecs-execution-role.arn
+}
+
 ## CI User
 
 
