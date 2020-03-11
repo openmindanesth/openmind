@@ -203,6 +203,24 @@
 ;;
 ;; we should dump all of the extracts from ES as well as any chucks they depend
 ;; on.
-(defn dump-es! [filename])
+(defn dump-es! [filename]
+  (async/go
+    (->> most-recent
+         send-off!
+         async/<!
+         parse-response
+         :hits
+         :hits
+         (mapv :_source)
+         (spit filename))))
 
-(defn restore-es! [filename])
+(defn restore-es! [filename]
+  (binding [*read-eval* false]
+    (->> filename
+         slurp
+         read-string
+         ;; This won't pass spec checks since we lose namespaces on keys in
+         ;; elastic
+         ;; TODO: Is that essential, or am I just doing something wrong?
+         (run! #(send-off! (index-req index (prepare-extract %)
+                                      (.-hash-string (:hash %))))))))
