@@ -1,22 +1,16 @@
 (ns openmind.components.extract.core
-  (:require [re-frame.core :as re-frame]))
+  (:require [clojure.edn :as edn]
+            [re-frame.core :as re-frame]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Public Utilities
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (re-frame/reg-event-fx
- ::add-data
- (fn [{:keys [db]} [_ {:keys [hash] :as rec}]]
-   (when hash
-     {:db (assoc-in db [::table hash]
-                    (assoc rec :fetched (js/Date.)))})))
-
-(re-frame/reg-event-fx
  ::add-extract
  (fn [{:keys [db]} [_ extract]]
-   {:dispatch-n [[::add-data {:hash    (:hash extract)
-                              :content extract}]
+   {:dispatch-n [[:openmind.events/s3-receive {:hash    (:hash extract)
+                                               :content extract}]
                  [::fetch-sub-data extract]]}))
 
 (re-frame/reg-event-fx
@@ -24,7 +18,7 @@
  (fn [{:keys [db]} [_ {:keys [figures]}]]
    {:dispatch-n (into [] (comp (remove #(nil? %))
                                (map #(.-hash-string %))
-                               (map (fn [f] [:s3-get f ::add-data])))
+                               (map (fn [f] [:s3-get f])))
                       figures)}))
 
 (defn get-extract [db id]
@@ -69,14 +63,15 @@
  (fn [{:keys [db]} [_ id]]
    (if (= :openmind.components.extract.editor/new id)
      {:db (update-in db [::table id] #(if (nil? %) blank-new-extract %))}
-     (if-not (contains? (::table db) id)
-       ;; If we don't have it, get it
-       {:dispatch [:openmind.events/try-send [:openmind/fetch-extract id]]}
-       ;; If we still have it, make sure we don't drop it
-       {:db (update-in db [::table id]
-                       assoc
-                       :last-access (js/Date.)
-                       :gc-ready? false)}))))
+     (let [id (edn/read-string id)]
+       (if-not (contains? (::table db) id)
+         ;; If we don't have it, get it
+         {:dispatch [:s3-get id]}
+         ;; If we still have it, make sure we don't drop it
+         {:db (update-in db [::table id]
+                         assoc
+                         :last-access (js/Date.)
+                         :gc-ready? false)})))))
 
 (re-frame/reg-event-fx
  :extract/unmark
@@ -92,11 +87,6 @@
               ;; Mark extract as inessential
               ;; TODO: mark references recursively
               assoc :gc-ready? true)))
-
-(re-frame/reg-event-fx
- :openmind/fetch-extract-response
- (fn [_ [_ extract]]
-   {:dispatch [::add-extract extract]}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Routing

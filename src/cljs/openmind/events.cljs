@@ -4,6 +4,7 @@
             goog.net.XhrIo
             [openmind.config :as config]
             [openmind.db :as db]
+            [openmind.hash :as h]
             [re-frame.core :as re-frame]
             [taoensso.sente :as sente]
             [taoensso.timbre :as log])
@@ -27,11 +28,6 @@
  ::close-menu
  (fn [db _]
    (assoc db :menu-open? false)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;; Extract Creation tags
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Server Comms
@@ -96,14 +92,14 @@
                edn/read-string)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;; Tag tree (taxonomy)
+;;;; Static datastore
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (re-frame/reg-fx
- ::s3-get
+ ::s3-xhr
  (fn [[hash res-event]]
    (let [bucket config/s3-bucket]
-     (println "fetch" (str "https://"
+     (log/info "fetching" (str "https://"
                                bucket
                                ".s3.eu-central-1.amazonaws.com/"
                                hash))
@@ -114,14 +110,35 @@
                           (fn [e]
                             (let [response (->> e
                                                 .-target
-                                                .getResponseText)]
+                                                .getResponseText
+                                                edn/read-string)]
                               (re-frame/dispatch
-                               [res-event (edn/read-string response)])))))))
+                               [::s3-receive response res-event])))))))
+
+(def table-key
+  ;; REVIEW: I think this is a bad place for this.
+  :openmind.components.extract.core/table)
+
+(re-frame/reg-event-fx
+ ::s3-receive
+ (fn [{:keys [db]} [_ res res-event]]
+   (when-let [hash (:hash res)]
+     (let [value (assoc res :fetched (js/Date.))]
+       (merge
+        {:db (assoc-in db [table-key hash] value)}
+        (when res-event
+          {:dispatch [res-event value]}))))))
 
 (re-frame/reg-event-fx
  :s3-get
- (fn [_ [_ hash res-event]]
-   {::s3-get [hash res-event]}))
+ (fn [{:keys [db]} [_ hash res-event]]
+   (let [hash (cond
+                (h/value-ref? hash) hash
+                (string? hash)      (h/read-hash hash))]
+     (if-let [res (get-in db [table-key hash])]
+       (when res-event
+         {:dispatch [res-event res]})
+       {::s3-xhr [hash res-event]}))))
 
 (re-frame/reg-event-fx
  ::update-indicies

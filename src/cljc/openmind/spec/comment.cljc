@@ -15,4 +15,4 @@
   #(1 -1))
 
 (s/def ::comment-vote
-  (s/keys :req-un [::refers-to ::vote] ::u/author))
+  (s/keys :req-un [::refers-to ::vote ::u/author]))

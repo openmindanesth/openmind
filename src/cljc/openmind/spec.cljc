@@ -10,11 +10,6 @@
             #?(:clj  [clojure.spec.alpha :as s]
                :cljs [cljs.spec.alpha :as s])))
 
-(s/def ::immutable
-  (s/keys :req-un [::u/hash ::content]
-          :req [:time/created]
-          :opt [:history/previous-version]))
-
 (s/def ::content
   (s/or
    :comment   ::comment/comment
@@ -27,3 +22,8 @@
 (s/def ::hash ::u/hash)
 
 (s/def ::extract ::extract/extract)
+
+(s/def ::immutable
+  (s/keys :req-un [::u/hash ::content]
+          :req [:time/created]
+          :opt [:history/previous-version]))

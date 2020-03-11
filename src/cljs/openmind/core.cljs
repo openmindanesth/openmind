@@ -3,6 +3,7 @@
             [openmind.components.search :as search]
             [openmind.components.window :as window]
             [openmind.config :as config]
+            [openmind.dev :as dev]
             [openmind.events :as events]
             [openmind.hash]
             [openmind.router :as router]
@@ -13,6 +14,7 @@
 (defn dev-setup []
   (when config/debug?
     (enable-console-print!)
+    (dev/fake-login!)
     (log/info "dev mode")))
 
 (def routes
