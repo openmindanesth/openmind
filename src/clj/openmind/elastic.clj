@@ -222,5 +222,11 @@
          ;; This won't pass spec checks since we lose namespaces on keys in
          ;; elastic
          ;; TODO: Is that essential, or am I just doing something wrong?
-         (run! #(send-off! (index-req index (prepare-extract %)
-                                      (.-hash-string (:hash %))))))))
+         (run! (fn [e]
+                 (async/go
+                   (println
+                    (:status
+                     (async/<!
+                      (send-off!
+                       (index-req index (prepare-extract e)
+                                  (.-hash-string (:hash e)))))))))))))
