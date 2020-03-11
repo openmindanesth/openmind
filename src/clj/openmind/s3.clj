@@ -12,11 +12,13 @@
   (env/read :s3-data-bucket))
 
 (def ^AmazonS3Client client
-  (if env/dev-mode?
-    (AmazonS3Client. (BasicAWSCredentials.
-                      (env/read :aws-key) (env/read :aws-secret)))
+  (try
+    (if env/dev-mode?
+      (AmazonS3Client. (BasicAWSCredentials.
+                        (env/read :aws-key) (env/read :aws-secret)))
 
-    (AmazonS3ClientBuilder/defaultClient)))
+      (AmazonS3ClientBuilder/defaultClient))
+    (catch Exception e nil)))
 
 (defn lookup [^String key]
   (try
