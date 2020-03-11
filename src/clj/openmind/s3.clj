@@ -38,13 +38,15 @@
   (.putObject client bucket k (str obj)))
 
 (defn intern [obj]
-  {:pre [(s/valid? :openmind.spec/immutable obj)]}
-  (let [key (.-hash-string ^ValueRef (:hash obj))]
-    ;; TODO: Locking. We really want to catch and abort on collisions, as
-    ;; improbable as they may be.
-    (if (exists? key)
-      (if (not= (:content obj) (:content (lookup key)))
-        (log/error "Collision in data store! Failed to add" obj)
-        (log/info "Attempting to add data with hash:" key
-                  "which already exists. Doing nothing."))
-      (write! key obj))))
+  (if (s/valid? :openmind.spec/immutable obj)
+    (let [key (.-hash-string ^ValueRef (:hash obj))]
+      ;; TODO: Locking. We really want to catch and abort on collisions, as
+      ;; improbable as they may be.
+      (if (exists? key)
+        (if (not= (:content obj) (:content (lookup key)))
+          (log/error "Collision in data store! Failed to add" obj)
+          (log/info "Attempting to add data with hash:" key
+                    "which already exists. Doing nothing."))
+        (write! key obj)))
+    (log/error "Invalid data received to intern"
+               (s/explain-data :openmind.spec/immutable obj))))

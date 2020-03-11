@@ -145,9 +145,15 @@
             (log/error "failed to update doc" (:id doc) res))
           (respond-with-fallback req [:openmind/update-response (:status res)]))))))
 
+(defmulti update-indicies (fn [t d] t))
+
+(defmethod update-indicies :comment
+  [_ {:keys [hash content]}]
+  (let [{:keys [refers-to]} content]
+    (println refers-to)))
+
 (defmethod dispatch :openmind/intern
   [{[_ imm] :event :as req}]
   (let [type (first (:content (s/conform ::spec/immutable imm)))]
-
-
-    (println type)))
+    (s3/intern imm)
+    (update-indicies type imm)))
