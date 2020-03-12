@@ -34,7 +34,7 @@
   ;; HACK: Strip the DTD declaration manually. DTD just breaks clojure.xml
   ;; somehow.
   (let [no-dtd (apply str (drop 160 body))
-        stream (java.io.ByteArrayInputStream. (.getBytes no-dtd))]
+        stream (java.io.ByteArrayInputStream. (.getBytes ^String no-dtd))]
     (xml/parse stream)))
 
 (def es-date-formatter
@@ -44,14 +44,12 @@
 (defn extract-article-info [xml]
   (let [main     (first (filter-by-attr :id "maincontent" xml))
         publine  (->> main (filter-by-attr :class "cit") first :content second)
+        ;; HACK: Just leave the date as an arbitrary string because it isn't
+        ;; always well formatted.
         date     (-> publine (string/split #";")
                      first
                      (string/split #" ")
-                     rest
-
-                     (->> (string/join " ")
-                          java.util.Date.
-                          (.format es-date-formatter)))
+                     rest)
         doi      (-> publine
                      (string/split #"doi:")
                      last
