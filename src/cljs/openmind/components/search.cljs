@@ -1,6 +1,7 @@
 (ns openmind.components.search
   (:refer-clojure :exclude [or])
-  (:require [openmind.components.extract.core :as core]
+  (:require [clojure.string :as string]
+            [openmind.components.extract.core :as core]
             [openmind.components.tags :as tags]
             [re-frame.core :as re-frame]
             [reagent.core :as reagent]))
@@ -254,13 +255,13 @@
 
 (defn source-link [{{:keys [authors url publication/date] :as source} :source}]
   (let [text (if (seq authors)
-               (citation authors (.getFullYear (js/Date. date)))
+               (citation authors (first (string/split date #"-")))
                url)]
     [:a.link-blue {:href url} text]))
 
 (defn source-hover [{:keys [source]}]
   (when (seq source)
-    (let [{:keys [authors date journal abstract doi title]} source]
+    (let [{:keys [authors publication/date journal abstract doi title]} source]
       [:div.flex.flex-column.border-round.bg-white.border-solid.p1.pbh
        {:style {:max-width "700px"}}
        [:h2 title]
