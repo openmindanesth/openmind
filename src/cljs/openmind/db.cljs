@@ -6,10 +6,10 @@
 
 (def default-db
   {::domain         "anaesthesia"
-   :tag-tree-hash   "c687683618491158660527fc338fc02f"
+   :tag-tree-hash   (edn/read-string
+                     "#openmind.hash/ref \"c687683618491158660527fc338fc02f\"")
    ;; FIXME: Hardcoded root of tag tree.
    :tag-root-id     (edn/read-string
-                     ;; HACK: The dynamic reader is fine, the repl reader isn't.
                      "#openmind.hash/ref \"ad5f984737860c4602f4331efeb17463\"")
    ::tag-tree       ::uninitialised
    :tag-lookup      ::uninitialised

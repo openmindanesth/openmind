@@ -42,7 +42,7 @@
       (apply str (butlast url))
       url)))
 
-(defn index-req [index doc & [key]]
+(defn index-req [index doc key]
   (merge base-req
          {:method :post
           :url (str base-url "/" index "/_doc/" key)
@@ -217,4 +217,4 @@
                      (async/<!
                       (send-off!
                        (index-req index (prepare-extract e)
-                                  (.-hash-string (:hash e)))))))))))))
+                                  (.-hash-string ^ValueRef (:hash e)))))))))))))

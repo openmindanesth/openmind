@@ -39,7 +39,7 @@
 
 (defn intern [obj]
   (if (s/valid? :openmind.spec/immutable obj)
-    (let [key (.-hash-string ^ValueRef (:hash obj))]
+    (let [key (str (:hash obj))]
       ;; TODO: Locking. We really want to catch and abort on collisions, as
       ;; improbable as they may be.
       (if (exists? key)

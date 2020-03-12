@@ -252,7 +252,7 @@
      (if (< (count full) 25) full (str (first authors) ", et al."))
      " (" date ")")))
 
-(defn source-link [{{:keys [authors url date] :as source} :source}]
+(defn source-link [{{:keys [authors url publication/date] :as source} :source}]
   (let [text (if (seq authors)
                (citation authors (.getFullYear (js/Date. date)))
                url)]

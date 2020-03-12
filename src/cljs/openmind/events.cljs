@@ -98,7 +98,7 @@
 (re-frame/reg-fx
  ::s3-xhr
  (fn [[hash res-event]]
-   (let [key    (.-hash-string hash)
+   (let [key    (str hash)
          bucket config/s3-bucket
          url    (str "https://"
                      bucket
@@ -131,9 +131,8 @@
 (re-frame/reg-event-fx
  :s3-get
  (fn [{:keys [db]} [_ hash res-event]]
-   (let [hash (cond
-                (h/value-ref? hash) hash
-                (string? hash)      (h/read-hash hash))]
+   (if-not (h/value-ref? hash)
+     (log/error "Invalid ref fetch" hash)
      (if-let [res (get-in db [table-key hash])]
        (when res-event
          {:dispatch [res-event res]})

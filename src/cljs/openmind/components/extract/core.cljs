@@ -17,7 +17,6 @@
  ::fetch-sub-data
  (fn [{:keys [db]} [_ {:keys [figures]}]]
    {:dispatch-n (into [] (comp (remove #(nil? %))
-                               (map #(.-hash-string %))
                                (map (fn [f] [:s3-get f])))
                       figures)}))
 
