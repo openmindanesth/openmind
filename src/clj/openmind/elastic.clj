@@ -124,18 +124,6 @@
 ;;;;; Extract indexing
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def dateformat
-  (SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss.SSSXXX"))
-
-(defn parse-dates [doc]
-  (walk/prewalk
-   (fn [x] (if (inst? x) (.format ^SimpleDateFormat dateformat x) x))
-   doc))
-
-(defn prepare-extract [ext]
-  (-> ext
-      parse-dates))
-
 (defn index-extract!
   "Given an immutable, index the contained extract in es."
   [imm]
@@ -144,7 +132,7 @@
       (let [ext (assoc (:content imm) :hash (:hash imm))
             key (.-hash-string ^ValueRef (:hash imm))
             res (async/<! (send-off!
-                           (index-req index (prepare-extract ext) key)))]
+                           (index-req index ext key)))]
         (log/info res))
       (log/error "Trying to index invalid extract:" imm))))
 
