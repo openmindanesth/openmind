@@ -20,26 +20,26 @@
       (AmazonS3ClientBuilder/defaultClient))
     (catch Exception e nil)))
 
-(defn lookup [^String key]
+(defn lookup [key]
   (try
-    (let [content (-> (.getObject client bucket key)
+    (let [content (-> (.getObject client bucket (str key))
                       .getObjectContent
                       slurp)]
       (binding [*read-eval* nil]
         (read-string content)))
     (catch Exception e nil)))
 
-(defn exists? [^String key]
+(defn exists? [key]
   (try
-    (.doesObjectExist client bucket key)
+    (.doesObjectExist client bucket (str key))
     (catch Exception e nil)))
 
-(defn- write! [^String k obj]
-  (.putObject client bucket k (str obj)))
+(defn- write! [k obj]
+  (.putObject client bucket (str k) (str obj)))
 
 (defn intern [obj]
   (if (s/valid? :openmind.spec/immutable obj)
-    (let [key (str (:hash obj))]
+    (let [key (:hash obj)]
       ;; TODO: Locking. We really want to catch and abort on collisions, as
       ;; improbable as they may be.
       (if (exists? key)

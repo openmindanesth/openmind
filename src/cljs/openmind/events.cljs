@@ -95,15 +95,24 @@
 ;;;; Static datastore
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; Lifted from
+;; https://github.com/cemerick/url/blob/master/src/cemerick/url.cljx
+;; with great thanks.
+(defn url-encode
+  [hash]
+  (some-> hash
+          str
+          (js/encodeURIComponent)
+          (.replace "+" "%20")))
+
 (re-frame/reg-fx
  ::s3-xhr
  (fn [[hash res-event]]
-   (let [key    (str hash)
-         bucket config/s3-bucket
+   (let [bucket config/s3-bucket
          url    (str "https://"
                      bucket
                      ".s3.eu-central-1.amazonaws.com/"
-                     key)]
+                     (url-encode hash))]
      (log/info "fetching" url)
      (goog.net.XhrIo/send url
                           (fn [e]

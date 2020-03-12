@@ -39,7 +39,7 @@
 ;;;;; Example tag tree, and tag creation logic.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def ^:private demo-tag-tree
+(def demo-tag-tree
   "For development purposes, I'm encoding the tress of tags here. Once we've got
   the system up and running it will need to be an interactive search through
   elastic. Something like graphiql (like graphiql) would be great."
@@ -111,7 +111,7 @@
 
 (def tag-lookup-hash
   ;;FIXME: This should *not* be hardcoded
-  "34101d8a82a2714923a446f4bb203a31")
+  #openmind.hash/ref "34101d8a82a2714923a446f4bb203a31")
 
 (def
   ^{:private true
