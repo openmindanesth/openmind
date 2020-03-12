@@ -2,6 +2,7 @@
   (:require [clojure.core.async :as async]
             [clojure.spec.alpha :as s]
             [openmind.elastic :as es]
+            [openmind.indexing :as index]
             [openmind.pubmed :as pubmed]
             [openmind.s3 :as s3]
             [openmind.spec :as spec]
@@ -145,15 +146,7 @@
             (log/error "failed to update doc" (:id doc) res))
           (respond-with-fallback req [:openmind/update-response (:status res)]))))))
 
-(defmulti update-indicies (fn [t d] t))
-
-(defmethod update-indicies :comment
-  [_ {:keys [hash content]}]
-  (let [{:keys [refers-to]} content]
-    (println refers-to)))
-
 (defmethod dispatch :openmind/intern
   [{[_ imm] :event :as req}]
-  (let [type (first (:content (s/conform ::spec/immutable imm)))]
-    (s3/intern imm)
-    (update-indicies type imm)))
+  (s3/intern imm)
+  (index/index imm))

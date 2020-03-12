@@ -44,8 +44,8 @@
        {:db (assoc-in db [::new-comments id :errors] "Comments can't be blank.")}
        (let [author  (:login-info db)
              comment (util/immutable {:text text :author author :refers-to id})]
-         {:dispatch [:openmind.events/try-send [:openmind/intern comment]]
-          :db       (assoc-in db [::new-comments id] {:text ""})})))))
+         ;; TODO: Clear comment entry area on successful intern
+         {:dispatch [:openmind.events/try-send [:openmind/intern comment]]})))))
 
 (re-frame/reg-event-fx
  ::revalidate
