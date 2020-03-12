@@ -109,7 +109,7 @@
        (filter #(contains? eids (:id %))
                extracts)))
 
-(defonce imm-extracts
+(def imm-extracts
   (mapv util/immutable new-extracts))
 
 
@@ -118,8 +118,7 @@
   (s3/intern new-tag-map-imm)
   (s3/intern new-tags-imm)
   (run! s3/intern (vals figures))
-  (run! s3/intern imm-extracts)
-  (async/go
-    (async/<!
-     (es/init-cluster!))
-    (run! es/index-extract! imm-extracts)))
+  (run! s3/intern imm-extracts))
+
+(defn index []
+  (run! es/index-extract! imm-extracts))

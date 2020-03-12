@@ -78,33 +78,6 @@
                                  "breathing rate" {}
                                  "other effects"  {}}}})
 
-;;;;; Initialisation logic
-
-(comment
-  (def tags
-    (create-tag-data (key (first demo-tag-tree)) demo-tag-tree ))
-
-  (def tag-map
-    (into {} (map (fn [x] [(:hash x) (:content x)])) tags) )
-
-  ;; NB: This guys can be saved to S3 and read back, or just recalculated at
-  ;; will. The hashing means that they are indexed by value, and so long as we
-  ;; don't change the demo-tag-tree above, the two will always coincide. Reading
-  ;; a hash back from S3 ensures that we never cheat though.  To evolve the tree
-  ;; in the future, we need indirection in the form of an index that can change
-  ;; transactionally over time and points to the latest hash for these
-  ;; values. That's still to come though.
-  (def tag-map-imm
-    (util/immutable tag-map))
-
-  (def tag-tree
-    (invert-tag-tree tag-map
-                     {:id #openmind.hash/ref "ad5f984737860c4602f4331efeb17463"
-                      :name "anaesthesia" :domain "anaesthesia" :parents []}))
-
-  (def tags-imm
-    (util/immutable tag-tree)))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; core logic
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
