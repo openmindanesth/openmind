@@ -12,7 +12,7 @@
   ::u/hash)
 
 (s/def ::vote
-  #(1 -1))
+  #{1 -1})
 
 (s/def ::comment-vote
   (s/keys :req-un [::refers-to ::vote ::u/author]))
