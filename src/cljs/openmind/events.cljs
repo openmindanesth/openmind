@@ -98,15 +98,14 @@
 (re-frame/reg-fx
  ::s3-xhr
  (fn [[hash res-event]]
-   (let [bucket config/s3-bucket]
-     (log/info "fetching" (str "https://"
-                               bucket
-                               ".s3.eu-central-1.amazonaws.com/"
-                               hash))
-     (goog.net.XhrIo/send (str "https://"
-                               bucket
-                               ".s3.eu-central-1.amazonaws.com/"
-                               hash)
+   (let [key    (.-hash-string hash)
+         bucket config/s3-bucket
+         url    (str "https://"
+                     bucket
+                     ".s3.eu-central-1.amazonaws.com/"
+                     key)]
+     (log/info "fetching" url)
+     (goog.net.XhrIo/send url
                           (fn [e]
                             (let [response (->> e
                                                 .-target
