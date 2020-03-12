@@ -216,5 +216,5 @@
                     (:status
                      (async/<!
                       (send-off!
-                       (index-req index (prepare-extract e)
+                       (index-req index e
                                   (.-hash-string ^ValueRef (:hash e)))))))))))))
