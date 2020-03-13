@@ -5,8 +5,8 @@
 (defmulti update-indicies (fn [t d] t))
 
 (defn index [imm]
- let [t (first (:content (s/conform ::spec/immutable imm)))]
-     (update-indicies t imm))
+  (let [t (first (:content (s/conform ::spec/immutable imm)))]
+    (update-indicies t imm)))
 
 (defmethod update-indicies :comment
   [_ {:keys [hash content]}]
