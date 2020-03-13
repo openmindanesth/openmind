@@ -1,6 +1,8 @@
 ^{:open-url false
   :css-dirs ["resources/public/css"]}
-{:main       openmind.core
- :output-to  "resources/public/js/app.js"
- :output-dir "resources/public/js"
- :closure-defines {openmind.config/s3-bucket "test-data-17623"}}
+{:main            openmind.core
+ :output-to       "resources/public/js/app.js"
+ :output-dir      "resources/public/js"
+ :preloads        [day8.re-frame-10x.preload]
+ :closure-defines {openmind.config/s3-bucket             "test-data-17623"
+                   "re_frame.trace.trace_enabled_QMARK_" true}}
