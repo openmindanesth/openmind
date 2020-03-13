@@ -9,12 +9,18 @@
 ;;;;; Subs
 
 (re-frame/reg-sub
- ::extracts
+ ::results
  (fn [db]
-   (let [ids (::results db)]
-     (->> ids
-          (map (partial core/get-extract db))
-          (map :content)))))
+   (::results db)))
+
+(re-frame/reg-sub
+ ::extracts
+ :<- [::results]
+ :<- [::core/table]
+ (fn [[results table] _]
+   (->> results
+        (map (partial get table))
+        (map :content))))
 
 ;; REVIEW: This is effectively global read-only state. It shouldn't be
 ;; namespaced. Or, presumably, in this namespace.
@@ -129,7 +135,7 @@
    ;; each keystroke, and these could come back out of order. When a response
    ;; comes back, if it corresponds to a newer request than that currently
    ;; displayed, swap it in, if not, just drop it.
-   (if (< (::response-number db) nonce)
+   (when (< (::response-number db) nonce)
      {:db         (assoc db
                          ::results (map :hash results)
                          ::response-number nonce)
@@ -253,23 +259,22 @@
      (if (< (count full) 25) full (str (first authors) ", et al."))
      " (" date ")")))
 
-(defn source-link [{:keys [authors url publication/date] :as source} t2]
+(defn source-link [{:keys [authors url publication/date]}]
   (let [text (if (seq authors)
                (citation authors (first (string/split date #"-")))
                url)]
-    (println "source-link" text source t2)
-    [:a.link-blue {:href url} text]))
+    (when text
+      [:a.link-blue {:href url} text])))
 
 
-(defn source-hover [source]
-  (when (seq source)
-    (let [{:keys [authors publication/date journal abstract doi title]} source]
-      [:div.flex.flex-column.border-round.bg-white.border-solid.p1.pbh
-       {:style {:max-width "700px"}}
-       [:h2 title]
-       [:span.smaller.pb1 (str "(" date ") " journal " doi: " doi)]
-       [:em.small.small (apply str (interpose ", " authors))]
-       [:p abstract]])))
+(defn source-hover [{:keys [authors publication/date journal
+                            abstract doi title]}]
+  [:div.flex.flex-column.border-round.bg-white.border-solid.p1.pbh
+   {:style {:max-width "700px"}}
+   [:h2 title]
+   [:span.smaller.pb1 (str "(" date ") " journal " doi: " doi)]
+   [:em.small.small (apply str (interpose ", " authors))]
+   [:p abstract]])
 
 (defn ilink [text route]
   [:a {:on-click #(re-frame/dispatch [:navigate route])}
@@ -294,14 +299,12 @@
       [figure-hover figures]
       {:orientation :right
        :style       {:max-width "75%"}}]
-     [hover-link [source-link source text] [source-hover source]
+     [hover-link [source-link source] [source-hover source]
       {:orientation :right}]]]])
 
-(defn search-results [results]
+(defn search-results []
   (let [results @(re-frame/subscribe [::extracts])]
-    (into [:div]
-          (map (fn [r] [result r]))
-          results)))
+    [:div (map result results)]))
 
 (defn radio [select-map set-event close-event state]
   (let [n (gensym)]

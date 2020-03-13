@@ -9,9 +9,10 @@
 (re-frame/reg-event-fx
  ::add-extract
  (fn [{:keys [db]} [_ extract]]
-   {:dispatch-n [[:openmind.events/s3-receive {:hash    (:hash extract)
-                                               :content extract}]
-                 [::fetch-sub-data extract]]}))
+   {:db       (update db ::table assoc (:hash extract) {:content extract
+                                                        :hash    (:hash extract)
+                                                        :fetched (js/Date.)})
+    :dispatch [::fetch-sub-data extract]}))
 
 (re-frame/reg-event-fx
  ::fetch-sub-data
@@ -23,14 +24,20 @@
 (defn get-extract [db id]
   (get-in db [::table id]))
 
+(re-frame/reg-sub
+ ::table
+ (fn [db]
+   (::table db)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Subs
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (re-frame/reg-sub
  :extract
- (fn [db [_ k]]
-   (get-extract db k)))
+ :<- [::table]
+ (fn [table [_ k]]
+   (get table k)))
 
 (re-frame/reg-sub
  :extract/content
