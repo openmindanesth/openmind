@@ -237,14 +237,14 @@
                       [:div.p1 caption])])))
           figures)))
 
-(defn edit-link [extract]
+(defn edit-link [author hash]
   (when-let [login @(re-frame/subscribe [:openmind.subs/login-info])]
-    (when (= (:author extract) login)
+    (when (= author login)
       [:div.right.relative.text-grey.small
        {:style {:top "-2rem" :right "1rem"}}
        [:a {:on-click #(re-frame/dispatch [:navigate
                                            {:route :extract/edit
-                                            :path  {:id (:hash extract)}}])}
+                                            :path  {:id hash}}])}
         "edit"]])))
 
 (defn citation [authors date]
@@ -253,13 +253,15 @@
      (if (< (count full) 25) full (str (first authors) ", et al."))
      " (" date ")")))
 
-(defn source-link [{{:keys [authors url publication/date] :as source} :source}]
+(defn source-link [{:keys [authors url publication/date] :as source} t2]
   (let [text (if (seq authors)
                (citation authors (first (string/split date #"-")))
                url)]
+    (println "source-link" text source t2)
     [:a.link-blue {:href url} text]))
 
-(defn source-hover [{:keys [source]}]
+
+(defn source-hover [source]
   (when (seq source)
     (let [{:keys [authors publication/date journal abstract doi title]} source]
       [:div.flex.flex-column.border-round.bg-white.border-solid.p1.pbh
@@ -273,15 +275,14 @@
   [:a {:on-click #(re-frame/dispatch [:navigate route])}
         text])
 
-(defn result [{:keys [text source comments details related figures tags]
-               :as   extract}]
+(defn result [{:keys [text author source comments figures tags hash]}]
   [:div.search-result.padded
    [:div.break-wrap.ph text]
-   [edit-link extract]
+   [edit-link author hash]
    [:div.pth
     [:div.flex.flex-wrap.space-evenly
      [hover-link [ilink "comments" {:route :extract/comments
-                                    :path  {:id (:hash extract)}}]
+                                    :path  {:id hash}}]
       [comments-hover comments]
       {:orientation :left}]
      [hover-link "history"]
@@ -289,14 +290,14 @@
      [hover-link "details" #_details]
      [hover-link "tags" [tag-hover tags] ]
      [hover-link [ilink "figure" {:route :extract/figure
-                                  :path  {:id (:hash extract)}}]
+                                  :path  {:id hash}}]
       [figure-hover figures]
       {:orientation :right
        :style       {:max-width "75%"}}]
-     [hover-link [source-link extract] [source-hover extract]
+     [hover-link [source-link source text] [source-hover source]
       {:orientation :right}]]]])
 
-(defn search-results []
+(defn search-results [results]
   (let [results @(re-frame/subscribe [::extracts])]
     (into [:div]
           (map (fn [r] [result r]))
