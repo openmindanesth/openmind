@@ -8,7 +8,7 @@
             [openmind.hash]
             [openmind.router :as router]
             [re-frame.core :as re-frame]
-            [reagent.core :as reagent]
+            [reagent.dom :as rdom]
             [taoensso.timbre :as log]))
 
 (defn dev-setup []
@@ -27,7 +27,7 @@
 (defn ^:after-load mount-root []
   (re-frame/clear-subscription-cache!)
   (router/init! routes)
-  (reagent/render [window/main router/page]
+  (rdom/render [window/main router/page]
                   (.getElementById js/document "app")))
 
 
