@@ -13,20 +13,43 @@
   (s/or
    :tag-lookup-table ::tag-lookup
    :master ::master-index
-   :comment-tree ::comment-tree))
+   :active-extracts ::active-extracts-node
+   :extract-comments ::extract-comments-node
+   :extact-relations ::extract-relations-node
+   :comment-tree ::comment-tree
+   :rav ::rav-node))
 
 (s/def ::master-index
   (s/keys :req-un [::active-extracts
                    ::extract-comments
-                   ::extract-relations]))
+                   ::extract-relations
+                   ::rav]))
+
+(s/def ::rav
+  ::u/hash)
+
+(s/def ::rav-node
+  (s/map-of ::u/hash ::attribute-values))
+
+(s/def ::attribute-values
+  (s/map-of keyword? (s/coll-of ::u/hash :distinct true)))
 
 (s/def ::active-extracts
-  (s/coll-of ::u/hash :distinct true))
+  ::u/hash)
 
 (s/def ::extract-comments
-  (s/map-of ::u/hash ::u/hash))
+  ::u/hash)
 
 (s/def ::extract-relations
+  ::u/hash)
+
+(s/def ::active-extracts-node
+  (s/coll-of ::u/hash :distinct true))
+
+(s/def ::extract-comments-node
+  (s/map-of ::u/hash ::u/hash))
+
+(s/def ::extract-relations-node
   (s/map-of ::u/hash ::u/hash))
 
 (s/def ::comment-tree
@@ -35,6 +58,8 @@
 (s/def ::comment
   (s/keys :req-un [::u/text ::u/author ::rank ::replies ::u/hash]))
 
-(s/def ::replies ::comment-tree)
+(s/def ::replies
+  ::comment-tree)
 
-(s/def ::rank int?)
+(s/def ::rank
+  int?)

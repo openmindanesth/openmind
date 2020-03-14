@@ -3,6 +3,7 @@
   (:require [clojure.spec.alpha :as s]
             [openmind.env :as env]
             [openmind.hash]
+            [openmind.spec :as spec]
             [taoensso.timbre :as log])
   (:import com.amazonaws.auth.BasicAWSCredentials
            [com.amazonaws.services.s3 AmazonS3Client AmazonS3ClientBuilder]
@@ -50,3 +51,38 @@
         (write! key obj)))
     (log/error "Invalid data received to intern"
                (s/explain-data :openmind.spec/immutable obj))))
+
+(def ^:private master-index-url
+  "openmind.index/master")
+
+(def ^:private index-cache
+  (atom {}))
+
+;; TODO: subscription based logic and events tracking changes to the
+;; master-index. We don't want 2 round trips for every lookup.
+(defn master-index []
+  (lookup master-index-url))
+
+(defn index-compare-and-set! [old-index new-index]
+  ;; TODO: lock between machines!!
+  (if (and
+       (s/valid? ::spec/immutable new-index)
+       (s/valid? :openmind.spec.indexical/master-index (:content new-index)))
+    (locking index-cache
+      (let [current (master-index)]
+        (if (= current old-index)
+          (do
+            ;; TODO: Check for successful write.
+            (write! master-index-url new-index)
+            true)
+          false)))
+    ;; Return false on fail, nil on error.
+    (log/error "Invalid index" new-index)))
+
+(defn get-index
+  [h]
+  (if-let [index (get @index-cache h)]
+    (:content index)
+    (let [index (lookup h)]
+      (swap! index-cache assoc h index)
+      (:content index))))
