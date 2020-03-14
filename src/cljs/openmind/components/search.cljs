@@ -278,6 +278,7 @@
 
 (defn result [{:keys [text author source comments figures tags hash]}]
   [:div.search-result.padded
+   {:key (str hash)}
    [:div.break-wrap.ph text]
    [edit-link author hash]
    [:div.pth
