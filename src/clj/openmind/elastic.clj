@@ -30,11 +30,8 @@
 ;;;;; REST API wrapping
 
 (def base-req
-  (merge
-   {:headers {"Content-Type" "application/json"}
-    :user-agent "Openmind server"}
-   (when env/dev-mode?
-     {:basic-auth [(env/read :elastic-username) (env/read :elastic-password)]})))
+  {:headers {"Content-Type" "application/json"}
+   :user-agent "Openmind server"})
 
 (def base-url
   (let [^String url (env/read :elastic-url)]
