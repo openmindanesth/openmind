@@ -1,5 +1,4 @@
 (ns openmind.components.search
-  (:refer-clojure :exclude [or])
   (:require [clojure.string :as string]
             [openmind.components.extract.core :as core]
             [openmind.components.tags :as tags]
@@ -105,14 +104,11 @@
      {:dispatch [:navigate {:route :search
                             :query (assoc query :sort-by type)}]})))
 
-(defn or [a b]
-  (cljs.core/or a b))
-
 (defn prepare-search
   "Parse and prepare the query args for the server."
   [query nonce]
   (-> query
-      (update :term or "")
+      (update :term #(or % ""))
       (update :filters tags/decode-url-filters)
       (update :time :or (js/Date.))
       (update :sort-by #(or (keyword %) default-sort-order))
