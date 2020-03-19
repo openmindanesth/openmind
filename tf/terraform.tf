@@ -10,6 +10,11 @@ terraform {
 
 ##### S3 bucket for data
 
+resource "aws_s3_bucket" "openmind-logs" {
+	bucket = "openmind-prod-logging"
+	acl = "log-delivery-write"
+}
+
 resource "aws_s3_bucket" "openmind-data" {
   bucket = "openmind-datastore-bucket-1"
   region = "eu-central-1"
@@ -21,6 +26,11 @@ resource "aws_s3_bucket" "openmind-data" {
   lifecycle {
     prevent_destroy = true
   }
+
+	logging {
+		target_bucket = aws_s3_bucket.openmind-logs.id
+		target_prefix = "openmind-datastore-logs/"
+	}
 
   cors_rule {
     allowed_headers = ["*"]
@@ -57,10 +67,23 @@ resource "aws_s3_bucket_policy" "openmind-data-public-access" {
 EOF
 }
 
+resource "aws_s3_bucket" "openmind-test-logs" {
+	bucket = "openmind-test-data-logs"
+	acl = "log-delivery-write"
+}
+
 resource "aws_s3_bucket" "openmind-test-data" {
   bucket = "test-data-17623"
   region = "eu-central-1"
 
+	versioning {
+		enabled = true
+	}
+
+	logging {
+		target_bucket = aws_s3_bucket.openmind-test-logs.id
+		target_prefix = "openmind-datastore-logs/"
+	}
 
   cors_rule {
     allowed_headers = ["*"]
@@ -69,6 +92,7 @@ resource "aws_s3_bucket" "openmind-test-data" {
     expose_headers  = ["ETag"]
     max_age_seconds = 32000000
   }
+
 }
 
 resource "aws_s3_bucket_policy" "test-data-public-access" {
