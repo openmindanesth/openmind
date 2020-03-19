@@ -83,6 +83,10 @@ html {
 		color: #BCBCCD;
 }
 
+.text-dark-grey {
+		color: #6B6B7C;
+}
+
 .border-red {
 		border-color: #BB1212;
 }
@@ -237,6 +241,10 @@ f-align-start {
 
 .bg-dull {
 		background-color: rgba(0,0,0,0.1);
+}
+
+.unlink {
+		text-decoration: inherit;
 }
 
 .link-blue {
