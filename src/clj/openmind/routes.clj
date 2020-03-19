@@ -82,7 +82,10 @@
                     parse-search-response)
           event [:openmind/search-response
                  #:openmind.components.search
-                 {:results res :nonce (:nonce query)}]]
+                 {:results res :nonce (:nonce query)
+                  :meta-ids (into {} (map (fn [e]
+                                            [e (index/extract-meta-ref e)]))
+                                  res)}]]
       (respond-with-fallback req event))))
 
 ;;;;; Login
@@ -150,3 +153,7 @@
   [{[_ imm] :event :as req}]
   (s3/intern imm)
   (index/index imm))
+
+(defmethod dispatch :openmind/extract-metadata
+  [{[ev hash] :event :as req}]
+  (respond-with-fallback req [ev hash (index/extract-meta-ref hash)]))

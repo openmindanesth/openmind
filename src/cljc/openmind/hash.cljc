@@ -68,10 +68,9 @@
 (defn value-ref? [x]
   (instance? ValueRef x))
 
-(defn read-hash [s]
-  {:pre [(string? s)
-         (every? hex-chars s)]}
-  (ValueRef. s))
+(defn read-hash [^String s]
+  {:pre [(every? hex-chars s)]}
+  (ValueRef. #?(:clj (.intern s) :cljs s)))
 
 (defn hash
   [edn]

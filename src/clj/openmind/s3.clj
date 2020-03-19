@@ -1,13 +1,13 @@
 (ns openmind.s3
   (:refer-clojure :exclude [intern])
-  (:require [clojure.spec.alpha :as s]
+  (:require [clojure.core.memoize :as memo]
+            [clojure.spec.alpha :as s]
             [openmind.env :as env]
-            [openmind.hash]
             [openmind.spec :as spec]
+            [openmind.util :as util]
             [taoensso.timbre :as log])
   (:import com.amazonaws.auth.BasicAWSCredentials
-           [com.amazonaws.services.s3 AmazonS3Client AmazonS3ClientBuilder]
-           openmind.hash.ValueRef))
+           [com.amazonaws.services.s3 AmazonS3Client AmazonS3ClientBuilder]))
 
 (def ^String bucket
   (env/read :s3-data-bucket))
@@ -21,13 +21,28 @@
       (AmazonS3ClientBuilder/defaultClient))
     (catch Exception e nil)))
 
-(defn lookup [key]
+(defn- lookup-raw [key]
+  (let [content (-> (.getObject client bucket (str key))
+                    .getObjectContent
+                    slurp)]
+    (binding [*read-eval* nil]
+      (read-string content))))
+
+(def ^:private lookup*
+  (memo/lru lookup-raw :lru/threshold 2))
+
+(defn lookup [k]
+  ;; REVIEW: We don't want to cache nils, because the fact that a doc does not
+  ;; exist yet, doesn't mean it never will (though the odds of that being a
+  ;; problem are astronomically small, I'd rather rule it out). This seems
+  ;; sufficient, but it breaks the snapshot capability. But I think that's
+  ;; because of the retrying which isn't a problem. In fact if we retry forever
+  ;; we're guaranteed to eventually get something. Whether that's what we want,
+  ;; or a collision is actually an ill posed question, since how can we know
+  ;; what we want when we never had a thing in the first place but only a hash
+  ;; created by some side channel?
   (try
-    (let [content (-> (.getObject client bucket (str key))
-                      .getObjectContent
-                      slurp)]
-      (binding [*read-eval* nil]
-        (read-string content)))
+    (lookup* k)
     (catch Exception e nil)))
 
 (defn exists? [key]
@@ -52,37 +67,36 @@
     (log/error "Invalid data received to intern"
                (s/explain-data :openmind.spec/immutable obj))))
 
-(def ^:private master-index-url
-  "openmind.index/master")
-
-(def ^:private index-cache
-  (atom {}))
-
 ;; TODO: subscription based logic and events tracking changes to the
 ;; master-index. We don't want 2 round trips for every lookup.
-(defn master-index []
-  (lookup master-index-url))
+(def index-cache (atom {}))
 
-(defn index-compare-and-set! [old-index new-index]
-  ;; TODO: lock between machines!!
-  (if (and
-       (s/valid? ::spec/immutable new-index)
-       (s/valid? :openmind.spec.indexical/master-index (:content new-index)))
-    (locking index-cache
-      (let [current (master-index)]
-        (if (= current old-index)
+(defn get-index [index]
+  (if-let [v (get @index-cache index)]
+    v
+    (let [v (lookup-raw index)]
+      (swap! index-cache assoc index v)
+      v)))
+
+(defn- index-compare-and-set! [index old-value new-value]
+  ;; TODO: lock between machines!! Zookeeper, et al..
+  (if (s/valid? :openmind.spec.indexical/indexical (:content new-value))
+    (locking index
+      (let [current (lookup-raw index)]
+        (if (= current old-value)
           (do
             ;; TODO: Check for successful write.
-            (write! master-index-url new-index)
+            (write! index new-value)
+            (swap! index-cache assoc index new-value)
             true)
-          false)))
+          (do
+            (swap! index-cache assoc index current)
+            false))))
     ;; Return false on fail, nil on error.
-    (log/error "Invalid index" new-index)))
+    (log/error "Invalid write to index" index new-value)))
 
-(defn get-index
-  [h]
-  (if-let [index (get @index-cache h)]
-    (:content index)
-    (let [index (lookup h)]
-      (swap! index-cache assoc h index)
-      (:content index))))
+(defn assoc-index [index k v]
+  (let [old (get-index index)
+        new (util/immutable (assoc (:content old) k v))]
+    (intern new)
+    (index-compare-and-set! index old new)))

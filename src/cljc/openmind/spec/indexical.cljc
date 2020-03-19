@@ -1,6 +1,7 @@
 (ns openmind.spec.indexical
   (:require [taoensso.timbre :as log]
             [openmind.hash :as h]
+            [openmind.spec.relation :as rel]
             [openmind.spec.shared :as u]
             [openmind.spec.tag :as tag]
             #?(:clj  [clojure.spec.alpha :as s]
@@ -12,54 +13,46 @@
 (s/def ::indexical
   (s/or
    :tag-lookup-table ::tag-lookup
-   :master ::master-index
-   :active-extracts ::active-extracts-node
-   :extract-comments ::extract-comments-node
-   :extact-relations ::extract-relations-node
-   :comment-tree ::comment-tree
-   :rav ::rav-node))
+   :tx-log ::tx-log
+   :extact-metadata ::extract-metadata
+   :extract-metadata-table ::extract-metadata-table))
 
-(s/def ::master-index
-  (s/keys :req-un [::active-extracts
-                   ::extract-comments
-                   ::extract-relations
-                   ::rav]))
+(s/def ::tx-log
+  (s/coll-of ::u/hash :kind vector?))
 
-(s/def ::rav
-  ::u/hash)
+(s/def ::extract-metadata-table
+  (s/map-of ::u/hash ::u/hash))
 
-(s/def ::rav-node
-  (s/map-of ::u/hash ::attribute-values))
+(s/def ::extract-metadata
+  (s/keys :req-un [::extract]
+          :opt-un [::comments ::related]))
 
-(s/def ::attribute-values
-  (s/map-of keyword? (s/coll-of ::u/hash :distinct true)))
-
-(s/def ::active-extracts
+(s/def ::extract
   ::u/hash)
 
 (s/def ::extract-comments
-  ::u/hash)
-
-(s/def ::extract-relations
-  ::u/hash)
-
-(s/def ::active-extracts-node
-  (s/coll-of ::u/hash :distinct true))
-
-(s/def ::extract-comments-node
-  (s/map-of ::u/hash ::u/hash))
-
-(s/def ::extract-relations-node
-  (s/map-of ::u/hash ::u/hash))
-
-(s/def ::comment-tree
   (s/coll-of ::comment :distinct true))
 
+(s/def ::extract-relations
+  (s/coll-of ::relation :distinct true))
+
+;; TODO: Somehow we have to sink this with the :openmind.spec.comment/comment
+;; spec. This is a strict extension. Same goes for ::relation
 (s/def ::comment
-  (s/keys :req-un [::u/text ::u/author ::rank ::replies ::u/hash]))
+  (s/keys :req-un [::u/text ::u/author ::u/hash]
+          :req    [:time/created]
+          :opt-un [::replies ::rank]))
 
 (s/def ::replies
-  ::comment-tree)
+  ::extract-comments)
 
 (s/def ::rank
   int?)
+
+(s/def ::relation
+  (s/keys :req-un [::rel/type
+                   ::rel/subject
+                   ::rel/object
+                   ::u/author
+                   ::u/hash]
+          :req    [:time/created]))

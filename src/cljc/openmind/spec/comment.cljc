@@ -6,13 +6,23 @@
 (s/def ::comment
   (s/keys :req-un [::u/text
                    ::u/author
-                   ::refers-to]))
+                   ::extract]
+          :opt-un [::reply-to]))
 
-(s/def ::refers-to
+(s/def ::comment-vote
+  (s/keys :req-un [::extract
+                   :openmind.spec.comment.vote/comment
+                   ::vote
+                   ::u/author]))
+
+(s/def :openmind.spec.comment.vote/comment
+  ::u/hash)
+
+(s/def ::extract
+  ::u/hash)
+
+(s/def ::reply-to
   ::u/hash)
 
 (s/def ::vote
   #{1 -1})
-
-(s/def ::comment-vote
-  (s/keys :req-un [::refers-to ::vote ::u/author]))

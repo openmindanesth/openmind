@@ -50,6 +50,31 @@
 ;;;;; Events
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(re-frame/reg-sub
+ ::metatable
+ (fn [db]
+   (::metadata db)))
+
+(re-frame/reg-sub
+ :extract-metadata
+ :<- [::metatable]
+ :<- [::table]
+ (fn [[metatable table] [_ id]]
+   (->> id
+       (get metatable)
+       (get table))))
+
+(re-frame/reg-event-fx
+ :extract-metadata
+ (fn [_ [_ id]]
+   {:dispatch [:openmind.events/try-send [:openmind/extract-metadata id]]}))
+
+(re-frame/reg-event-fx
+ :openmind/extract-metadata
+ (fn [{:keys [db]} [_ extract meta]]
+   {:db (update db ::metadata assoc extract meta )
+    :dispatch [:s3-get meta]}))
+
 (def blank-new-extract
   {:selection []
    :content   {:tags      #{}
@@ -72,7 +97,8 @@
      (let [id (edn/read-string id)]
        (if-not (contains? (::table db) id)
          ;; If we don't have it, get it
-         {:dispatch [:s3-get id]}
+         {:dispatch-n [[:s3-get id]
+                       [:extract-metadata id]]}
          ;; If we still have it, make sure we don't drop it
          {:db (update-in db [::table id]
                          assoc
