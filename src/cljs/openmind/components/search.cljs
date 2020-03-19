@@ -208,8 +208,7 @@
 
 (defn comments-hover [id]
   [:div.flex.flex-column.border-round.bg-white.border-solid.p1.pbh
-   {:style {:min-width "30rem"
-            :max-width "90%"}}
+   {:style {:max-width "90%"}}
    [comment/comment-hover-content id]])
 
 (defn figure-hover [figures]
