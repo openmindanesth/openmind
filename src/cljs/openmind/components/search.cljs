@@ -24,11 +24,6 @@
         (map :content))))
 
 (re-frame/reg-sub
- :tag-root
- (fn [db]
-   (:tag-root-id db)))
-
-(re-frame/reg-sub
  ::sort-list-open?
  (fn [db]
    (::sort-list-open? db)))

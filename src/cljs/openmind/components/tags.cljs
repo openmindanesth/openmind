@@ -68,6 +68,11 @@
  (fn [tags]
    (build-tag-lookup tags)))
 
+(re-frame/reg-sub
+ :tag-root
+ (fn [db]
+   (:tag-root-id db)))
+
 ;;;;; Events
 
 (re-frame/reg-event-db
