@@ -1,7 +1,9 @@
 (ns openmind.components.search
   (:require [clojure.string :as string]
+            [openmind.components.comment :as comment]
             [openmind.components.extract.core :as core]
             [openmind.components.tags :as tags]
+            [openmind.events :as events]
             [re-frame.core :as re-frame]
             [reagent.core :as reagent]))
 
@@ -15,18 +17,11 @@
 (re-frame/reg-sub
  ::extracts
  :<- [::results]
- :<- [::core/table]
+ :<- [::events/table]
  (fn [[results table] _]
    (->> results
         (map (partial get table))
         (map :content))))
-
-;; REVIEW: This is effectively global read-only state. It shouldn't be
-;; namespaced. Or, presumably, in this namespace.
-(re-frame/reg-sub
- :tag-lookup
- (fn [db]
-   (:tag-lookup db)))
 
 (re-frame/reg-sub
  :tag-root
@@ -126,16 +121,19 @@
 
 (re-frame/reg-event-fx
  :openmind/search-response
- (fn [{:keys [db]} [_ {:keys [::results ::nonce] :as e}]]
+ (fn [{:keys [db]} [_ {:keys [::results ::nonce ::meta-ids] :as e}]]
    ;; This is for slow connections: when typing, a new search is requested at
    ;; each keystroke, and these could come back out of order. When a response
    ;; comes back, if it corresponds to a newer request than that currently
    ;; displayed, swap it in, if not, just drop it.
    (when (< (::response-number db) nonce)
-     {:db         (assoc db
-                         ::results (map :hash results)
-                         ::response-number nonce)
-      :dispatch-n (mapv (fn [e] [::core/add-extract e]) results)})))
+     {:db         (-> db
+                      (assoc ::results (map :hash results)
+                             ::response-number nonce)
+                      (update ::core/metadata merge meta-ids))
+      :dispatch-n (mapv (fn [e]
+                          [::core/add-extract e (get meta-ids (:hash e))])
+                        results)})))
 
 (re-frame/reg-event-fx
  ::update-term
@@ -201,7 +199,7 @@
 
 (defn tag-hover [tags]
   (when (seq tags)
-    (let [tag-lookup @(re-frame/subscribe [:tag-lookup])
+    (let [tag-lookup @(re-frame/subscribe [::tags/tag-lookup])
           tag-root @(re-frame/subscribe [:tag-root])
           branches   (->> tags
                           (map tag-lookup)
@@ -213,21 +211,18 @@
              (get (tree-group branches) tag-root))])))
 
 
-(defn comments-hover [comments]
-  (when (seq comments)
-    (into
-     [:div.flex.flex-column.border-round.bg-white.border-solid.p1.pbh]
-     (map (fn [com]
-            [:div.break-wrap.ph.border-round.border-solid.border-grey.mbh
-             com]))
-     comments)))
+(defn comments-hover [id]
+  [:div.flex.flex-column.border-round.bg-white.border-solid.p1.pbh
+   {:style {:min-width "30rem"
+            :max-width "90%"}}
+   [comment/comment-hover-content id]])
 
 (defn figure-hover [figures]
   (when (seq figures)
     (into [:div.border-round.border-solid.bg-white]
           (map (fn [id]
                  (let [{:keys [image-data caption] :as fig}
-                       @(re-frame/subscribe [:extract/content id])]
+                       @(re-frame/subscribe [:content id])]
                    [:div
                     (when image-data
                       [:img.relative.p1 {:src image-data
@@ -285,7 +280,7 @@
     [:div.flex.flex-wrap.space-evenly
      [hover-link [ilink "comments" {:route :extract/comments
                                     :path  {:id hash}}]
-      [comments-hover comments]
+      [comments-hover hash]
       {:orientation :left}]
      [hover-link "history"]
      [hover-link "related" #_related]

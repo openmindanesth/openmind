@@ -49,21 +49,26 @@
    (:filters (route->query route))))
 
 (re-frame/reg-sub
- ::tags
+ ::tag-tree-root
  (fn [db]
-   (:tag-tree db)))
+   (:tag-tree-hash db)))
 
-;;;;; Events
+(re-frame/reg-sub
+ ::tags
+ :<- [::tag-tree-root]
+ (fn [root _]
+   @(re-frame/subscribe [:content root])))
 
 (defn build-tag-lookup [{:keys [name id children] :as tag}]
   (into {id tag} (map build-tag-lookup) (vals children)))
 
-(re-frame/reg-event-db
- ::tree
- (fn [db [_ {:keys [content]}]]
-   (assoc db
-          :tag-tree content
-          :tag-lookup (build-tag-lookup content))))
+(re-frame/reg-sub
+ ::tag-lookup
+ :<- [::tags]
+ (fn [tags]
+   (build-tag-lookup tags)))
+
+;;;;; Events
 
 (re-frame/reg-event-db
  ::set-filter-edit

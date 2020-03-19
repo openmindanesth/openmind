@@ -429,7 +429,7 @@
             "create a new extract"
             "modify extract")]]
     [:div.flex.pb1.space-between.mb2
-     [:button.bg-red.border-round.wide.text-white.p1
+     [:utton.bg-red.border-round.wide.text-white.p1
       {:on-click (fn [_]
                    (when (= id ::new)
                      (re-frame/dispatch [:extract/clear ::new]))

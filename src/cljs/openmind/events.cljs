@@ -108,7 +108,7 @@
 
 (re-frame/reg-fx
  ::s3-xhr
- (fn [[hash res-event]]
+ (fn [hash]
    (let [bucket config/s3-bucket
          url    (str "https://"
                      bucket
@@ -122,38 +122,28 @@
                                                 .getResponseText
                                                 edn/read-string)]
                               (re-frame/dispatch
-                               [::s3-receive response res-event])))))))
+                               [::s3-receive response])))))))
 
 
 (re-frame/reg-event-fx
  ::s3-receive
- (fn [{:keys [db]} [_ res res-event]]
+ (fn [{:keys [db]} [_ res]]
    (when-let [hash (:hash res)]
      (let [value (assoc res :fetched (js/Date.))]
-       (merge
-        {:db (assoc-in db [::table hash] value)}
-        (when res-event
-          {:dispatch [res-event value]}))))))
+       {:db (assoc-in db [::table hash] value)}))))
 
 (re-frame/reg-event-fx
  :s3-get
- (fn [{:keys [db]} [_ hash res-event]]
+ (fn [{:keys [db]} [_ hash]]
    (if-not (h/value-ref? hash)
      (log/error "Invalid ref fetch" hash)
-     (if-let [res (get-in db [::table hash])]
-       (when res-event
-         {:dispatch [res-event res]})
-       {::s3-xhr [hash res-event]}))))
-
-(re-frame/reg-event-fx
- ::update-indicies
- (fn [{{:keys [tag-tree-hash]} :db} _]
-   {:dispatch [:s3-get tag-tree-hash :openmind.components.tags/tree]}))
+     (when-not (contains? (::table db) hash)
+       {:db      (assoc-in db [::table hash] ::uninitialised)
+        ::s3-xhr hash}))))
 
 (re-frame/reg-sub-raw
  :lookup
  (fn [db [_ hash]]
-   (println hash (type hash))
    (when-not (contains? (::table @db) hash)
      (re-frame/dispatch [:s3-get hash]))
    (ratom/make-reaction
@@ -161,6 +151,19 @@
     :on-dispose (fn []
                   ;; TODO: Consider some simple ref counting and gc on ::table
                   ))))
+
+(re-frame/reg-sub
+ :content
+ (fn [[_ id]]
+   (re-frame/subscribe [:lookup id]))
+ (fn [imm [_ id]]
+   (when-not (= ::uninitialised imm)
+     (:content imm))))
+
+(re-frame/reg-sub
+ ::table
+ (fn [db]
+   (::table db)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Connection management

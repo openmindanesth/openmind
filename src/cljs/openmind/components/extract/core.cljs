@@ -8,44 +8,21 @@
 
 (re-frame/reg-event-fx
  ::add-extract
- (fn [{:keys [db]} [_ extract]]
-   {:db       (update db ::table assoc (:hash extract) {:content extract
-                                                        :hash    (:hash extract)
-                                                        :fetched (js/Date.)})
-    :dispatch [::fetch-sub-data extract]}))
+ (fn [{:keys [db]} [_ extract mid]]
+   {:db (update db :openmind.events/table
+                assoc (:hash extract) {:content extract
+                                       :hash    (:hash extract)
+                                       :fetched (js/Date.)})
+
+    :dispatch [::fetch-sub-data extract mid]}))
 
 (re-frame/reg-event-fx
  ::fetch-sub-data
- (fn [{:keys [db]} [_ {:keys [figures]}]]
-   {:dispatch-n (into [] (comp (remove #(nil? %))
-                               (map (fn [f] [:s3-get f])))
+ (fn [{:keys [db]} [_ {:keys [figures]} mid]]
+   {:dispatch-n (into [[:s3-get mid]]
+                      (comp (remove #(nil? %))
+                            (map (fn [f] [:s3-get f])))
                       figures)}))
-
-(defn get-extract [db id]
-  (get-in db [::table id]))
-
-(re-frame/reg-sub
- ::table
- (fn [db]
-   (::table db)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;; Subs
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-(re-frame/reg-sub
- :extract
- :<- [::table]
- (fn [table [_ k]]
-   (get table k)))
-
-(re-frame/reg-sub
- :extract/content
- (fn [[_ dk] _]
-   (re-frame/subscribe [:extract dk]))
- (fn [extract e]
-   (:content extract)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Events
@@ -71,7 +48,7 @@
 (re-frame/reg-event-fx
  :openmind/extract-metadata
  (fn [{:keys [db]} [_ extract meta]]
-   {:db (update db ::metadata assoc extract meta )
+   {:db (update db ::metadata assoc extract meta)
     :dispatch [:s3-get meta]}))
 
 (def blank-new-extract
