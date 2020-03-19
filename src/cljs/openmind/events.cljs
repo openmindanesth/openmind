@@ -6,6 +6,7 @@
             [openmind.db :as db]
             [openmind.hash :as h]
             [re-frame.core :as re-frame]
+            [reagent.ratom :as ratom]
             [taoensso.sente :as sente]
             [taoensso.timbre :as log])
   (:require-macros [cljs.core.async.macros :refer [go]]))
@@ -123,9 +124,6 @@
                               (re-frame/dispatch
                                [::s3-receive response res-event])))))))
 
-(def table-key
-  ;; REVIEW: I think this is a bad place for this.
-  :openmind.components.extract.core/table)
 
 (re-frame/reg-event-fx
  ::s3-receive
@@ -133,7 +131,7 @@
    (when-let [hash (:hash res)]
      (let [value (assoc res :fetched (js/Date.))]
        (merge
-        {:db (assoc-in db [table-key hash] value)}
+        {:db (assoc-in db [::table hash] value)}
         (when res-event
           {:dispatch [res-event value]}))))))
 
@@ -142,7 +140,7 @@
  (fn [{:keys [db]} [_ hash res-event]]
    (if-not (h/value-ref? hash)
      (log/error "Invalid ref fetch" hash)
-     (if-let [res (get-in db [table-key hash])]
+     (if-let [res (get-in db [::table hash])]
        (when res-event
          {:dispatch [res-event res]})
        {::s3-xhr [hash res-event]}))))
@@ -151,6 +149,18 @@
  ::update-indicies
  (fn [{{:keys [tag-tree-hash]} :db} _]
    {:dispatch [:s3-get tag-tree-hash :openmind.components.tags/tree]}))
+
+(re-frame/reg-sub-raw
+ :lookup
+ (fn [db [_ hash]]
+   (println hash (type hash))
+   (when-not (contains? (::table @db) hash)
+     (re-frame/dispatch [:s3-get hash]))
+   (ratom/make-reaction
+    (fn [] (get-in @db [::table hash]))
+    :on-dispose (fn []
+                  ;; TODO: Consider some simple ref counting and gc on ::table
+                  ))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Connection management

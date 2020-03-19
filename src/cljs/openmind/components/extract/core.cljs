@@ -33,6 +33,7 @@
 ;;;;; Subs
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+
 (re-frame/reg-sub
  :extract
  :<- [::table]
@@ -58,11 +59,9 @@
 (re-frame/reg-sub
  :extract-metadata
  :<- [::metatable]
- :<- [::table]
- (fn [[metatable table] [_ id]]
-   (->> id
-       (get metatable)
-       (get table))))
+ (fn [metatable [_ id]]
+   (get metatable id)))
+
 
 (re-frame/reg-event-fx
  :extract-metadata

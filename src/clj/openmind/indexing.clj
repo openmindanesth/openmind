@@ -62,12 +62,11 @@
                (dissoc :reply-to)
                (assoc :hash (:hash comment)
                       :time/created (:time/created comment)))]
-    (println (s/explain-data :openmind.spec.indexical/comment c*))
     (if reply-to
       (walk/postwalk
        (fn [node]
          (if (and (map? node) (= (:hash node) reply-to))
-           (update node :children conj c*)
+           (update node :replies conj c*)
            node))
        comment-tree)
       (if comment-tree
