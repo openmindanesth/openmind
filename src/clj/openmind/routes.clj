@@ -83,8 +83,11 @@
           event [:openmind/search-response
                  #:openmind.components.search
                  {:results res :nonce (:nonce query)
-                  :meta-ids (into {} (map (fn [e]
-                                            [e (index/extract-meta-ref e)]))
+                  :meta-ids (into {}
+                                  (comp
+                                   (map :hash)
+                                   (map (fn [e]
+                                          [e (index/extract-meta-ref e)])))
                                   res)}]]
       (respond-with-fallback req event))))
 
@@ -151,8 +154,8 @@
 
 (defmethod dispatch :openmind/intern
   [{[_ imm] :event :as req}]
-  (s3/intern imm)
-  (index/index imm))
+  (when (s3/intern imm)
+    (index/index imm)))
 
 (defmethod dispatch :openmind/extract-metadata
   [{[ev hash] :event :as req}]

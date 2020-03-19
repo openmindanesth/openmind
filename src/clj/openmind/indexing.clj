@@ -3,7 +3,8 @@
             [clojure.walk :as walk]
             [openmind.s3 :as s3]
             [openmind.spec :as spec]
-            [openmind.util :as util]))
+            [openmind.util :as util]
+            [taoensso.timbre :as log]))
 
 (def active-extracts-stub
   [#openmind.hash/ref "723701947793c75d6816580e5b6aa131"
@@ -22,9 +23,6 @@
 
 (def ^:private extract-metadata-uri
   "openmind.indexing/extract-metadata")
-
-(defn update-extract-metadata [hash metadata]
-  )
 
 (defn one-time-init!
   "Creates a new index with a hard-coded set of things"
@@ -80,13 +78,15 @@
         new-meta          (update old-meta
                                   :comments insert-comment comment)
         new-meta-imm      (util/immutable new-meta)]
-    (s3/intern new-meta-imm)
-    (let [res (s3/assoc-index extract-metadata-uri extract (:hash new-meta-imm))]
-      (when (true? res)
-        ;; TODO: Notify all clients of new index.
-        )
-      (when (false? res)
-        ;; Retry on failure
-        ;; FIXME: clear risk of infinite regress
-        (log/info "Retrying transaction" comment)
-        (index comment)))))
+    (when
+        (s3/intern new-meta-imm)
+      (let [res (s3/assoc-index extract-metadata-uri
+                                extract (:hash new-meta-imm))]
+        (when (true? res)
+          ;; TODO: Notify all clients of new index.
+          )
+        (when (false? res)
+          ;; Retry on failure
+          ;; FIXME: clear risk of infinite regress
+          (log/info "Retrying transaction" comment)
+          (index comment))))))
