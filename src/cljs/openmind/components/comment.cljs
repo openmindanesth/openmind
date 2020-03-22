@@ -33,14 +33,10 @@
                         {:reply-to reply-id}))]
          ;; TODO: Clear comment entry area on successful intern
          {:db         (assoc-in db [::new-comments id] {})
-          :dispatch-n [[:openmind.events/try-send
+          :dispatch-n [[:->server
                         [:openmind/intern (util/immutable comment)]]
                        (when reply-id
-                         [::close-reply reply-id])]
-          :dispatch-later [{:ms       300
-                            :dispatch [:openmind.events/try-send
-                                       [:openmind/extract-metadata page-id]]}]
-          })))))
+                         [::close-reply reply-id])]})))))
 
 
 (re-frame/reg-event-fx
@@ -122,41 +118,74 @@
  (fn [db [_ cid]]
    (update db ::active-replies dissoc cid)))
 
-(defn comment-box [extract-id
-                   {:keys [text time/created replies author hash rank]
-                    :as comment}]
-  (let [active-reply? @(re-frame/subscribe [::active-reply? hash])]
+(re-frame/reg-event-fx
+ ::vote
+ (fn [{:keys [db]} [_ {:keys [extract hash votes] :as comment} vote]]
+   (let [author (:login-info db)]
+     (let [rec {:vote vote :extract extract :comment hash :author author}]
+       {:dispatch [:->server [:openmind/intern (util/immutable rec)]]}))))
+
+(defn points [rank]
+  [:span (or rank 0) " points"])
+
+(defn upvoted [rank]
+  [:div.flex.flex-centre
+   [:div.prh
+    {:style {:margin-left  "2rem"}}
+    [:b.text-dark-grey "↑"]]])
+
+(defn downvoted [rank]
+  [:div.flex.flex-centre
+   [:div.prh
+    {:style {:margin-left  "2rem"}}
+    [:b.text-dark-grey "↓"]]])
+
+(defn unvoted [{:keys [rank] :as comment}]
+  [:div.flex.flex-centre
+   [:div.plh
+    {:on-click #(re-frame/dispatch [::vote comment 1])
+     :style    {:cursor        :pointer
+                :padding-right "0.05rem"
+                :margin-right  "0.2rem"}}
+    [:b "↑"]]
+   [:div.prh
+    {:on-click #(re-frame/dispatch [::vote comment -1])
+     :style    {:cursor       :pointer
+                :padding-left "0.05rem"
+                :margin-left  "0.2rem"}}
+    [:b "↓"]]])
+
+(defn vote-widget [{:keys [author rank votes] :as comment} login]
+  (let [self? (= author login)
+        vote  (-> votes (get login) :vote)]
+    (cond self?       [:div.ml3]
+          (= vote 1)  [upvoted]
+          (= vote -1) [downvoted]
+          :else       [unvoted comment])))
+
+(defn comment-box [{:keys [text time/created replies author hash rank extract]
+                    :as   comment}]
+  (let [active-reply? @(re-frame/subscribe [::active-reply? hash])
+        login         @(re-frame/subscribe [:openmind.subs/login-info])]
     [:div.break-wrap.ph.mbh.flex.flex-column
-     {:key (str hash)}
-     [:div.flex [:div.flex.flex-centre
-                 [:div.plh
-                  {:on-click #()
-                   :style    {:cursor :pointer
-                              :padding-right "0.05rem"
-                              :margin-right "0.2rem"}}
-                  [:b "↑"]]
-                 [:div.prh
-                  {:on-click #()
-                   :style    {:cursor :pointer
-                              :padding-left "0.05rem"
-                              :margin-left "0.2rem"}}
-                  [:b "↓"]]
-                 [:span (or rank 0) " votes"]]
-      [:div.pl1
-       [:span.small "by "]
+     [:div.flex
+      [vote-widget comment login]
+      [:div
        [:a.unlink {:href (str "https://orcid.org/" (:orcid-id author))}
         [:span.text-black.small [:b (:name author)]]]]
-      [:span.pl1 "on " [:em (.format dateformat created)]]
+      [:div.pl1
+       [points rank]]
+      [:span.pl1 [:em (.format dateformat created)]]
       [:div.text-dark-grey.ml2
-       {:style {:cursor :pointer}
+       {:style    {:cursor :pointer}
         :on-click #(re-frame/dispatch [::open-reply hash])}
        "reply⤵"]]
      [:div.flex.flex-column.ml2
       [:p text]
       (when active-reply?
-        [reply extract-id hash])
+        [reply extract hash])
       (when replies
-        (map (fn [c] [comment-box extract-id c]) replies))]]))
+        (map (fn [c] ^{:key (:hash c)} [comment-box c]) replies))]]))
 
 (defn comment-tree [id content]
   [:div.flex.flex-column
@@ -165,15 +194,19 @@
    (if (seq content)
      (into
       [:div.flex.flex-column.p1.pbh]
-      (map (fn [c] [comment-box id c]))
+      (map (fn [c] ^{:key (str (:hash c))} [comment-box c]))
       content)
      [:span.p2 "No one has commented on this extract yet."])])
 
 (defn comment-hover-content [id]
-  (let [meta-id  @(re-frame/subscribe [:extract-metadata id])
-        comments (when meta-id
+  (let [content (r/atom [])]
+    (fn [id]
+      (let [meta-id  @(re-frame/subscribe [:extract-metadata id])
+            comments (when meta-id
                        @(re-frame/subscribe [::comments meta-id]))]
-    [comment-tree id comments]))
+        (when comments
+          (reset! content comments))
+        [comment-tree id @content]))))
 
 (defn comments-page
   [{{:keys [id]} :path-params}]

@@ -109,7 +109,6 @@
 
 (defmethod update-indicies :comment-vote
   [_ {{:keys [extract]} :content :as vote}]
-  (println vote)
   (let [new-meta (-> extract
                      extract-metadata
                      (update :comments update-votes vote)
