@@ -9,10 +9,10 @@
                    ::extract]
           :opt-un [::reply-to]))
 
-(s/def ::comment-vote
+(s/def ::vote
   (s/keys :req-un [::extract
                    :openmind.spec.comment.vote/comment
-                   ::vote
+                   :openmind.spec.comment.vote/vote
                    ::u/author]))
 
 (s/def :openmind.spec.comment.vote/comment
@@ -24,5 +24,5 @@
 (s/def ::reply-to
   ::u/hash)
 
-(s/def ::vote
+(s/def :openmind.spec.comment.vote/vote
   #{1 -1})

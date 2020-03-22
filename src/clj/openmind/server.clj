@@ -96,8 +96,11 @@
 (defn clean-req [msg]
   (select-keys msg [:event :id :?reply-fn :send-fn :client-id :uid]))
 
-(def dispatch-fn
-  routes/dispatch)
+(defn dispatch-fn [msg]
+  (try
+    (routes/dispatch msg)
+    (catch Exception e (log/error "Dispatch error:" e
+                                  (mapv str (.getStackTrace e))))))
 
 (defn dispatch-msg [msg]
   (let [oauth (-> msg :ring-req :oauth2/access-tokens)]

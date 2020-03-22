@@ -155,7 +155,18 @@
 (defmethod dispatch :openmind/intern
   [{[_ imm] :event :as req}]
   (when (s3/intern imm)
-    (index/index imm)))
+    (when-let [res (index/index imm)]
+      ;; REVIEW: This could be broadcast to all connected clients.
+      ;;
+      ;; That would be technically correct and make the interface more "live",
+      ;; but my fear is that it will break the reproducibility I'm trying to
+      ;; build in if comments and votes and relations just pop without you
+      ;; taking any action.
+      ;;
+      ;; I think we need to distinguish between "fixed" mode which operates on a
+      ;; snapshot in time with perfect reproducability and "live" mode which
+      ;; queries the latest data.
+      (respond-with-fallback req (into [:openmind/extract-metadata] res)))))
 
 (defmethod dispatch :openmind/extract-metadata
   [{[ev hash] :event :as req}]

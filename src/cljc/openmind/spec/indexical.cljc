@@ -14,7 +14,7 @@
   (s/or
    :tag-lookup-table ::tag-lookup
    :tx-log ::tx-log
-   :extact-metadata ::extract-metadata
+   :extract-metadata ::extract-metadata
    :extract-metadata-table ::extract-metadata-table))
 
 (s/def ::tx-log
@@ -41,7 +41,14 @@
 (s/def ::comment
   (s/keys :req-un [::u/text ::u/author ::u/hash]
           :req    [:time/created]
-          :opt-un [::replies ::rank]))
+          :opt-un [::replies ::rank ::votes]))
+
+(s/def ::vote-summary
+  (s/keys :req-un [:openmind.spec.comment.vote/vote
+                   ::u/hash]))
+
+(s/def ::votes
+  (s/map-of ::u/author ::vote-summary))
 
 (s/def ::replies
   ::extract-comments)

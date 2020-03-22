@@ -12,6 +12,7 @@
 
 (s/def ::content
   (s/or
+   :comment-vote ::comment/vote
    :comment   ::comment/comment
    :relation  ::relation/relation
    :extract   ::extract/extract

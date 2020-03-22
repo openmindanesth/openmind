@@ -76,22 +76,43 @@
         (conj comment-tree c*)
         [c*]))))
 
+(defn intern-and-swap! [inserted k imm]
+  (when (s3/intern imm)
+    (let [{:keys [success? value]}
+          (s3/assoc-index extract-metadata-uri k (:hash imm))]
+      (if success?
+        value
+
+        ;; Retry on failure
+        ;; FIXME: clear risk of infinite regress
+        (do (log/info "Retrying transaction" inserted)
+            (index inserted))))))
+
 (defmethod update-indicies :comment
   [_ {:keys [hash content] :as comment}]
   (let [{:keys [extract]} content
         old-meta          (extract-metadata extract)
         new-meta          (update old-meta
                                   :comments insert-comment comment)
-        new-meta-imm      (util/immutable new-meta)]
-    (when
-        (s3/intern new-meta-imm)
-      (let [res (s3/assoc-index extract-metadata-uri
-                                extract (:hash new-meta-imm))]
-        (when (true? res)
-          ;; TODO: Notify all clients of new index.
-          )
-        (when (false? res)
-          ;; Retry on failure
-          ;; FIXME: clear risk of infinite regress
-          (log/info "Retrying transaction" comment)
-          (index comment))))))
+        res (intern-and-swap! comment extract (util/immutable new-meta))]
+    [extract (-> res :content (get extract))]))
+
+(defn update-votes [comments {h :hash {:keys [vote author comment]} :content}]
+  (walk/postwalk
+   (fn [node]
+     (if (= (:hash node) comment)
+       (-> node
+           (update :rank (fnil + 0) vote)
+           (update :votes assoc author {:vote vote :hash h}))
+       node))
+   comments))
+
+(defmethod update-indicies :comment-vote
+  [_ {{:keys [extract]} :content :as vote}]
+  (println vote)
+  (let [new-meta (-> extract
+                     extract-metadata
+                     (update :comments update-votes vote)
+                     util/immutable)
+        res (intern-and-swap! vote extract new-meta)]
+    [extract (-> res :content (get extract))]))

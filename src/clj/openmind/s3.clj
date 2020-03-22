@@ -88,10 +88,11 @@
             ;; TODO: Check for successful write.
             (write! index new-value)
             (swap! index-cache assoc index new-value)
-            true)
+            {:success? true
+             :value new-value})
           (do
             (swap! index-cache assoc index current)
-            false))))
+            {:success? false}))))
     ;; Return false on fail, nil on error.
     (log/error "Invalid write to index" index new-value)))
 
