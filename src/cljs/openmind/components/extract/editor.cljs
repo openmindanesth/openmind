@@ -93,14 +93,14 @@
    (let [event (if (= ::new id) :openmind/index :openmind/update)
          figure (:figure extract)]
      (if (or (empty? figure) (string? figure))
-       {:dispatch [:openmind.events/try-send [event extract]]}
+       {:dispatch [:->server [event extract]]}
        (let [reader (js/FileReader.)]
          (set! (.-onload reader)
                (fn [e]
                  (let [img (->> e
                                 .-target
                                 .-result)]
-                   (re-frame/dispatch [:openmind.events/try-send
+                   (re-frame/dispatch [:->server
                                        [event (assoc extract :figure img)]]))))
          (.readAsDataURL reader figure))))))
 

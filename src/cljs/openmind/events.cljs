@@ -40,7 +40,7 @@
  ::login-check
  [(re-frame/inject-cofx :storage/get :orcid)]
  (fn [cofx _]
-   {:dispatch [::try-send [:openmind/verify-login]]}))
+   {:dispatch [:->server [:openmind/verify-login]]}))
 
 (re-frame/reg-event-fx
  :openmind/identity
@@ -170,7 +170,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (re-frame/reg-event-fx
- ::try-send
+ :->server
  (fn [{{:keys [chsk]} :db} [_ ev]]
    (if (and (satisfies? IDeref (:state chsk))
             (:open? @(:state chsk)))
@@ -196,7 +196,7 @@
              :dispatch-n
              (into [[::login-check]]
                    (when (seq pending)
-                     (map (fn [ev] [::try-send ev]) pending)))}))))
+                     (map (fn [ev] [:->server ev]) pending)))}))))
 
 (let [connecting? (atom false)]
   (re-frame/reg-fx

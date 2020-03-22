@@ -111,7 +111,7 @@
    ;;TODO: Time is currently ignored, but we do want time travelling search.
    (let [nonce (-> cofx :db ::nonce inc)]
      {:db       (assoc (:db cofx) ::nonce nonce)
-      :dispatch [:openmind.events/try-send
+      :dispatch [:->server
                  [:openmind/search (prepare-search query nonce)]]})))
 
 (re-frame/reg-event-fx
@@ -267,7 +267,6 @@
 
 (defn result [{:keys [text author source comments figures tags hash]}]
   [:div.search-result.padded
-   {:key (str hash)}
    [:div.break-wrap.ph text]
    [edit-link author hash]
    [:div.pth
@@ -290,7 +289,9 @@
 
 (defn search-results []
   (let [results @(re-frame/subscribe [::extracts])]
-    [:div (map result results)]))
+    [:div (map (fn [r]
+                 ^{:key (str (:hash r))} [result r])
+               results)]))
 
 (defn radio [select-map set-event close-event state]
   (let [n (gensym)]

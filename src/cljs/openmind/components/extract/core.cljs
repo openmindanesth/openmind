@@ -43,7 +43,7 @@
 (re-frame/reg-event-fx
  :extract-metadata
  (fn [_ [_ id]]
-   {:dispatch [:openmind.events/try-send [:openmind/extract-metadata id]]}))
+   {:dispatch [:->server [:openmind/extract-metadata id]]}))
 
 (re-frame/reg-event-fx
  :openmind/extract-metadata
