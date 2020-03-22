@@ -24,11 +24,16 @@
 (def ^:private extract-metadata-uri
   "openmind.indexing/extract-metadata")
 
-(defn one-time-init!
-  "Creates a new index with a hard-coded set of things"
+(defn wipe-metadata!
+  "Creates a new index with a hard-coded set of things and resets the head
+  pointer. Make sure you write down the old one in case you want to go back."
   []
   ;; REVIEW: Do we gain anything from storing the master indicies as chunks in
   ;; the datastore?
+  (when-let [current (s3/lookup extract-metadata-uri)]
+    (println "Replacing index head: " (:hash current)
+             "with: " (:hash extract-metadata-stub)))
+  ;; TODO: git reset analog
   (run! s3/intern em-stub)
   (s3/intern extract-metadata-stub)
   (@#'s3/index-compare-and-set! extract-metadata-uri
