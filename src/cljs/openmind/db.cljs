@@ -1,5 +1,5 @@
 (ns openmind.db
- (:require [clojure.edn :as edn]
+ (:require [openmind.edn :as edn]
            ;; We need to read in openmind.hash here, otherwise the reader can't
            ;; parse #openmind.hash/ref tags.
            [openmind.hash]))

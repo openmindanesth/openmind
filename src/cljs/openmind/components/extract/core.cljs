@@ -1,5 +1,5 @@
 (ns openmind.components.extract.core
-  (:require [clojure.edn :as edn]
+  (:require [openmind.edn :as edn]
             [re-frame.core :as re-frame]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

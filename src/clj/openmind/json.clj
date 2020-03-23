@@ -1,5 +1,6 @@
 (ns openmind.json
   (:require  [clojure.data.json :as json]
+             [openmind.edn :as edn]
              [clojure.walk :as walk]
              openmind.hash)
   (:import [java.text SimpleDateFormat]
@@ -32,11 +33,10 @@
     v))
 
 (defn read-str [s]
-  (binding [*read-eval* nil]
-    (walk/postwalk (fn [o]
-                     (if (and (string? o) (.startsWith ^String o "#"))
-                       (read-string o)
-                       o))
-                   (json/read-str s
-                                  :key-fn keyword
-                                  :value-fn val-reader))))
+  (walk/postwalk (fn [o]
+                   (if (and (string? o) (.startsWith ^String o "#"))
+                     (edn/read-string o)
+                     o))
+                 (json/read-str s
+                                :key-fn keyword
+                                :value-fn val-reader)))

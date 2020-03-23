@@ -1,5 +1,5 @@
 (ns openmind.components.comment
-  (:require [clojure.edn :as edn]
+  (:require [openmind.edn :as edn]
             [openmind.components.extract.core :as core]
             [openmind.components.extract.editor :as editor]
             [openmind.util :as util]

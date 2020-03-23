@@ -1,6 +1,7 @@
 (ns openmind.env
   (:refer-clojure :exclude [read])
-  (:require [clojure.string :as string]))
+  (:require [clojure.string :as string]
+            [openmind.edn :as edn]))
 
 (defn var-name [key]
   (-> key
@@ -12,7 +13,7 @@
 
 (defn read-config []
   (try
-    (read-string (slurp "conf.edn"))
+    (edn/read-string (slurp "conf.edn"))
     (catch Exception e nil)))
 
 (def ^:private config

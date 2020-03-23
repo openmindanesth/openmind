@@ -1,6 +1,7 @@
 (ns openmind.elastic
   (:refer-clojure :exclude [intern])
   (:require [clojure.core.async :as async]
+            [openmind.edn :as edn]
             [clojure.spec.alpha :as s]
             [clojure.walk :as walk]
             [openmind.env :as env]
@@ -200,18 +201,17 @@
          (spit filename))))
 
 (defn restore! [filename]
-  (binding [*read-eval* false]
-    (->> filename
-         slurp
-         read-string
-         ;; This won't pass spec checks since we lose namespaces on keys in
-         ;; elastic
-         ;; TODO: Is that essential, or am I just doing something wrong?
-         (run! (fn [e]
-                 (async/go
-                   (println
-                    (:status
-                     (async/<!
-                      (send-off!
-                       (index-req index e
-                                  (.-hash-string ^ValueRef (:hash e)))))))))))))
+  (->> filename
+       slurp
+       edn/read-string
+       ;; This won't pass spec checks since we lose namespaces on keys in
+       ;; elastic
+       ;; TODO: Is that essential, or am I just doing something wrong?
+       (run! (fn [e]
+               (async/go
+                 (println
+                  (:status
+                   (async/<!
+                    (send-off!
+                     (index-req index e
+                                (.-hash-string ^ValueRef (:hash e))))))))))))

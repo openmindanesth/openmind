@@ -1,6 +1,6 @@
 (ns openmind.events
   (:require [cljs.core.async :as async]
-            [clojure.edn :as edn]
+            [openmind.edn :as edn]
             goog.net.XhrIo
             [openmind.config :as config]
             [openmind.db :as db]

@@ -8,9 +8,10 @@
 
 (def active-extracts-stub
   [#openmind.hash/ref "723701947793c75d6816580e5b6aa131"
-   #openmind.hash/ref "b88867f28b17626b736c19e4e2454ddb"
-   #openmind.hash/ref "d594f8e73658cc09a9ab473d08de5095"
    #openmind.hash/ref "552fa91af86fc432a292091c0b1331ab"
+
+   #openmind.hash/ref "d594f8e73658cc09a9ab473d08de5095"
+   #openmind.hash/ref "b88867f28b17626b736c19e4e2454ddb"
    #openmind.hash/ref "96ea2c806cd229176c43e40d001b16ea"])
 
 (def em-stub

@@ -1,5 +1,6 @@
 (ns openmind.components.tags
   (:require [clojure.string :as string]
+            [openmind.edn :as edn]
             [openmind.events :as events]
             [openmind.subs :as subs]
             [re-frame.core :as re-frame]))
@@ -12,7 +13,7 @@
   [filters]
   (if (seq filters)
     (into #{}
-          (map cljs.reader/read-string)
+          (map edn/read-string)
           (string/split filters #","))
     #{}))
 

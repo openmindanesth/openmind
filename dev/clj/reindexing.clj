@@ -1,5 +1,6 @@
 (ns reindexing
   (:require [clojure.core.async :as async]
+            [openmind.edn :as edn]
             [openmind.util :as util]
             [openmind.s3 :as s3]
             [openmind.json :as json]
@@ -9,7 +10,7 @@
 
 ;;;;; Transitional logic
 
-(def old-tags (read-string (slurp "tags.edn")))
+(def old-tags (edn/read-string (slurp "tags.edn")))
 
 (def old-tag-map
   (into {"anaesthesia" (key (first old-tags))}
@@ -51,7 +52,7 @@
 
 
 (def extracts*
-  (-> "extracts.edn" slurp read-string))
+  (-> "extracts.edn" slurp edn/read-string))
 
 (def eids
   "IDs of the extracts I know are correct."

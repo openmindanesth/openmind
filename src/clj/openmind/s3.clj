@@ -1,6 +1,7 @@
 (ns openmind.s3
   (:refer-clojure :exclude [intern])
   (:require [clojure.core.memoize :as memo]
+            [openmind.edn :as edn]
             [clojure.spec.alpha :as s]
             [openmind.env :as env]
             [openmind.spec :as spec]
@@ -25,8 +26,7 @@
   (let [content (-> (.getObject client bucket (str key))
                     .getObjectContent
                     slurp)]
-    (binding [*read-eval* nil]
-      (read-string content))))
+    (edn/read-string content)))
 
 (def ^:private lookup*
   (memo/lru lookup-raw :lru/threshold 2))
