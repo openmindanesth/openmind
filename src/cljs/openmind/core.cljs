@@ -35,7 +35,6 @@
 
 (defn ^:export init []
   (re-frame/dispatch-sync [::events/initialise-db])
-  (re-frame/dispatch [::events/update-indicies])
   (re-frame/dispatch [::events/login-check])
   (dev-setup)
   (mount-root))

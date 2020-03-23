@@ -155,7 +155,8 @@
                 :margin-left  "0.2rem"}}
     [:b "↓"]]])
 
-(defn vote-widget [{:keys [author rank votes] :as comment} login]
+(defn vote-widget
+  [{:keys [author rank votes] :as comment} login]
   (let [self? (= author login)
         vote  (-> votes (get login) :vote)]
     (cond self?       [:div.ml3]
@@ -171,8 +172,8 @@
                ^{:key (:hash c)} [comment-box c]))
         (sort-by :rank > comments)))
 
-(defn comment-box [{:keys [text time/created replies author hash rank extract]
-                    :as   comment}]
+(defn comment-box
+  [{:keys [text time/created replies author hash rank extract] :as comment}]
   (let [active-reply? @(re-frame/subscribe [::active-reply? hash])
         login         @(re-frame/subscribe [:openmind.subs/login-info])]
     [:div.break-wrap.ph.mbh.flex.flex-column
@@ -204,7 +205,10 @@
       [comment-list content]]
      [:span.p2 "No one has commented on this extract yet."])])
 
-(defn comment-hover-content [id]
+(defn comment-page-content
+  "Comment display list, separated from the wrapping container. Manages content
+  updates to prevent flickering when swapping out content asyncronously."
+  [id]
   (let [content (r/atom [])]
     (fn [id]
       (let [meta-id  @(re-frame/subscribe [:extract-metadata id])
@@ -215,17 +219,10 @@
         [comment-tree id @content]))))
 
 (defn comments-page
+  "Full page comments view."
   [{{:keys [id]} :path-params}]
-  (let [id      (edn/read-string id)
-        content (r/atom [])]
-    (fn [{{:keys [id]} :path-params}]
-      (let [id       (edn/read-string id)
-            meta-id  @(re-frame/subscribe [:extract-metadata id])
-            comments (when meta-id
-                       @(re-frame/subscribe [::comments meta-id]))]
-        (when comments
-          (reset! content comments))
-        [comment-tree id @content]))))
+  (let [id (edn/read-string id)]
+    [comment-page-content id]))
 
 (def routes
   [["/:id/comments"
