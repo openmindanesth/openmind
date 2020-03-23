@@ -2,6 +2,7 @@
   (:require [cljs.spec.alpha :as s]
             [openmind.components.tags :as tags]
             [openmind.components.extract.core :as core]
+            [openmind.edn :as edn]
             [openmind.spec.extract :as exs]
             [openmind.spec.validation :as validation]
             [re-frame.core :as re-frame]
@@ -13,7 +14,7 @@
   [db id]
   (let [author  @(re-frame/subscribe [:openmind.subs/login-info])
          extract (-> db
-                     (get-in [::core/table id :content])
+                     (get-in [::extracts id :content])
                      (assoc :author author
                             :created-time (js/Date.)))]
      (if (s/valid? ::exs/extract extract)
@@ -27,19 +28,54 @@
  (fn [{:keys [db]} [_ id]]
    {:dispatch [::form-errors (:errors (validate-extract db id)) id]}))
 
+;;;;; New extract init
+
+(def extract-template
+  {:selection []
+   :content   {:tags      #{}
+               :comments  [""]
+               :related   [""]
+               :contrast  [""]
+               :confirmed [""]}
+   :errors    nil})
+
+(re-frame/reg-event-fx
+ ::new-extract-init
+ (fn [{:keys [db]} _]
+   (when (empty? (-> db ::extracts ::new))
+     {:db (assoc-in db [::extracts ::new] extract-template)})))
+
 ;;;;; Subs
+
+(re-frame/reg-sub
+ ::extracts
+ (fn [db]
+   (::extracts db)))
+
+(re-frame/reg-sub
+ ::extract
+ :<- [::extracts]
+ (fn [extracts [_ id]]
+   (get extracts id)))
+
+(re-frame/reg-sub
+ ::content
+ (fn [[_ id]]
+   (re-frame/subscribe [::extract id]))
+ (fn [extract _]
+   (:content extract)))
 
 (re-frame/reg-sub
  ::extract-form-errors
  (fn [[_ k]]
-   (re-frame/subscribe [:extract k]))
+   (re-frame/subscribe [::extract k]))
  (fn [extract _]
    (:errors extract)))
 
 (re-frame/reg-sub
  ::form-input-data
  (fn [[_ dk k] _]
-   [(re-frame/subscribe [:extract/content dk])
+   [(re-frame/subscribe [::content dk])
     (re-frame/subscribe [::extract-form-errors dk])])
  (fn [[content errors] [_ dk k]]
    {:content (get content k)
@@ -50,21 +86,21 @@
 (re-frame/reg-sub
  ::editor-tag-view-selection
  (fn [[_ k]]
-   (re-frame/subscribe [:extract k]))
+   (re-frame/subscribe [::extract k]))
  (fn [extract _]
    (:selection extract)))
 
 (re-frame/reg-sub
  ::editor-selected-tags
  (fn [[_ k]]
-   (re-frame/subscribe [:extract/content k]))
+   (re-frame/subscribe [::content k]))
  (fn [content _]
    (:tags content)))
 
 (re-frame/reg-event-db
  ::set-editor-selection
  (fn [db [_ id path add?]]
-   (assoc-in db [::core/table id :selection]
+   (assoc-in db [::extracts id :selection]
              (if add?
                path
                (vec (butlast path))))))
@@ -72,12 +108,12 @@
 (re-frame/reg-event-db
  ::add-editor-tag
  (fn [db [_ id tag]]
-   (update-in db [::core/table id :content :tags] conj (:id tag))))
+   (update-in db [::extracts id :content :tags] conj (:id tag))))
 
 (re-frame/reg-event-db
  ::remove-editor-tag
  (fn [db [_ id & tags]]
-   (update-in db [::core/table id :content :tags]
+   (update-in db [::extracts id :content :tags]
               #(reduce disj % (map :id tags)))))
 
 ;;;;; Events
@@ -85,7 +121,7 @@
 (re-frame/reg-event-db
  ::form-edit
  (fn [db [_ id k v]]
-   (assoc-in db (concat [::core/table id :content] k) v)))
+   (assoc-in db (concat [::extracts id :content] k) v)))
 
 (re-frame/reg-event-fx
  ::load-figure
@@ -100,14 +136,14 @@
                  (let [img (->> e
                                 .-target
                                 .-result)]
-                   (re-frame/dispatch [:->server
-                                       [event (assoc extract :figure img)]]))))
+                   (re-frame/dispatch
+                    [:->server [event (assoc extract :figure img)]]))))
          (.readAsDataURL reader figure))))))
 
 (re-frame/reg-event-db
  ::form-errors
  (fn [db [_ errors id]]
-   (assoc-in db [::core/table id :errors] errors)))
+   (assoc-in db [::extracts id :errors] errors)))
 
 (re-frame/reg-event-fx
  ::update-extract
@@ -429,7 +465,7 @@
             "create a new extract"
             "modify extract")]]
     [:div.flex.pb1.space-between.mb2
-     [:utton.bg-red.border-round.wide.text-white.p1
+     [:button.bg-red.border-round.wide.text-white.p1
       {:on-click (fn [_]
                    (when (= id ::new)
                      (re-frame/dispatch [:extract/clear ::new]))
@@ -448,8 +484,12 @@
             :component extract-editor
             :controllers
             [{:start (fn [_]
-                       (re-frame/dispatch [:extract/mark ::new]))}]}]
+                       (re-frame/dispatch [::new-extract-init]))}]}]
+
    ["/:id/edit" {:name       :extract/edit
                  :parameters {:path {:id any?}}
                  :component  extract-editor
-                 :controllers core/extract-controllers}]])
+                 :controllers
+                 [{:start (fn [{{id :id} :path}]
+                            (let [id (edn/read-string id)]
+                              (re-frame/dispatch [::fetch-if-blank id])))}]}]])

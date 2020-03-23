@@ -51,14 +51,7 @@
    {:db (update db ::metadata assoc extract meta)
     :dispatch [:s3-get meta]}))
 
-(def blank-new-extract
-  {:selection []
-   :content   {:tags      #{}
-               :comments  [""]
-               :related   [""]
-               :contrast  [""]
-               :confirmed [""]}
-   :errors    nil})
+
 
 (re-frame/reg-event-db
  :extract/clear
@@ -68,18 +61,16 @@
 (re-frame/reg-event-fx
  :extract/mark
  (fn [{:keys [db]} [_ id]]
-   (if (= :openmind.components.extract.editor/new id)
-     {:db (update-in db [::table id] #(if (nil? %) blank-new-extract %))}
-     (let [id (edn/read-string id)]
-       (if-not (contains? (::table db) id)
-         ;; If we don't have it, get it
-         {:dispatch-n [[:s3-get id]
-                       [:extract-metadata id]]}
-         ;; If we still have it, make sure we don't drop it
-         {:db (update-in db [::table id]
-                         assoc
-                         :last-access (js/Date.)
-                         :gc-ready? false)})))))
+   (let [id (edn/read-string id)]
+     (if-not (contains? (::table db) id)
+       ;; If we don't have it, get it
+       {:dispatch-n [[:s3-get id]
+                     [:extract-metadata id]]}
+       ;; If we still have it, make sure we don't drop it
+       {:db (update-in db [::table id]
+                       assoc
+                       :last-access (js/Date.)
+                       :gc-ready? false)}))))
 
 (re-frame/reg-event-fx
  :extract/unmark
