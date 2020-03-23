@@ -163,6 +163,14 @@
           (= vote -1) [downvoted]
           :else       [unvoted comment])))
 
+(declare comment-box)
+
+(defn comment-list [comments]
+  (into [:div.flex.flex-column]
+        (map (fn [c]
+               ^{:key (:hash c)} [comment-box c]))
+        (sort-by :rank > comments)))
+
 (defn comment-box [{:keys [text time/created replies author hash rank extract]
                     :as   comment}]
   (let [active-reply? @(re-frame/subscribe [::active-reply? hash])
@@ -185,17 +193,15 @@
       (when active-reply?
         [reply extract hash])
       (when replies
-        (map (fn [c] ^{:key (:hash c)} [comment-box c]) replies))]]))
+        [comment-list replies])]]))
 
 (defn comment-tree [id content]
   [:div.flex.flex-column
    [new-comment id]
    [:div.vspacer]
    (if (seq content)
-     (into
-      [:div.flex.flex-column.p1.pbh]
-      (map (fn [c] ^{:key (str (:hash c))} [comment-box c]))
-      content)
+     [:div.p1.pbh
+      [comment-list content]]
      [:span.p2 "No one has commented on this extract yet."])])
 
 (defn comment-hover-content [id]
