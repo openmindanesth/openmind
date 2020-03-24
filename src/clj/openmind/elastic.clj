@@ -1,32 +1,28 @@
 (ns openmind.elastic
   (:refer-clojure :exclude [intern])
   (:require [clojure.core.async :as async]
-            [openmind.edn :as edn]
             [clojure.spec.alpha :as s]
-            [clojure.walk :as walk]
             [openmind.env :as env]
             [openmind.json :as json]
-            [openmind.s3 :as s3]
-            [openmind.tags :as tags]
-            [openmind.util :as util]
             [org.httpkit.client :as http]
             [taoensso.timbre :as log])
-  (:import [java.text SimpleDateFormat]
-           [openmind.hash ValueRef]))
+  (:import openmind.hash.ValueRef))
 
 (def index (env/read :elastic-extract-index))
 
 (def mapping
-  {:properties {:created-time {:type :date}
+  {:properties {:time/created {:type :date}
                 ;; FIXME: Going back to 7.1 means no search_as_you_type
                 ;; that could be something of a problem.
                 :text         {:type :text}
                 :hash         {:type :keyword}
-                :source       {:type :object}
+                :source       {:type       :object
+                               :properties {:publication/date {:type :text}}}
                 :figure       {:type :text}
                 :tags         {:type :keyword}
-                :extract-type {:type :keyword}
-                :author       {:type :object}}})
+                :extract/type {:type :keyword}
+
+                :author {:type :object}}})
 
 ;;;;; REST API wrapping
 
@@ -127,11 +123,13 @@
   [imm]
   (async/go
     (if (s/valid? :openmind.spec.extract/extract (:content imm))
-      (let [ext (assoc (:content imm) :hash (:hash imm))
+      (let [ext (assoc (:content imm)
+                       :hash (:hash imm)
+                       :time/created (:time/created imm))
             key (.-hash-string ^ValueRef (:hash imm))
             res (async/<! (send-off!
                            (index-req index ext key)))]
-        (log/info res))
+        (log/trace "Indexed" res))
       (log/error "Trying to index invalid extract:" imm))))
 
 ;;;;; Testing helpers
@@ -145,7 +143,7 @@
           :url (str base-url "/_cluster/settings")}))
 
 (def most-recent
-  (search index {:sort {:created-time {:order :asc}}
+  (search index {:sort {:time/created {:order :asc}}
                  :from 0
                  :size 100}))
 

@@ -14,8 +14,7 @@
                    ::u/author
                    :extract/tags
                    ::source]
-          :req [:time/created
-                :extract/type]
+          :req [:extract/type]
           :opt-un [::figures]))
 
 ;;;;; Required

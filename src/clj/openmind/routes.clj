@@ -2,10 +2,10 @@
   (:require [clojure.core.async :as async]
             [clojure.spec.alpha :as s]
             [openmind.elastic :as es]
+            [openmind.env :as env]
             [openmind.indexing :as index]
             [openmind.pubmed :as pubmed]
             [openmind.s3 :as s3]
-            [openmind.spec :as spec]
             [openmind.tags :as tags]
             [openmind.util :as util]
             [taoensso.timbre :as log]))
@@ -47,7 +47,7 @@
 ;;FIXME: This is a rather crummy search. We want to at least split on tokens in
 ;;the query and match all of them...
 (defn search->elastic [{:keys [term filters sort-by type]}]
-  {:sort  {:created-time {:order :desc}}
+  {:sort  {:time/created {:order :desc}}
    :from  0
    :size  20
    :query {:bool (merge {:filter (tags/tags-filter-query
@@ -100,40 +100,64 @@
 
 ;;;;; Create extract
 
-(defn valid? [author doc]
-  (cond
-    (not= author (:author doc))
-    (log/error "Login mismatch, possible attack:" author doc)
+(defn check-author
+  "Validates that the author in the client is in fact the author logged in from
+  the server's point of view.
 
-    (not (s/valid? :openmind.spec.extract/extract doc))
-    (log/warn "Invalid extract received from client:"
-              author doc (s/explain-data :openmind.spec.extract/extract doc))
+  Note: in dev mode the check always returns true."
+  [token author]
+  (if (or env/dev-mode? (= token author))
+    true
+    (do
+      (log/error "Login mismatch, possible attack:" token author)
+      false)))
 
-    :else doc))
+(defn valid?
+  "Checks that `doc` is a valid extract based on its spec."
+  [doc]
+  (if (s/valid? :openmind.spec.extract/extract doc)
+    true
+    (do
+      (log/warn "Invalid extract received from client:"
+                (s/explain-data :openmind.spec.extract/extract doc))
+      false)))
+
+(defn expand-extract
+  "Fetches source data from pubmed and merges that into doc.
+  Returns a channel which will eventually emit the result."
+  [{:keys [source] :as doc}]
+  ;; REVIEW: This kind of threaded async code is hard to read. Is that only
+  ;; because it's new to me?
+  (async/go
+    (let [detail (-> source
+                      pubmed/article-info
+                      async/<!
+                      (assoc :url source))]
+      (assoc doc :source detail))))
 
 (defn write-extract!
   "Saves extract to S3 and indexes it in elastic."
   [extract]
-  (s3/intern extract)
-  (es/index-extract! extract))
+  (async/go
+    (s3/intern extract)
+    (es/index-extract! extract)))
 
 ;; FIXME: This is doing too many things at once. We need to separate this into
 ;; layers; data completion, validation, sending to elastic, and error handling.
 (defmethod dispatch :openmind/index
   [{:keys [client-id send-fn ?reply-fn uid tokens] [_ doc] :event :as req}]
-  (when (not= uid :taoensso.sente/nil-uid)
+  (when (or (not= uid :taoensso.sente/nil-uid) env/dev-mode?)
     (async/go
-      (when (valid? (select-keys (:orcid tokens) [:name :orcid-id]) doc)
-        (let [source-info (-> doc
-                              :source
-                              pubmed/article-info
-                              async/<!)
-              extract     (util/immutable
-                           (assoc doc :source source-info))
-              res         (async/<! (write-extract! extract))]
-          (when-not (<= 200 (:status res) 299)
-            (log/error "Failed to index new extact" res))
-          (respond-with-fallback req [:openmind/index-result (:status res)]))))))
+      (when (check-author (select-keys (:orcid tokens) [:name :orcid-id])
+                          (:author doc))
+        (let [extract (async/<! (expand-extract doc))]
+          (when (valid? extract)
+            (when-let [res (write-extract! (util/immutable extract))]
+              (let [res (async/<! res)]
+                (when-not (<= 200 (:status res) 299)
+                  (log/error "Failed to index new extact" res))
+                (respond-with-fallback
+                 req [:openmind/index-result (:status res)])))))))))
 
 ;; TODO: We shouldn't allow updating extracts until we get this sorted.
 #_(defmethod dispatch :openmind/update

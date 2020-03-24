@@ -11,12 +11,10 @@
 
 (defn validate-extract
   "Checks form data for extract creation/update against the spec."
-  [db id]
+  [id]
   (let [author  @(re-frame/subscribe [:openmind.subs/login-info])
-         extract (-> db
-                     (get-in [::extracts id :content])
-                     (assoc :author author
-                            :created-time (js/Date.)))]
+        extract @(re-frame/subscribe [::content id])
+        extract (assoc extract :author author)]
      (if (s/valid? ::exs/extract extract)
        {:valid extract}
        (let [err (s/explain-data ::exs/extract extract)]
@@ -26,7 +24,7 @@
 (re-frame/reg-event-fx
  ::revalidate
  (fn [{:keys [db]} [_ id]]
-   {:dispatch [::form-errors (:errors (validate-extract db id)) id]}))
+   {:dispatch [::form-errors (:errors (validate-extract id)) id]}))
 
 ;;;;; New extract init
 
@@ -148,7 +146,7 @@
 (re-frame/reg-event-fx
  ::update-extract
  (fn [{:keys [db]} [_ id]]
-   (let [{:keys [valid errors]} (validate-extract db id)]
+   (let [{:keys [valid errors]} (validate-extract id)]
      (if errors
        {:dispatch [::form-errors errors id]}
        {:dispatch-n [[::form-errors nil id]
@@ -425,7 +423,7 @@
     :placeholder "what have you discovered?"}
    {:component   source-selector
     :label       "source"
-    :key         :extract-type
+    :key         :extract/type
     :required?   true}
    {:component   image-drop
     :label       "figure"

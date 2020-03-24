@@ -49,7 +49,10 @@
         date     (-> publine (string/split #";")
                      first
                      (string/split #" ")
-                     rest)
+                     rest
+                     (->>
+                      (interpose " ")
+                      (apply str)))
         doi      (-> publine
                      (string/split #"doi:")
                      last
@@ -59,10 +62,13 @@
         journal  (->> main
                       (filter-by-attr :class "cit")
                       first :content first :attrs :title )
-        authors  (->> main (filter-by-attr :class "auths")
-                      first :content
+        authors  (->> main
+                      (filter-by-attr :class "auths")
+                      first
+                      :content
                       (filter #(= :a (:tag %)))
-                      (mapcat :content))
+                      (mapcat :content)
+                      (into []))
         abstract (->> main
                       (filter-by-attr :class "abstr")
                       first
@@ -71,12 +77,12 @@
                       :content
                       (filter string?)
                       (apply str))]
-    {:date     date
-     :doi      doi
-     :authors  authors
-     :title    title
-     :abstract abstract
-     :journal  journal}))
+    {:publication/date date
+     :doi              doi
+     :authors          authors
+     :title            title
+     :abstract         abstract
+     :journal          journal}))
 
 (defn article-info [url]
   (let [out (async/promise-chan)]
