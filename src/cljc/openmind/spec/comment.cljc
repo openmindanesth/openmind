@@ -7,7 +7,8 @@
   (s/keys :req-un [::u/text
                    ::u/author
                    ::extract]
-          :opt-un [::reply-to]))
+          :opt-un [::reply-to]
+          :opt [:history/previous-version]))
 
 (s/def ::vote
   (s/keys :req-un [::extract

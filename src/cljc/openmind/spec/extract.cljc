@@ -15,6 +15,7 @@
                    :extract/tags
                    ::source]
           :req [:extract/type]
+          :opt [:history/previous-version]
           :opt-un [::figures]))
 
 ;;;;; Required
