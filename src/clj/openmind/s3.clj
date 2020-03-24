@@ -31,7 +31,9 @@
 (def ^:private lookup*
   (memo/lru lookup-raw :lru/threshold 2))
 
-(defn lookup [k]
+(defn lookup
+  "Returns full doc from S3 associated with key `k`."
+  [k]
   ;; REVIEW: We don't want to cache nils, because the fact that a doc does not
   ;; exist yet, doesn't mean it never will (though the odds of that being a
   ;; problem are astronomically small, I'd rather rule it out). This seems
@@ -45,7 +47,9 @@
     (lookup* k)
     (catch Exception e nil)))
 
-(defn exists? [key]
+(defn exists?
+  "Returns `true` if key exists in datastore."
+  [key]
   (try
     (.doesObjectExist client bucket (str key))
     (catch Exception e nil)))
@@ -53,7 +57,12 @@
 (defn- write! [k obj]
   (.putObject client bucket (str k) (str obj)))
 
-(defn intern [obj]
+(defn intern
+  "If obj is a valid :openmind.spec/immutable, then it is stored in S3 with key
+  equal to its :openmind.hash/ref hash. Returns AWS api put object result on
+  success (of the call, you should check the put), or nil on failure. Failure
+  cause is logged, but not returned. "
+  [obj]
   (if (s/valid? :openmind.spec/immutable obj)
     (let [key (:hash obj)]
       ;; TODO: Locking. We really want to catch and abort on collisions, as
@@ -71,16 +80,26 @@
 
 ;; TODO: subscription based logic and events tracking changes to the
 ;; master-index. We don't want 2 round trips for every lookup.
-(def index-cache (atom {}))
+(def ^:private index-cache
+  (atom {}))
 
-(defn get-index [index]
+(def get-index
+  "Cached get for indexed data. Index updates need to invalidate the cache, so
+  this doesn't use clojure.core.memoize."
+  ;; REVIEW: Though maybe it should...
+  [index]
   (if-let [v (get @index-cache index)]
     v
     (let [v (lookup-raw index)]
       (swap! index-cache assoc index v)
       v)))
 
-(defn- index-compare-and-set! [index old-value new-value]
+(defn- index-compare-and-set!
+  "Set `index` to new-value iff current value is `old-value`.
+
+  N.B.: This is atomic for a single machine setup, but not currently safe for a
+  cluster."
+  [index old-value new-value]
   ;; TODO: lock between machines!! Zookeeper, et al..
   (if (s/valid? :openmind.spec.indexical/indexical (:content new-value))
     (locking index
@@ -98,8 +117,18 @@
     ;; Return false on fail, nil on error.
     (log/error "Invalid write to index" index new-value)))
 
-(defn assoc-index [index k v]
+(defn assoc-index
+  "Set key `k` in (associative) index `index` to `v` using the semantics of
+  `swap!`. Applies the change transactionally and retries until success."
+  [index k v]
   (let [old (get-index index)
         new (util/immutable (assoc (:content old) k v))]
     (intern new)
-    (index-compare-and-set! index old new)))
+    (let [{:keys [success? value]} (index-compare-and-set! index old new)]
+      (if success?
+        value
+        ;; REVIEW: There's the risk of an infinite loop here. How do we impose a
+        ;; finite number of retries without breaking callers who assume this is
+        ;; like assoc? RTFM isn't exactly an excuse.
+        ;; TransactionCouldNotCompleteException maybe...
+        (recur index k v)))))

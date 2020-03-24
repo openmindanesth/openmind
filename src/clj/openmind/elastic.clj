@@ -123,13 +123,15 @@
   [imm]
   (async/go
     (if (s/valid? :openmind.spec.extract/extract (:content imm))
+      ;; TODO: Index the nested object instead of flattening it.
       (let [ext (assoc (:content imm)
                        :hash (:hash imm)
                        :time/created (:time/created imm))
             key (.-hash-string ^ValueRef (:hash imm))
             res (async/<! (send-off!
                            (index-req index ext key)))]
-        (log/trace "Indexed" res))
+        (log/trace "Indexed" res)
+        res)
       (log/error "Trying to index invalid extract:" imm))))
 
 ;;;;; Testing helpers
