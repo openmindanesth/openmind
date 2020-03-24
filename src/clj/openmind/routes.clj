@@ -139,25 +139,26 @@
   "Saves extract to S3 and indexes it in elastic."
   [extract]
   (async/go
-    (s3/intern extract)
-    (es/index-extract! extract)))
+    (when (s3/intern extract)
+      (async/<! (es/index-extract! extract)))))
 
-;; FIXME: This is doing too many things at once. We need to separate this into
-;; layers; data completion, validation, sending to elastic, and error handling.
 (defmethod dispatch :openmind/index
   [{:keys [client-id send-fn ?reply-fn uid tokens] [_ doc] :event :as req}]
+  ;; TODO: This should just be another subbranch on :openmind/intern
   (when (or (not= uid :taoensso.sente/nil-uid) env/dev-mode?)
     (async/go
       (when (check-author (select-keys (:orcid tokens) [:name :orcid-id])
                           (:author doc))
         (let [extract (async/<! (expand-extract doc))]
           (when (valid? extract)
-            (when-let [res (write-extract! (util/immutable extract))]
-              (let [res (async/<! res)]
-                (when-not (<= 200 (:status res) 299)
-                  (log/error "Failed to index new extact" res))
-                (respond-with-fallback
-                 req [:openmind/index-result (:status res)])))))))))
+            (let [imm (util/immutable extract)]
+              (when-let [res (write-extract! imm)]
+                (let [res (async/<! res)]
+                  (if (<= 200 (:status res) 299)
+                    (index/index imm)
+                    (log/error "Failed to index new extact" res))
+                  (respond-with-fallback
+                   req [:openmind/index-result (:status res)]))))))))))
 
 ;; TODO: We shouldn't allow updating extracts until we get this sorted.
 #_(defmethod dispatch :openmind/update

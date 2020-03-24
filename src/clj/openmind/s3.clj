@@ -83,7 +83,7 @@
 (def ^:private index-cache
   (atom {}))
 
-(def get-index
+(defn get-index
   "Cached get for indexed data. Index updates need to invalidate the cache, so
   this doesn't use clojure.core.memoize."
   ;; REVIEW: Though maybe it should...

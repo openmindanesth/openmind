@@ -126,7 +126,7 @@
  (fn [cofx [_ id extract]]
    (let [event (if (= ::new id) :openmind/index :openmind/update)
          figure (:figure extract)]
-     (if (or (empty? figure) (string? figure))
+     (if (or (nil? figure) (string? figure))
        {:dispatch [:->server [event extract]]}
        (let [reader (js/FileReader.)]
          (set! (.-onload reader)
