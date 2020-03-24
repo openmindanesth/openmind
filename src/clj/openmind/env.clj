@@ -36,5 +36,6 @@
       :else       (throw (Exception. "Invalid port specified.")))))
 
 (def dev-mode?
+  "True iff the server is running in development mode."
   (let [m (read :dev-mode)]
     (or (true? m) (= "TRUE" m))))
