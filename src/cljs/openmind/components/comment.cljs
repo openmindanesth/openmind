@@ -24,19 +24,23 @@
  (fn [{:keys [db]} [_ page-id reply-id]]
    (let [id             (or reply-id page-id)
          {:keys [text]} (get-comment db id)]
-     (if (empty? text)
-       {:db (assoc-in db [::new-comments id :errors] "Comments can't be blank.")}
-       (let [author  (:login-info db)
-             comment (merge
-                      {:text text :author author :extract page-id}
-                      (when reply-id
-                        {:reply-to reply-id}))]
-         ;; TODO: Clear comment entry area on successful intern
-         {:db         (assoc-in db [::new-comments id] {})
-          :dispatch-n [[:->server
-                        [:openmind/intern (util/immutable comment)]]
-                       (when reply-id
-                         [::close-reply reply-id])]})))))
+     (if (empty? (:login-info db))
+       {:db (assoc-in db [::new-comments id :errors]
+                      "You must be logged in to leave a comment.")}
+       (if (empty? text)
+         {:db (assoc-in db [::new-comments id :errors]
+                        "Comments can't be blank.")}
+         (let [author  (:login-info db)
+               comment (merge
+                        {:text text :author author :extract page-id}
+                        (when reply-id
+                          {:reply-to reply-id}))]
+           ;; TODO: Clear comment entry area on successful intern
+           {:db         (assoc-in db [::new-comments id] {})
+            :dispatch-n [[:->server
+                          [:openmind/intern (util/immutable comment)]]
+                         (when reply-id
+                           [::close-reply reply-id])]}))))))
 
 
 (re-frame/reg-event-fx
