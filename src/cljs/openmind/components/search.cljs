@@ -246,7 +246,7 @@
 
 (defn source-link [{:keys [authors url publication/date]}]
   (let [text (if (seq authors)
-               (citation authors (first (string/split date #"-")))
+               (citation authors (first (string/split date #"[- ]")))
                url)]
     (when text
       [:a.link-blue {:href url} text])))

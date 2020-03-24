@@ -102,3 +102,10 @@
   (let [blank-meta (util/immutable {:extract hash})]
     (s3/intern blank-meta)
     (s3/assoc-index extract-metadata-uri hash (:hash blank-meta))))
+
+;;;;; Figures
+
+(defmethod update-indicies :figure
+  [_ _]
+  ;; No op. We don't index figures, just store them.
+  true)
