@@ -14,5 +14,4 @@
          :time/created #?(:clj (java.util.Date.) :cljs (js/Date.))
          :content      content})
       (log/error "Can't parse immutable"
-                 content
                  (s/explain-data ::spec/content content)))))

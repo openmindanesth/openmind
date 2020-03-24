@@ -63,7 +63,9 @@
           (log/error "Collision in data store! Failed to add" obj)
           (log/info "Attempting to add data with hash:" key
                     "which already exists. Doing nothing."))
-        (write! key obj)))
+        (do
+          (log/trace "Interning object" obj)
+          (write! key obj))))
     (log/error "Invalid data received to intern"
                (s/explain-data :openmind.spec/immutable obj))))
 
