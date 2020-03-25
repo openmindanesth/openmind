@@ -291,7 +291,7 @@
   (let [results @(re-frame/subscribe [::extracts])]
     [:div (map (fn [r]
                  ^{:key (str (:hash r))} [result r])
-               results)]))
+               (remove nil? results))]))
 
 (defn radio [select-map set-event close-event state]
   (let [n (gensym)]
