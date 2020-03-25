@@ -51,13 +51,6 @@
    {:db (update db ::metadata assoc extract meta)
     :dispatch [:s3-get meta]}))
 
-
-
-(re-frame/reg-event-db
- :extract/clear
- (fn [db [_ id]]
-   (update db ::table dissoc id)))
-
 (re-frame/reg-event-fx
  :extract/mark
  (fn [{:keys [db]} [_ id]]

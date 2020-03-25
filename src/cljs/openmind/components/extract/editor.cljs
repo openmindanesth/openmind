@@ -1,36 +1,50 @@
 (ns openmind.components.extract.editor
   (:require [cljs.spec.alpha :as s]
+            [clojure.string :as string]
             [openmind.components.tags :as tags]
             [openmind.components.extract.core :as core]
             [openmind.edn :as edn]
             [openmind.spec.extract :as exs]
             [openmind.spec.validation :as validation]
+            [openmind.util :as util]
             [re-frame.core :as re-frame]
             [reagent.core :as r]
             [taoensso.timbre :as log]))
 
 (defn validate-extract
   "Checks form data for extract creation/update against the spec."
-  [id]
-  (let [author  @(re-frame/subscribe [:openmind.subs/login-info])
-        extract @(re-frame/subscribe [::content id])
-        extract (assoc extract :author author)]
-     (if (s/valid? ::exs/extract extract)
-       {:valid extract}
-       (let [err (s/explain-data ::exs/extract extract)]
-         (log/warn "Bad extract" id err)
-         {:errors (validation/interpret-explanation err)}))))
+  [extract]
+  (if (s/valid? ::exs/extract extract)
+    {:valid extract}
+    (let [err (s/explain-data ::exs/extract extract)]
+      (log/trace "Bad extract" err)
+      {:errors (validation/interpret-explanation err)})))
+
+(defn prepare-extract
+  [author {:keys [figures] :as extract}]
+  (let [fimms   (->> figures
+                     (map #(assoc % :author author))
+                     (mapv util/immutable))
+        extract (assoc extract
+                       :figures (map :hash fimms)
+                       :author author)]
+    {:figures fimms
+     :extract extract}))
 
 (re-frame/reg-event-fx
  ::revalidate
  (fn [{:keys [db]} [_ id]]
-   {:dispatch [::form-errors (:errors (validate-extract id)) id]}))
+   (let [{:keys [extract]} (prepare-extract
+                            (:login-info db)
+                            (get-in db [::extracts id :content]))]
+     {:dispatch [::form-errors (:errors (validate-extract extract)) id]})))
 
 ;;;;; New extract init
 
 (def extract-template
   {:selection []
    :content   {:tags      #{}
+               :figures   []
                :comments  [""]
                :related   [""]
                :contrast  [""]
@@ -42,6 +56,11 @@
  (fn [{:keys [db]} _]
    (when (empty? (-> db ::extracts ::new))
      {:db (assoc-in db [::extracts ::new] extract-template)})))
+
+(re-frame/reg-event-db
+ ::clear
+ (fn [db [_ id]]
+   (assoc-in db [::extracts id] extract-template)))
 
 ;;;;; Subs
 
@@ -122,21 +141,24 @@
    (assoc-in db (concat [::extracts id :content] k) v)))
 
 (re-frame/reg-event-fx
+ ::add-figure
+ (fn [{:keys [db]} [_ id data-url]]
+   (let [author (:login-info db)]
+     {:db (update-in db [::extracts id :content :figures] conj
+                     {:image-data data-url})})))
+
+(re-frame/reg-event-fx
  ::load-figure
- (fn [cofx [_ id extract]]
-   (let [event (if (= ::new id) :openmind/index :openmind/update)
-         figure (:figure extract)]
-     (if (or (nil? figure) (string? figure))
-       {:dispatch [:->server [event extract]]}
-       (let [reader (js/FileReader.)]
-         (set! (.-onload reader)
-               (fn [e]
-                 (let [img (->> e
-                                .-target
-                                .-result)]
-                   (re-frame/dispatch
-                    [:->server [event (assoc extract :figure img)]]))))
-         (.readAsDataURL reader figure))))))
+ (fn [cofx [_ id file]]
+   (let [reader (js/FileReader.)]
+     (set! (.-onload reader)
+           (fn [e]
+             (let [img (->> e
+                            .-target
+                            .-result)]
+               (re-frame/dispatch
+                [::add-figure id img]))))
+     (.readAsDataURL reader file))))
 
 (re-frame/reg-event-db
  ::form-errors
@@ -146,11 +168,15 @@
 (re-frame/reg-event-fx
  ::update-extract
  (fn [{:keys [db]} [_ id]]
-   (let [{:keys [valid errors]} (validate-extract id)]
-     (if errors
-       {:dispatch [::form-errors errors id]}
-       {:dispatch-n [[::form-errors nil id]
-                     [::load-figure id valid]]}))))
+   (let [{:keys [figures extract]}
+         (prepare-extract (get db :login-info)
+                          (get-in db [::extracts id :content]))]
+     (let [{:keys [valid errors]} (validate-extract extract)]
+       (if errors
+         {:dispatch [::form-errors errors id]}
+         {:dispatch-n (into [[:->server [:openmind/index extract]]]
+                            (map #(do [:->server [:openmind/intern %]]))
+                            figures)})))))
 
 (defn success? [status]
   (<= 200 status 299))
@@ -159,7 +185,7 @@
  :openmind/index-result
  (fn [_ [_ status]]
    (if (success? status)
-     {:dispatch-n [[:extract/clear ::new]
+     {:dispatch-n [[::clear ::new]
                    [:notify {:status  :success
                              :message "Extract Successfully Created!"}]
                    [:navigate {:route :search}]]}
@@ -196,22 +222,23 @@
   [:p.text-red.small.pl1.mth.mb0 text])
 
 (defn text
-  [{:keys [label key required? placeholder spec errors content data-key]}]
-  [:div.full-width
-   [:input.full-width-textarea
-    (merge {:id        (name key)
-            :type      :text
-            :on-change (juxt (pass-edit data-key [key])
-                             #(when errors
-                                (re-frame/dispatch [::revalidate data-key])))}
-           (cond
-             (seq content) {:value content}
-             placeholder   {:value       nil
-                            :placeholder placeholder})
-           (when errors
-             {:class "form-error"}))]
-   (when errors
-     [error errors])])
+  [{:keys [label key placeholder errors content data-key]}]
+  (let [ks (if (vector? key) key [key])]
+    [:div.full-width
+     [:input.full-width-textarea
+      (merge {:id        (apply str ks)
+              :type      :text
+              :on-change (juxt (pass-edit data-key ks)
+                               #(when errors
+                                  (re-frame/dispatch [::revalidate data-key])))}
+             (cond
+               (seq content) {:value content}
+               placeholder   {:value       nil
+                              :placeholder placeholder})
+             (when errors
+               {:class "form-error"}))]
+     (when errors
+       [error errors])]))
 
 (defn textarea
   [{:keys [label key required? placeholder spec errors content data-key]}]
@@ -309,21 +336,50 @@
   [dk k e]
   (let [item (-> e .-dataTransfer .-items (aget 0))]
     (if-let [file (.getAsFile item)]
-      (re-frame/dispatch [::form-edit dk [k] file])
-      (.getAsString item #(re-frame/dispatch
-                           [::form-edit dk [k] %])))))
+      (re-frame/dispatch [::load-figure dk file])
+      (.getAsString
+       item #(let [url (first (string/split % #"\n"))]
+               (re-frame/dispatch [::add-figure dk url]))))))
 
+(re-frame/reg-event-db
+ ::remove-figure
+ (fn [db [_ id i]]
+   (update-in db [::extracts id :content :figures]
+              #(let [[head [_ & tail]] (split-at i %)]
+                 (into (empty %) (concat head tail))))))
 
-(defn select-upload [dk k e]
+(defn select-upload [dk e]
   (let [f (-> e .-target .-files (aget 0))]
-    (re-frame/dispatch [::form-edit dk [k] f])))
+    (re-frame/dispatch [::load-figure dk f])))
+
+(defn figure-preview [dk {:keys [image-data caption]} index]
+  [:div.flex.flex-column
+   [:div.p1.flex
+    {:style {:max-width "100%"}}
+    [:img.border-round
+     {:src   image-data
+      :style {:width :max-content}}]
+    [:a.text-dark-grey.pl1
+     {:on-click (juxt halt #(re-frame/dispatch [::remove-figure dk index]))}
+     [:span "remove"]]]
+   [text {:key         [:figures index :caption]
+          :data-key    dk
+          :content     caption
+          :placeholder "additional info about figure"} ]])
+
+(defn figure-list [data-key figures]
+  [:div.flex.flex-column
+   (map-indexed (fn [i f]
+                  ^{:key (str "fig-" i)} [figure-preview data-key f i])
+                figures)])
 
 (defn image-drop
   [opts]
   (let [id          (str (gensym))
         drag-hover? (r/atom false)]
     (fn [{:keys [key placeholder content data-key]}]
-      (let [drop-state {:style         {:border    :dashed
+      (let [figures    (get content key)
+            drop-state {:style         {:border    :dashed
                                         :cursor    :pointer
                                         :max-width "250px"}
                         :class         (if @drag-hover?
@@ -336,20 +392,14 @@
                         :on-drop       (juxt halt #(reset! drag-hover? false)
                                              (partial drop-upload
                                                       data-key key))}]
-        [:div.mt1.mb2
-         (if content
-           [:img.border-round.p1
-            (merge drop-state
-                   {:src   (if (string? content)
-                             content
-                             (js/URL.createObjectURL content))
-                    :on-click #(.click (.getElementById js/document id))})]
-           [:label.p2.border-round drop-state placeholder])
+        [:div.mt1.mb2.flex.flex-column
+         [:label.p2.border-round drop-state placeholder]
          [:input {:type      :file
                   :id        id
                   :style     {:visibility :hidden}
                   :accept    "image/png,image/gif,image/jpeg"
-                  :on-change (partial select-upload data-key key)}]]))))
+                  :on-change (partial select-upload data-key)}]
+         [figure-list data-key content]]))))
 
 (defn source-selector [{:keys [key content data-key errors] :as opts}]
   ;; For lab notes we want to get the PI, institution (corp), and date of
@@ -426,13 +476,9 @@
     :key         :extract/type
     :required?   true}
    {:component   image-drop
-    :label       "figure"
-    :key         :figure
+    :label       "figures"
+    :key         :figures
     :placeholder [:span [:b "choose a file"] " or drag it here"]}
-   {:component   text
-    :label       "image caption"
-    :key         :figure-caption
-    :placeholder "additional info about figure"}
    {:component   textarea-list
     :label       "comments"
     :key         :comments
@@ -466,7 +512,8 @@
      [:button.bg-red.border-round.wide.text-white.p1
       {:on-click (fn [_]
                    (when (= id ::new)
-                     (re-frame/dispatch [:extract/clear ::new]))
+                     (re-frame/dispatch [::clear ::new]))
+                   ;; TODO: Reset any chanes to edited extracts on cancel
                    (re-frame/dispatch [:navigate {:route :search}]))
        :style {:opacity 0.6}}
       "CANCEL"]
