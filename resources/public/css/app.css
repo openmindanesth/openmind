@@ -4,6 +4,10 @@ html::-webkit-scrollbar {
 		display: none;
 }
 
+.no-wrap {
+		white-space: nowrap;
+}
+
 .xxl {
 		font-size: xx-large;
 }

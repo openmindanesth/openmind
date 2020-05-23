@@ -130,7 +130,7 @@
        {:dispatch [:->server [:openmind/intern (util/immutable rec)]]}))))
 
 (defn points [rank]
-  [:span (or rank 0) " points"])
+  [:span.no-wrap (or rank 0) " votes"])
 
 (defn upvoted [rank]
   [:div.flex.flex-centre
@@ -185,10 +185,10 @@
       [vote-widget comment login]
       [:div
        [:a.unlink {:href (str "https://orcid.org/" (:orcid-id author))}
-        [:span.text-black.small [:b (:name author)]]]]
+        [:span.text-black.small.no-wrap [:b (:name author)]]]]
       [:div.pl1
        [points rank]]
-      [:span.pl1 [:em (.format dateformat created)]]
+      [:span.pl1.no-wrap [:em (.format dateformat created)]]
       [:div.text-dark-grey.ml2
        {:style    {:cursor :pointer}
         :on-click #(re-frame/dispatch [::open-reply hash])}
