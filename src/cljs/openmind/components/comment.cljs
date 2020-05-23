@@ -130,7 +130,7 @@
        {:dispatch [:->server [:openmind/intern (util/immutable rec)]]}))))
 
 (defn points [rank]
-  [:span.no-wrap (or rank 0) " votes"])
+  [:span.no-wrap (str (or rank 0) " vote" (when-not (= 1 rank) "s"))])
 
 (defn upvoted [rank]
   [:div.flex.flex-centre
