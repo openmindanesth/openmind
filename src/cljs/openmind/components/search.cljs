@@ -277,7 +277,6 @@
       {:orientation :left}]
      [hover-link "history"]
      [hover-link "related" #_related]
-     [hover-link "details" #_details]
      [hover-link "tags" [tag-hover tags] ]
      [hover-link [ilink "figure" {:route :extract/figure
                                   :path  {:id hash}}]
