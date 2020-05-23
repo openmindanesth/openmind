@@ -170,11 +170,20 @@
 
 (declare comment-box)
 
+(defn compare-comments [c1 c2]
+  (cond
+    (< (:rank c1) (:rank c2))                 1
+    (> (:rank c1) (:rank c2))                 -1
+    (< (:time/created c1) (:time/created c2)) 1
+    (> (:time/created c1) (:time/created c2)) -1
+    :else                                     0))
+
+
 (defn comment-list [comments]
   (into [:div.flex.flex-column]
         (map (fn [c]
                ^{:key (:hash c)} [comment-box c]))
-        (sort-by :rank > comments)))
+        (sort compare-comments comments)))
 
 (defn comment-box
   [{:keys [text time/created replies author hash rank extract] :as comment}]
