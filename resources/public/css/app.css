@@ -4,6 +4,14 @@ html::-webkit-scrollbar {
 		display: none;
 }
 
+.sticky {
+		position: sticky;
+}
+
+.z101 {
+		z-index: 101;
+}
+
 .no-wrap {
 		white-space: nowrap;
 }

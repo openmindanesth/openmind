@@ -158,7 +158,9 @@
                        (= :left orientation)  {:left "0"}
                        (= :right orientation) {:right "0"}
                        :else                  {:transform "translateX(-50%)"}))}
-            float-content]))])))
+            [:div.relative.z101
+             {:style {:max-width "45rem"}}
+             float-content]]))])))
 
 (defn tg1 [bs]
   (into {}
@@ -208,7 +210,6 @@
 
 (defn comments-hover [id]
   [:div.flex.flex-column.border-round.bg-white.border-solid.p1.pbh
-   {:style {:max-width "90%"}}
    [comment/comment-page-content id]])
 
 (defn figure-hover [figures]
@@ -251,15 +252,17 @@
     (when text
       [:a.link-blue {:href url} text])))
 
-
-(defn source-hover [{:keys [authors publication/date journal
+(defn source-content [{:keys [authors publication/date journal
                             abstract doi title]}]
-  [:div.flex.flex-column.border-round.bg-white.border-solid.p1.pbh
-   {:style {:max-width "700px"}}
+  [:div
    [:h2 title]
    [:span.smaller.pb1 (str "(" date ") " journal " doi: " doi)]
    [:em.small.small (apply str (interpose ", " authors))]
    [:p abstract]])
+
+(defn source-hover [source]
+  [:div.flex.flex-column.border-round.bg-white.border-solid.p1.pbh
+   [source-content source]])
 
 (defn ilink [text route]
   [:a {:on-click #(re-frame/dispatch [:navigate route])}
@@ -281,8 +284,7 @@
      [hover-link [ilink "figure" {:route :extract/figure
                                   :path  {:id hash}}]
       [figure-hover figures]
-      {:orientation :right
-       :style       {:max-width "75%"}}]
+      {:orientation :right}]
      [hover-link [source-link source] [source-hover source]
       {:orientation :right}]]]])
 
