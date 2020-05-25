@@ -1,6 +1,7 @@
 (ns openmind.components.search
   (:require [clojure.string :as string]
             [openmind.components.comment :as comment]
+            [openmind.components.common :as common]
             [openmind.components.extract.core :as core]
             [openmind.components.tags :as tags]
             [openmind.events :as events]
@@ -252,17 +253,9 @@
     (when text
       [:a.link-blue {:href url} text])))
 
-(defn source-content [{:keys [authors publication/date journal
-                            abstract doi title]}]
-  [:div
-   [:h2 title]
-   [:span.smaller.pb1 (str "(" date ") " journal " doi: " doi)]
-   [:em.small.small (apply str (interpose ", " authors))]
-   [:p abstract]])
-
 (defn source-hover [source]
   [:div.flex.flex-column.border-round.bg-white.border-solid.p1.pbh
-   [source-content source]])
+   [common/source-content source]])
 
 (defn ilink [text route]
   [:a {:on-click #(re-frame/dispatch [:navigate route])}
