@@ -124,7 +124,6 @@
                               (re-frame/dispatch
                                [::s3-receive response])))))))
 
-
 (re-frame/reg-event-fx
  ::s3-receive
  (fn [{:keys [db]} [_ res]]
@@ -140,6 +139,18 @@
      (when-not (contains? (::table db) hash)
        {:db      (assoc-in db [::table hash] ::uninitialised)
         ::s3-xhr hash}))))
+
+(defn extract [db id]
+  (get (::table db) id))
+
+(re-frame/reg-event-fx
+ :ensure
+ (fn [{:keys [db]} [_ id event]]
+   (let [ex (extract db id)]
+     (if (and (some? ex) (not= ::uninitialised ex))
+       {:dispatch [event id]}
+       {:dispatch [:s3-get id]
+        :dispatch-later [{:ms 100 :dispatch [:ensure id event]}]}))))
 
 (re-frame/reg-sub-raw
  :lookup
