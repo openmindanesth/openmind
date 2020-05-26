@@ -490,6 +490,19 @@ button.filter-button {
 		}
 }
 
+@media only screen and (min-width: 1500px) {
+		.middle-col {
+				width: calc(50% - 2rem);
+				padding-right: 2rem;
+				float: left;
+		}
+
+		.feedback-col {
+				width: 50%; 
+				float: left;
+		}
+}
+
 .full-width-textarea {
 		border-radius: 0.5rem;
 		padding: 0.5rem;
