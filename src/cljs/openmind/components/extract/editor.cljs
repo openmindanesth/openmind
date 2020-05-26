@@ -1,9 +1,10 @@
 (ns openmind.components.extract.editor
   (:require [cljs.spec.alpha :as s]
             [clojure.string :as string]
+            [openmind.components.common :as common]
             [openmind.components.tags :as tags]
-            [openmind.components.extract.core :as core]
             [openmind.edn :as edn]
+            [openmind.events :as events]
             [openmind.spec.extract :as exs]
             [openmind.spec.validation :as validation]
             [openmind.util :as util]
@@ -218,9 +219,6 @@
       (assoc :data-key id)
       (merge @(re-frame/subscribe [::form-input-data id key]))))
 
-(defn error [text]
-  [:p.text-red.small.pl1.mth.mb0 text])
-
 (defn text
   [{:keys [label key placeholder errors content data-key]}]
   (let [ks (if (vector? key) key [key])]
@@ -238,7 +236,7 @@
              (when errors
                {:class "form-error"}))]
      (when errors
-       [error errors])]))
+       [common/error errors])]))
 
 (defn textarea
   [{:keys [label key required? placeholder spec errors content data-key]}]
@@ -258,7 +256,7 @@
            (when errors
              {:class "form-error"}))]
    (when errors
-     [error errors])])
+     [common/error errors])])
 
 (defn text-input-list
   [{:keys [key placeholder spec errors content data-key]}]
@@ -279,7 +277,7 @@
                           :placeholder placeholder}))]
                (when err
                  [:div.mbh
-                  [error err]])])))
+                  [common/error err]])])))
          content)
    [:a.plh.ptp {:on-click (fn [_]
                             (re-frame/dispatch
@@ -430,7 +428,7 @@
                        (re-frame/dispatch [::revalidate data-key])))}
      "lab note"]]
    (when errors
-     [error errors])
+     [common/error errors])
    (when content
      [:div.mth.mb1.flex
       [:div.flex.vcenter

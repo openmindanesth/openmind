@@ -2,7 +2,6 @@
   (:require [clojure.string :as string]
             [openmind.components.comment :as comment]
             [openmind.components.common :as common]
-            [openmind.components.extract.core :as core]
             [openmind.components.tags :as tags]
             [openmind.events :as events]
             [re-frame.core :as re-frame]
@@ -126,9 +125,11 @@
      {:db         (-> db
                       (assoc ::results (map :hash results)
                              ::response-number nonce)
-                      (update ::core/metadata merge meta-ids))
+                      (update :openmind.components.extract.core/metadata
+                              merge meta-ids))
       :dispatch-n (mapv (fn [e]
-                          [::core/add-extract e (get meta-ids (:hash e))])
+                          [:openmind.components.extract.core/add-extract
+                           e (get meta-ids (:hash e))])
                         results)})))
 
 (re-frame/reg-event-fx

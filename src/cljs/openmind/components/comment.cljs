@@ -1,7 +1,7 @@
 (ns openmind.components.comment
-  (:require [openmind.edn :as edn]
+  (:require [openmind.components.common :as common]
             [openmind.components.extract.core :as core]
-            [openmind.components.extract.editor :as editor]
+            [openmind.edn :as edn]
             [openmind.util :as util]
             [re-frame.core :as re-frame]
             [reagent.core :as r]))
@@ -83,7 +83,7 @@
         (when errors
           {:class "form-error"}))]
       (when errors
-        [editor/error errors])]
+        [common/error errors])]
      [:button.bg-dark-grey.border-round.wide.text-white.p1
       {:style {:max-height "4rem"
                :right 0}
