@@ -294,20 +294,19 @@
               ;; REVIEW: Is this just cut and paste of the textarea component?!?!
               [:div
                [:textarea.full-width-textarea
-                (merge {:id        (name (str key i))
-                        :style     {:resize :vertical}
-                        :rows      2
-                        :type      :text
-                        :on-change (pass-edit data-key [key i])}
-                       (cond
-                         (seq content) {:value c}
-                         placeholder   {:value       nil
-                                        :placeholder placeholder})
+                (merge {:id          (name (str key i))
+                        :style       {:resize :vertical}
+                        :rows        2
+                        :placeholder placeholder
+                        :type        :text
+                        :on-change   (pass-edit data-key [key i])}
+                       (when (seq content)
+                         {:value c})
                        (when err
                          {:class "form-error"}))]
                (when err
                  [:div.mbh
-                  [error err]])]))
+                  [common/error err]])]))
               content))
    [:a.bottom-right {:on-click
                      (fn [_]
