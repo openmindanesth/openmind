@@ -82,13 +82,15 @@
                     parse-search-response)
           event [:openmind/search-response
                  #:openmind.components.search
-                 {:results res :nonce (:nonce query)
-                  :meta-ids (into {}
-                                  (comp
-                                   (map :hash)
-                                   (map (fn [e]
-                                          [e (index/extract-meta-ref e)])))
-                                  res)}]]
+                 {:results   res
+                  :search-id (:search-id query)
+                  :nonce     (:nonce query)
+                  :meta-ids  (into {}
+                                   (comp
+                                    (map :hash)
+                                    (map (fn [e]
+                                           [e (index/extract-meta-ref e)])))
+                                   res)}]]
       (respond-with-fallback req event))))
 
 ;;;;; Login

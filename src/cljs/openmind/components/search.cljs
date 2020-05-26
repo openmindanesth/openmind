@@ -107,23 +107,24 @@
 
 (re-frame/reg-event-fx
  ::search-request
- (fn [cofx [_ query]]
+ (fn [cofx [_ query id]]
    ;;TODO: Time is currently ignored, but we do want time travelling search.
    (let [nonce (-> cofx :db ::nonce inc)]
      {:db       (assoc (:db cofx) ::nonce nonce)
       :dispatch [:->server
-                 [:openmind/search (prepare-search query nonce)]]})))
+                 [:openmind/search (assoc (prepare-search query nonce)
+                                          :search-id id)]]})))
 
 (re-frame/reg-event-fx
  :openmind/search-response
- (fn [{:keys [db]} [_ {:keys [::results ::nonce ::meta-ids] :as e}]]
+ (fn [{:keys [db]} [_ {:keys [::results ::nonce ::meta-ids ::search-id] :as e}]]
    ;; This is for slow connections: when typing, a new search is requested at
    ;; each keystroke, and these could come back out of order. When a response
    ;; comes back, if it corresponds to a newer request than that currently
    ;; displayed, swap it in, if not, just drop it.
    (when (< (::response-number db) nonce)
      {:db         (-> db
-                      (assoc ::results (map :hash results)
+                      (assoc search-id (map :hash results)
                              ::response-number nonce)
                       (update :openmind.components.extract.core/metadata
                               merge meta-ids))
@@ -379,4 +380,4 @@
          :controllers [{:parameters {:query [:term :filters :time :sort-by :type]}
                         :start (fn [route]
                                  (re-frame/dispatch
-                                  [::search-request (:query route)]))}]}]])
+                                  [::search-request (:query route) ::results]))}]}]])
