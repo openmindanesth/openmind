@@ -16,9 +16,7 @@
                    ::source]
           :req [:extract/type]
           :opt [:history/previous-version]
-          :opt-un [::figures]))
-
-;;;;; Required
+          :opt-un [::figures ::relations]))
 
 (s/def ::figures
   (s/coll-of ::u/hash :distinct true))
