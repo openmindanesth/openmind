@@ -154,26 +154,27 @@
     (fn [{:keys [text author source comments figures tags hash] :as extract}
          & [{:keys [edit-link? controls] :as opts}]]
       [:div.search-result.ph
-       {:style {:height :min-content}
+       {:style         {:height :min-content}
         :on-mouse-over #(reset! meta-open? true)
-        :on-mouse-out #(reset! meta-open? false)}
+        :on-mouse-out  #(reset! meta-open? false)}
        (when @meta-open?
-         [:div {:style {:height 0
+         [:div {:style {:height   0
                         :position :relative}}
-          [:div.search-result.bg-plain.pt1.pl1.float
+          [:div.search-result.bg-plain.pt1.pl1
            {:style {:border-bottom :none
                     :border-radius "0.5rem 0.5rem 0 0"
-                    :position :absolute
-                    :top "-2.5rem"
-                    :left "calc(-0.5rem - 1px)"
-                    :width "100%"
-                    :height "2rem"}}
+                    :opacity       0.85
+                    :position      :absolute
+                    :top           "-2.5rem"
+                    :left          "calc(-0.5rem - 1px)"
+                    :width         "100%"
+                    :height        "2rem"}}
            [metadata extract]]])
        [:div.break-wrap.ph text]
        (when edit-link?
          [edit-link author hash])
        (when controls
-         controls)
+         [controls extract])
        [:div.pth
         [:div.flex.flex-wrap.space-evenly
          [hover-link [ilink "comments" {:route :extract/comments
