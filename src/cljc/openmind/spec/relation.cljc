@@ -4,16 +4,17 @@
                :cljs [cljs.spec.alpha :as s])))
 
 (s/def ::relation
-  (s/keys :req-un [::type
-                   ::subject
-                   ::object
+  (s/keys :req-un [::entity
+                   ::attribute
+                   ::value
                    ::u/author]))
 
-(s/def ::type
-  string?)
+(s/def ::attribute
+  keyword?)
 
-(s/def ::subject
-  ::u/hash)
+(s/def ::entity
+  (s/or :new #(= :openmind.components.extract.editor/new)
+        :ref ::u/hash))
 
-(s/def ::object
+(s/def ::value
   ::u/hash)
