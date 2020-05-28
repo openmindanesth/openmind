@@ -2,6 +2,7 @@
   (:require [cljs.spec.alpha :as s]
             [clojure.string :as string]
             [openmind.components.common :as common]
+            [openmind.components.extract :as extract]
             [openmind.components.tags :as tags]
             [openmind.edn :as edn]
             [openmind.events :as events]
@@ -44,12 +45,10 @@
 
 (def extract-template
   {:selection []
-   :content   {:tags      #{}
-               :figures   []
-               :comments  [""]
-               :related   [""]
-               :contrast  [""]
-               :confirmed [""]}
+   :content   {:tags     #{}
+               :figures  []
+               :comments [""]
+               :relations  []}
    :errors    nil})
 
 (re-frame/reg-event-fx
@@ -62,6 +61,11 @@
  ::clear
  (fn [db [_ id]]
    (assoc-in db [::extracts id] extract-template)))
+
+(re-frame/reg-event-db
+ ::editing-copy
+ (fn [db [_ id]]
+   (update db ::extracts assoc id (events/extract db id))))
 
 ;;;;; Subs
 
@@ -99,6 +103,21 @@
    {:content (get content k)
     :errors  (get errors k)}))
 
+(re-frame/reg-sub
+ ::similar
+ (fn [db]
+   (::similar db)))
+
+(re-frame/reg-sub
+ ::article-extracts
+ (fn [db]
+   (::article-extracts db)))
+
+(re-frame/reg-sub
+ ::related-search-results
+ (fn [db]
+   (::related-search-results db)))
+
 ;; tags
 
 (re-frame/reg-sub
@@ -135,6 +154,11 @@
               #(reduce disj % (map :id tags)))))
 
 ;;;;; Events
+
+(re-frame/reg-event-db
+ ::clear-related-search
+ (fn [db]
+   (dissoc db ::related-search-results)))
 
 (re-frame/reg-event-db
  ::form-edit
@@ -208,11 +232,21 @@
  (fn [db]
    (dissoc db :status-message)))
 
+(re-frame/reg-event-db
+ ::add-relation
+ (fn [db [_ id object-id type]]
+   (let [author (:login-info db)
+         rel {:attribute type
+              :value object-id
+              :entity id
+              :author author}]
+     (update-in db [::extracts id :content :relations] conj rel))))
+
+;;;; Components
+
 (defn pass-edit [id ks]
   (fn [ev]
     (re-frame/dispatch [::form-edit id ks (-> ev .-target .-value)])))
-
-;;;; Components
 
 (defn add-form-data [id {:keys [key] :as elem}]
   (-> elem
@@ -220,13 +254,15 @@
       (merge @(re-frame/subscribe [::form-input-data id key]))))
 
 (defn text
-  [{:keys [label key placeholder errors content data-key]}]
+  [{:keys [label key placeholder errors content data-key onchange]}]
   (let [ks (if (vector? key) key [key])]
     [:div.full-width
      [:input.full-width-textarea
       (merge {:id        (apply str ks)
               :type      :text
               :on-change (juxt (pass-edit data-key ks)
+                               #(when onchange
+                                  (onchange (-> % .-target .-value)))
                                #(when errors
                                   (re-frame/dispatch [::revalidate data-key])))}
              (cond
@@ -239,7 +275,7 @@
        [common/error errors])]))
 
 (defn textarea
-  [{:keys [label key required? placeholder spec errors content data-key]}]
+  [{:keys [label key required? placeholder spec errors content data-key onchange]}]
   [:div
    [:textarea.full-width-textarea
     (merge {:id        (name key)
@@ -247,6 +283,8 @@
             :style     {:resize :vertical}
             :type      :text
             :on-change (juxt (pass-edit data-key [key])
+                             #(when onchange
+                                (onchange (-> % .-target .-value)))
                              #(when errors
                                 (re-frame/dispatch [::revalidate data-key])))}
            (cond
@@ -352,7 +390,7 @@
 (defn figure-preview [dk {:keys [image-data caption]} index]
   [:div.flex.flex-column
    [:div.p1.flex
-    {:style {:max-width "100%"}}
+    {:style {:max-width "40rem"}}
     [:img.border-round
      {:src   image-data
       :style {:width :max-content}}]
@@ -364,11 +402,11 @@
           :content     caption
           :placeholder "additional info about figure"} ]])
 
-(defn figure-list [data-key figures]
+(defn figure-list [{:keys [data-key content] :as opts}]
   [:div.flex.flex-column
    (map-indexed (fn [i f]
                   ^{:key (str "fig-" i)} [figure-preview data-key f i])
-                figures)])
+                content)])
 
 (defn image-drop
   [opts]
@@ -395,8 +433,20 @@
                   :id        id
                   :style     {:visibility :hidden}
                   :accept    "image/png,image/gif,image/jpeg"
-                  :on-change (partial select-upload data-key)}]
-         [figure-list data-key content]]))))
+                  :on-change (partial select-upload data-key)}]]))))
+
+(defn source-preview [{:keys [data-key] :as opts}]
+  (let [content (:source @(re-frame/subscribe [::content data-key]))]
+    (when (:abstract content)
+      [extract/source-content content])))
+
+(defn source-article [{:keys [content] :as opts}]
+  [text (assoc opts
+               :content (:url content)
+               :key [:source :url])])
+
+(defn source-labnote [opts]
+  [:div "labnote"])
 
 (defn source-selector [{:keys [key content data-key errors] :as opts}]
   ;; For lab notes we want to get the PI, institution (corp), and date of
@@ -443,55 +493,155 @@
             opts        (assoc opts
                                :key :source
                                :placeholder placeholder)]
-        [text (add-form-data data-key opts)])])])
+        [(if (= :article content) source-article source-labnote )
+         (add-form-data data-key opts)])])])
 
 (defn responsive-two-column [l r]
   [:div.vcenter.mb1h.mbr2
    [:div.left-col l]
    [:div.right-col r]])
 
+(defn responsive-three-column [l r f]
+  [:div.vcenter.mb1h.mbr2
+   [:div.left-col l]
+   [:div.right-col
+    [:div.middle-col r]
+    [:div.feedback-col f]]])
+
 (defn input-row
-  [{:keys [label required? full-width? component] :as field}]
+  [{:keys [label required? full-width? component feedback] :as field}]
   (let [label-span [:span [:b label] (when required?
                                        [:span.text-red.super.small " *"])]]
     (if full-width?
       [:div
-       [:h4.ctext label-span]
+       (when label
+         [:h4.ctext label-span])
        [component field]]
-      [responsive-two-column
-       label-span
-       [component field]])))
+      (if feedback
+        [responsive-three-column
+         label-span
+         [component field]
+         [feedback field]]
+        [responsive-two-column
+         label-span
+         [component field]]))))
+
+(defn relation-button [text event]
+  [:button.text-white.ph.border-round.bg-light-blue
+   {:on-click #(re-frame/dispatch event)}
+   text])
+
+(defn related-buttons [extract-id]
+  (fn  [{:keys [hash] :as extract}]
+    (let [ev [::add-relation extract-id hash]]
+      [:div.flex.space-evenly
+       [relation-button "related extract" (conj ev :related)]
+       [relation-button "in contrast to" (conj ev :contrast)]
+       [relation-button "confirmed by" (conj ev :confirmed)]])))
+
+(defn related-extracts [{:keys [content]}]
+  [:div (count content) "relations"])
+
+(defn search-results [key data-key]
+  (let [results @(re-frame/subscribe [key])]
+    (into [:div.flex.flex-column]
+          (map (fn [id]
+                 [extract/summary @(re-frame/subscribe [:content id])
+                  {:controls (related-buttons data-key)}]))
+          results)))
+
+(defn similar-extracts [{:keys [data-key] :as opts}]
+  (println opts)
+  (let [open? (r/atom true)]
+    (fn [opts]
+      (let [content @(re-frame/subscribe [::content data-key])
+            similar @(re-frame/subscribe [::similar])]
+        (when (and (< 4 (count (:text content))) (seq similar))
+          [:div
+           [:div.left-col
+            [:a.super.right.plh.prh
+             {:on-click (fn [_] (swap! open? not))
+              :title (if @open? "collapse" "expand")}
+             [:div (when @open? {:style {:transform "rotate(90deg)"}}) "➤"]]
+            [:span [:b "possibly similar extracts"]]]
+           [:div.right-col
+            (if @open?
+              [search-results ::similar data-key]
+              [:div.pl1 {:style {:padding-bottom "0.3rem"}}
+               [:b "..."]])]])))))
+
+(defn shared-source [{:keys [data-key]}]
+  (let [open? (r/atom true)]
+    (fn [opts]
+      (let [content @(re-frame/subscribe [::content data-key])
+            same-article @(re-frame/subscribe [::article-extracts])]
+        (when (and (= :article (:extract/type content)) (seq same-article))
+          [:div
+           [:div.left-col
+            [:a.super.right.plh.prh
+              {:on-click (fn [_] (swap! open? not))}
+              [:div (when @open? {:style {:transform "rotate(90deg)"}}) "➤"]]
+            [:span [:b "extracts based on this article"]]]
+           [:div.right-col
+            [:div.border-round.border-solid.ph
+             {:style {:border-color :lightgrey
+                      :box-shadow "1px 1.5px grey inset"}}
+             (if @open?
+               [:div.pl1 "placeholder"]
+               [:div.pl1
+                [:b "not implemented"]])]]])))))
+
+(defn extract-search-results [{:keys [data-key]}]
+  [search-results ::related-search-results data-key])
 
 (def extract-creation-form
   [{:component   textarea
     :label       "extract"
+    :onchange    #(when (< 4 (count %))
+                    (re-frame/dispatch
+                     [:openmind.components.search/search-request
+                      {:term %} ::similar]))
     :key         :text
     :required?   true
     :placeholder "what have you discovered?"}
-   {:component   source-selector
-    :label       "source"
-    :key         :extract/type
-    :required?   true}
+   {:component   similar-extracts
+    :key         :similar
+    :full-width? true}
+   {:component source-selector
+    :label     "source"
+    :key       :extract/type
+    :required? true
+    :feedback  source-preview}
+   {:component   shared-source
+    :key         :same-article
+    :full-width? true}
    {:component   image-drop
     :label       "figures"
     :key         :figures
-    :placeholder [:span [:b "choose a file"] " or drag it here"]}
+    :placeholder [:span [:b "choose a file"] " or drag it here"]
+    :feedback    figure-list}
+   {:component   text
+    :label       "source materials"
+    :placeholder "link to any code / data that you'd like to share"
+    :key         :code-repo}
    {:component   textarea-list
     :label       "comments"
     :key         :comments
     :placeholder "anything you think is important"}
-   {:component   text-input-list
-    :label       "confirmed by"
-    :key         :confirmed
-    :placeholder "link to paper"}
-   {:component   text-input-list
-    :label       "in contrast to"
-    :key         :contrast
-    :placeholder "link to paper"}
-   {:component   text-input-list
-    :label       "related results"
-    :key         :related
-    :placeholder "link to paper"}
+   {:component   text
+    :placeholder "find extract that might be related to this one"
+    :onchange    #(re-frame/dispatch
+                   (if (< 2 (count %))
+                     [:openmind.components.search/search-request
+                      {:term %} ::related-search-results]
+                     [::clear-related-search]))
+    :label       "search for related extracts"
+    :key         :search}
+   {:component   extract-search-results
+    :full-width? true}
+   {:component related-extracts
+    :label     "related extracts"
+    :key       :relations}
    {:component   tag-selector
     :label       "add filter tags"
     :key         :tags
@@ -499,27 +649,28 @@
 
 (defn extract-editor
   [{{:keys [id] :or {id ::new}} :path-params}]
-  (into
-   [:div.flex.flex-column.flex-start.pl2.pr2
-    [:div.flex.space-around
-     [:h2 (if (= ::new id)
-            "create a new extract"
-            "modify extract")]]
-    [:div.flex.pb1.space-between.mb2
-     [:button.bg-red.border-round.wide.text-white.p1
-      {:on-click (fn [_]
-                   (when (= id ::new)
-                     (re-frame/dispatch [::clear ::new]))
-                   ;; TODO: Reset any chanes to edited extracts on cancel
-                   (re-frame/dispatch [:navigate {:route :search}]))
-       :style {:opacity 0.6}}
-      "CANCEL"]
+  (let [id (if (= ::new id) id (edn/read-string id))]
+    (into
+     [:div.flex.flex-column.flex-start.pl2.pr2
+      [:div.flex.space-around
+       [:h2 (if (= ::new id)
+              "create a new extract"
+              "modify extract")]]
+      [:div.flex.pb1.space-between.mb2
+       [:button.bg-red.border-round.wide.text-white.p1
+        {:on-click (fn [_]
+                     (when (= id ::new)
+                       (re-frame/dispatch [::clear ::new]))
+                     ;; TODO: Reset any chanes to edited extracts on cancel
+                     (re-frame/dispatch [:navigate {:route :search}]))
+         :style {:opacity 0.6}}
+        "CANCEL"]
 
-     [:button.bg-dark-grey.border-round.wide.text-white.p1
-      {:on-click (fn [_]
-                   (re-frame/dispatch [::update-extract id]))}
-      (if (= ::new id) "CREATE" "SAVE")]]]
-   (map input-row (map (partial add-form-data id) extract-creation-form))))
+       [:button.bg-dark-grey.border-round.wide.text-white.p1
+        {:on-click (fn [_]
+                     (re-frame/dispatch [::update-extract id]))}
+        (if (= ::new id) "CREATE" "SAVE")]]]
+     (map input-row (map (partial add-form-data id) extract-creation-form)))))
 
 (def routes
   [["/new" {:name      :extract/create
@@ -529,9 +680,10 @@
                        (re-frame/dispatch [::new-extract-init]))}]}]
 
    ["/:id/edit" {:name       :extract/edit
-                 :parameters {:path {:id any?}}
                  :component  extract-editor
                  :controllers
-                 [{:start (fn [{{id :id} :path}]
+                 [{:parameters {:path [:id]}
+                   :start (fn [{{id :id} :path}]
                             (let [id (edn/read-string id)]
-                              (re-frame/dispatch [::fetch-if-blank id])))}]}]])
+                              (when-not @(re-frame/subscribe [::extract id])
+                                (re-frame/dispatch [:ensure id ::editing-copy]))))}]}]])
