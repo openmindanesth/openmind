@@ -91,7 +91,7 @@
 
 (defn menu []
   (let [login @(re-frame/subscribe [::subs/login-info])]
-    [:div.search-result.padded.absolute.bg-light-grey.wide.pb2.pl1.pr1
+    [:div.search-result.ph.absolute.bg-light-grey.wide.pb2.pl1.pr1
      {:style          {:top     5
                        :left    5
                        :z-index 500
@@ -150,7 +150,7 @@
 
 (defn main [content]
   (let [status-message @(re-frame/subscribe [::subs/status-message])]
-    [:div.padded
+    [:div.ph
      [title-bar]
      (when status-message
        [:div.vspacer

@@ -1,11 +1,8 @@
 (ns openmind.components.search
-  (:require [clojure.string :as string]
-            [openmind.components.comment :as comment]
-            [openmind.components.common :as common]
+  (:require [openmind.components.extract :as extract]
             [openmind.components.tags :as tags]
             [openmind.events :as events]
-            [re-frame.core :as re-frame]
-            [reagent.core :as reagent]))
+            [re-frame.core :as re-frame]))
 
 ;;;;; Subs
 
@@ -140,153 +137,12 @@
      {:dispatch [:navigate {:route :search
                             :query (assoc query :term term)}]})))
 
-;;;;; Views
 
-(defn hover-link [link float-content
-                  {:keys [orientation style force?]}]
-  (let [hover? (reagent/atom false)]
-    (fn [text float-content {:keys [orientation style force?]}]
-      [:div.plh.prh
-       {:on-mouse-over #(reset! hover? true)
-        :on-mouse-out  #(reset! hover? false)
-        :style         {:cursor :pointer}}
-       [:div.link-blue link]
-       (when float-content
-         ;; dev hack
-         (when (or force? @hover?)
-           [:div.absolute.ml1.mr1
-            {:style (merge
-                     style
-                     (cond
-                       (= :left orientation)  {:left "0"}
-                       (= :right orientation) {:right "0"}
-                       :else                  {:transform "translateX(-50%)"}))}
-            [:div.relative.z101
-             {:style {:max-width "45rem"}}
-             float-content]]))])))
-
-(defn tg1 [bs]
-  (into {}
-        (comp
-         (map (fn [[k vs]]
-                [k (map rest vs)]))
-         (remove (comp nil? first)))
-        (group-by first bs)))
-
-(defn tree-group
-  "Given a sequence of sequences of tags, return a prefix tree on those
-  sequences."
-  [bs]
-  (when (seq bs)
-    (into {} (map (fn [[k v]]
-                    [k (tree-group v)]))
-          (tg1 bs))))
-
-(defn tag-display [tag-lookup [k children]]
-  (when k
-    [:div.flex
-     [:div {:class (str "bg-blue border-round p1 mbh mrh "
-                        "text-white flex flex-column flex-centre")}
-      [:div
-       (:name (tag-lookup k))]]
-     (into [:div.flex.flex-column]
-           (map (fn [b] [tag-display tag-lookup b]))
-           children)]))
-
-(defn no-content []
-  [:div.border-round.bg-grey.p1 {:style {:width       "1rem"
-                                         :margin-left "2.5rem"}}])
-
-(defn tag-hover [tags]
-  (when (seq tags)
-    (let [tag-lookup @(re-frame/subscribe [::tags/tag-lookup])
-          tag-root @(re-frame/subscribe [:tag-root])
-          branches   (->> tags
-                          (map tag-lookup)
-                          (map (fn [{:keys [id parents]}] (conj parents id))))]
-      [:div.bg-white.p1.border-round.border-solid
-       (into [:div.flex.flex-column]
-             (map (fn [t]
-                    [tag-display tag-lookup t]))
-             (get (tree-group branches) tag-root))])))
-
-
-(defn comments-hover [id]
-  [:div.flex.flex-column.border-round.bg-white.border-solid.p1.pbh
-   [comment/comment-page-content id]])
-
-(defn figure-hover [figures]
-  (when (seq figures)
-    (into [:div.border-round.border-solid.bg-white]
-          (map (fn [id]
-                 (let [{:keys [image-data caption] :as fig}
-                       @(re-frame/subscribe [:content id])]
-                   [:div
-                    (when image-data
-                      [:img.relative.p1 {:src image-data
-                                         :style {:max-width "95%"
-                                                 :max-height "50vh"
-                                                 :left "2px"
-                                                 :top "2px"}}])
-                    (when (seq caption)
-                      [:div.p1 caption])])))
-          figures)))
-
-(defn edit-link [author hash]
-  (when-let [login @(re-frame/subscribe [:openmind.subs/login-info])]
-    (when (= author login)
-      [:div.right.relative.text-grey.small
-       {:style {:top "-2rem" :right "1rem"}}
-       [:a {:on-click #(re-frame/dispatch [:navigate
-                                           {:route :extract/edit
-                                            :path  {:id hash}}])}
-        "edit"]])))
-
-(defn citation [authors date]
-  (let [full (apply str (interpose ", " authors))]
-    (str
-     (if (< (count full) 25) full (str (first authors) ", et al."))
-     " (" date ")")))
-
-(defn source-link [{:keys [authors url publication/date]}]
-  (let [text (if (seq authors)
-               (citation authors (first (string/split date #"[- ]")))
-               url)]
-    (when text
-      [:a.link-blue {:href url} text])))
-
-(defn source-hover [source]
-  [:div.flex.flex-column.border-round.bg-white.border-solid.p1.pbh
-   [common/source-content source]])
-
-(defn ilink [text route]
-  [:a {:on-click #(re-frame/dispatch [:navigate route])}
-        text])
-
-(defn result [{:keys [text author source comments figures tags hash]}]
-  [:div.search-result.padded
-   [:div.break-wrap.ph text]
-   [edit-link author hash]
-   [:div.pth
-    [:div.flex.flex-wrap.space-evenly
-     [hover-link [ilink "comments" {:route :extract/comments
-                                    :path  {:id hash}}]
-      [comments-hover hash]
-      {:orientation :left}]
-     [hover-link "history"]
-     [hover-link "related" #_related]
-     [hover-link "tags" [tag-hover tags] ]
-     [hover-link [ilink "figure" {:route :extract/figure
-                                  :path  {:id hash}}]
-      [figure-hover figures]
-      {:orientation :right}]
-     [hover-link [source-link source] [source-hover source]
-      {:orientation :right}]]]])
 
 (defn search-results []
   (let [results @(re-frame/subscribe [::extracts])]
     [:div (map (fn [r]
-                 ^{:key (str (:hash r))} [result r])
+                 ^{:key (str (:hash r))} [extract/summary r])
                (remove nil? results))]))
 
 (defn radio [select-map set-event close-event state]
