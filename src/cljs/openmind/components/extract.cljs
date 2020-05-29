@@ -144,16 +144,16 @@
              float-content]]))])))
 
 (def type-chars
-  {:unreviewed {:char  "◯"
+  {:labnote    {:char  "⃤"
+                :title "lab note"}
+   :unreviewed {:char  "◯"
                 :title "extract from unreviewed article"}
    :article    {:char  "⬤"
-                :title "extract from peer reviewed article"}
-   :labnote    {:char  "⃤"
-                :title "lab note"}})
+                :title "extract from peer reviewed article"}})
 
 (defn type-indicator [{:keys [extract/type]}]
   (let [{:keys [char title]} (get type-chars type)]
-    [:span.pr1.blue
+    [:span.pr2.blue
      {:title title
       :style {:cursor :help}}
      char]))
@@ -162,7 +162,7 @@
   [:span.small.no-wrap
    [type-indicator extract]
    [:a.unlink {:href (str "https://orcid.org/" (:orcid-id author))}
-        [:span.text-black [:b (:name author)]]]
+        [:span.text-dark-grey [:b (:name author)]]]
    [:span.pl1 [:em (.format comment/dateformat created)]]])
 
 (defn summary [{:keys [text author source comments figures tags hash]
