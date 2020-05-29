@@ -447,7 +447,7 @@
                :key [:source :url])])
 
 (defn source-labnote [opts]
-  [:div "labnote"])
+  [:div "work in progress"])
 
 (defn source-selector [{:keys [key content data-key errors] :as opts}]
   ;; For lab notes we want to get the PI, institution (corp), and date of
