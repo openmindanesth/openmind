@@ -143,53 +143,56 @@
                       :on-mouse-out  halt}}
              float-content]]))])))
 
-(defn metadata [{:keys [time/created author] :as extract}]
-  [:div
-   [:a.unlink {:href (str "https://orcid.org/" (:orcid-id author))}
-        [:span.text-black.small.no-wrap [:b (:name author)]]]
-   [:span.pl1.no-wrap [:em (.format comment/dateformat created)]]])
+(def type-chars
+  {:unreviewed {:char  "◯"
+                :title "extract from unreviewed article"}
+   :article    {:char  "⬤"
+                :title "extract from peer reviewed article"}
+   :labnote    {:char  "⃤"
+                :title "lab note"}})
 
-(defn summary [data opts]
-  (let [meta-open? (reagent/atom false)]
-    (fn [{:keys [text author source comments figures tags hash] :as extract}
-         & [{:keys [edit-link? controls] :as opts}]]
-      [:div.search-result.ph
-       {:style         {:height :min-content}
-        :on-mouse-over #(reset! meta-open? true)
-        :on-mouse-out  #(reset! meta-open? false)}
-       (when @meta-open?
-         [:div {:style {:height   0
-                        :position :relative}}
-          [:div.search-result.bg-plain.pt1.pl1
-           {:style {:border-bottom :none
-                    :border-radius "0.5rem 0.5rem 0 0"
-                    :opacity       0.85
-                    :position      :absolute
-                    :top           "-2.5rem"
-                    :left          "calc(-0.5rem - 1px)"
-                    :width         "100%"
-                    :height        "2rem"}}
-           [metadata extract]]])
-       [:div.break-wrap.ph text]
-       (when edit-link?
-         [edit-link author hash])
-       (when controls
-         [controls extract])
-       [:div.pth
-        [:div.flex.flex-wrap.space-evenly
-         [hover-link [ilink "comments" {:route :extract/comments
-                                        :path  {:id hash}}]
-          [comments-hover hash]
-          {:orientation :left}]
-         [hover-link "history"]
-         [hover-link "related" #_related]
-         [hover-link "tags" [tag-hover tags] ]
-         [hover-link [ilink "figure" {:route :extract/figure
-                                      :path  {:id hash}}]
-          [figure-hover figures]
-          {:orientation :right}]
-         [hover-link [source-link source] [source-hover source]
-          {:orientation :right}]]]])))
+(defn type-indicator [{:keys [extract/type]}]
+  (let [{:keys [char title]} (get type-chars type)]
+    [:span.pr1.blue
+     {:title title
+      :style {:cursor :help}}
+     char]))
+
+(defn metadata [{:keys [time/created author] :as extract}]
+  [:span.small.no-wrap
+   [type-indicator extract]
+   [:a.unlink {:href (str "https://orcid.org/" (:orcid-id author))}
+        [:span.text-black [:b (:name author)]]]
+   [:span.pl1 [:em (.format comment/dateformat created)]]])
+
+(defn summary [{:keys [text author source comments figures tags hash]
+                :as   extract}
+               & [{:keys [edit-link? controls meta-display] :as opts
+                   :or {meta-display metadata}}]]
+  [:div.search-result.ph
+   {:style {:height :min-content}}
+   (when meta-display
+     [:div.ph [meta-display extract]])
+   [:div.break-wrap.ph text]
+   (when edit-link?
+     [edit-link author hash])
+   (when controls
+     [controls extract])
+   [:div.pth
+    [:div.flex.flex-wrap.space-evenly
+     [hover-link [ilink "comments" {:route :extract/comments
+                                    :path  {:id hash}}]
+      [comments-hover hash]
+      {:orientation :left}]
+     [hover-link "history"]
+     [hover-link "related" #_related]
+     [hover-link "tags" [tag-hover tags] ]
+     [hover-link [ilink "figure" {:route :extract/figure
+                                  :path  {:id hash}}]
+      [figure-hover figures]
+      {:orientation :right}]
+     [hover-link [source-link source] [source-hover source]
+      {:orientation :right}]]]])
 
 ;;;;; Figure page
 

@@ -1,8 +1,7 @@
 (ns openmind.components.tags
   (:require [clojure.string :as string]
+            [openmind.components.common :as common]
             [openmind.edn :as edn]
-            [openmind.events :as events]
-            [openmind.subs :as subs]
             [re-frame.core :as re-frame]))
 
 ;; FIXME: This ns needs a serious overhaul. Protocols were a mistake. Had I just
@@ -131,18 +130,13 @@
   (let [children (get-descendents tag)]
     (unselect data children)))
 
-(defn cancel-button [tag display data]
+(defn cancel-button [onclick]
   [:a.border-circle.bg-white.text-black.border-black
    {:style    {:position :relative
                :float    :right
                :top      "-1px"
                :right    "-9px"}
-    :on-click (fn [e]
-                (.stopPropagation e)
-                (.preventDefault e)
-                (when (contains? display tag)
-                  (close-path display tag))
-                (cancel-descendents data tag))}
+    :on-click (juxt common/halt onclick)}
    [:span.centre "x"]])
 
 (defn nested-filter
@@ -164,7 +158,10 @@
                        {:margin-left  "20px"
                         :margin-right "20px"})}
       (when selected?
-        [cancel-button tag display data])
+        [cancel-button (fn [_]
+                         (when (contains? display tag)
+                           (close-path display tag))
+                         (cancel-descendents data tag))])
       [:div.flex.flex-centre
        [:span  name]]
       (when selected?

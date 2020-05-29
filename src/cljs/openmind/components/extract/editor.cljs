@@ -1,7 +1,7 @@
 (ns openmind.components.extract.editor
   (:require [cljs.spec.alpha :as s]
             [clojure.string :as string]
-            [openmind.components.common :as common]
+            [openmind.components.common :as common :refer [halt]]
             [openmind.components.extract :as extract]
             [openmind.components.tags :as tags]
             [openmind.edn :as edn]
@@ -48,7 +48,7 @@
    :content   {:tags     #{}
                :figures  []
                :comments [""]
-               :relations  []}
+               :relations  #{}}
    :errors    nil})
 
 (re-frame/reg-event-fx
@@ -242,6 +242,11 @@
               :author author}]
      (update-in db [::extracts id :content :relations] conj rel))))
 
+(re-frame/reg-event-db
+ ::remove-relation
+ (fn [db [_ id rel]]
+   (update-in db [::extracts id :content :relations] disj rel)))
+
 ;;;; Components
 
 (defn pass-edit [id ks]
@@ -359,10 +364,6 @@
                     :edit      {:read   [::editor-selected-tags id]
                                 :add    [::add-editor-tag id]
                                 :remove [::remove-editor-tag id]}}])
-
-(defn halt [e]
-  (.preventDefault e)
-  (.stopPropagation e))
 
 (defn drop-upload
   "Extracts the dropped image from the drop event and adds it to the app state."
@@ -527,7 +528,7 @@
          [component field]]))))
 
 (defn relation-button [text event]
-  [:button.text-white.ph.border-round.bg-light-blue
+  [:button.text-white.ph.border-round.bg-dark-grey
    {:on-click #(re-frame/dispatch event)}
    text])
 
@@ -539,8 +540,44 @@
        [relation-button "in contrast to" (conj ev :contrast)]
        [relation-button "confirmed by" (conj ev :confirmed)]])))
 
+(def relation-names
+  {:contrast  "in contrast to"
+   :confirmed "confirmed by"
+   :related   "related to"})
+
+(defn relation-meta [attribute]
+  (fn [extract]
+    [:span
+     [:span.border-round.border-solid.ph.bg-light-blue
+      (get relation-names attribute)]
+     [:span.pl1
+      [extract/metadata extract]]]))
+
+(defn cancel-button [onclick]
+  [:a.border-circle.bg-white.text-black.border-black
+   {:style    {:position :relative
+               :float    :right
+               :top      "-1px"
+               :right    "-1px"}
+    :title "remove relation"
+    :on-click (juxt common/halt onclick)}
+   [:span.absolute
+    {:style {:top "-2px"
+             :right "5px"}}
+    "x"]])
+
+(defn relation [{:keys [attribute value entity] :as rel}]
+  (println rel)
+  (let [extract @(re-frame/subscribe [:content value])]
+    [:span
+     [cancel-button #(re-frame/dispatch [::remove-relation entity rel])]
+     [extract/summary extract
+      {:meta-display (relation-meta attribute)}]]))
+
 (defn related-extracts [{:keys [content]}]
-  [:div (count content) "relations"])
+  (into [:div.flex.flex-column]
+        (map relation)
+        content))
 
 (defn search-results [key data-key]
   (let [results @(re-frame/subscribe [key])]
@@ -551,7 +588,6 @@
           results)))
 
 (defn similar-extracts [{:keys [data-key] :as opts}]
-  (println opts)
   (let [open? (r/atom true)]
     (fn [opts]
       (let [content @(re-frame/subscribe [::content data-key])
@@ -638,7 +674,7 @@
     :label       "search for related extracts"
     :key         :search}
    {:component   extract-search-results
-    :full-width? true}
+    }
    {:component related-extracts
     :label     "related extracts"
     :key       :relations}
