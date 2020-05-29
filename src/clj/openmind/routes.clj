@@ -124,7 +124,7 @@
                 (s/explain-data :openmind.spec.extract/extract doc))
       false)))
 
-(defn expand-extract
+#_(defn expand-extract
   "Fetches source data from pubmed and merges that into doc.
   Returns a channel which will eventually emit the result."
   [{:keys [source] :as doc}]
@@ -136,6 +136,16 @@
                       async/<!
                       (assoc :url source))]
       (assoc doc :source detail))))
+
+(defmethod dispatch :openmind/pubmed-lookup
+  [{[_ url id] :event :as req}]
+  (async/go
+    (println "got a hit")
+    (respond-with-fallback
+     req
+     ;; TODO: this should be cached. That data is already in our store, we just
+     ;; need an index.
+     [:openmind/pubmed-article id url (async/<! (pubmed/article-info url))])))
 
 (defn write-extract!
   "Saves extract to S3 and indexes it in elastic."
@@ -151,7 +161,7 @@
     (async/go
       (when (check-author (select-keys (:orcid tokens) [:name :orcid-id])
                           (:author doc))
-        (let [extract (async/<! (expand-extract doc))]
+        (let [extract doc #_(async/<! (expand-extract doc))]
           (when (valid? extract)
             (let [imm (util/immutable extract)]
               (when-let [res (write-extract! imm)]

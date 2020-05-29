@@ -478,9 +478,25 @@
     (when (:abstract content)
       [extract/source-content content])))
 
-(defn source-article [{:keys [content] :as opts}]
+(re-frame/reg-event-fx
+ ::pubmed-lookup
+ (fn [cofx [_ id url]]
+   (when (.includes url "pubmed.ncbi.nlm.nih.gov")
+     (println id url)
+     {:dispatch [:->server [:openmind/pubmed-lookup id url]]})))
+
+(re-frame/reg-event-fx
+ :openmind/pubmed-article
+ (fn [{:keys [db]} [_ id url source]]
+   (let [current (get-in db [::extracts id :content :source :url])]
+     (when (and (= url current) (seq source))
+       {:db (update-in db [::extracts id :content :source] merge source)}))))
+
+(defn source-article [{:keys [content data-key] :as opts}]
   [text (assoc opts
                :content (:url content)
+               :on-blur #(re-frame/dispatch
+                          [::pubmed-lookup data-key (:url content)])
                :key [:source :url])])
 
 (defn source-labnote [opts]
@@ -669,7 +685,7 @@
 (def extract-creation-form
   [{:component   textarea
     :label       "extract"
-    :on-change    #(when (< 4 (count %))
+    :on-change   #(when (< 4 (count %))
                     (re-frame/dispatch
                      [:openmind.components.search/search-request
                       {:term %} ::similar]))
@@ -702,7 +718,7 @@
     :placeholder "anything you think is important"}
    {:component   text
     :placeholder "find extract that might be related to this one"
-    :on-change    #(re-frame/dispatch
+    :on-change   #(re-frame/dispatch
                    (if (< 2 (count %))
                      [:openmind.components.search/search-request
                       {:term %} ::related-search-results]
