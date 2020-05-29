@@ -11,6 +11,10 @@
    :req-un [::image-data ::u/author]
    :opt-un [::caption]))
 
+;; REVIEW: should the same image with different captions share the image-data?
+;; That is, should figures be nested one level deeper so that we can share the
+;; same image-data among different figures?
+
 (s/def ::caption
   string?)
 
