@@ -268,16 +268,16 @@
       (merge @(re-frame/subscribe [::form-input-data id key]))))
 
 (defn text
-  [{:keys [label key placeholder errors content data-key onchange onblur]}]
+  [{:keys [label key placeholder errors content data-key on-change on-blur]}]
   (let [ks (if (vector? key) key [key])]
     [:div.full-width
      [:input.full-width-textarea
       (merge {:id        (apply str ks)
               :type      :text
-              :on-blur   #(when onblur (onblur %))
+              :on-blur   #(when on-blur (on-blur %))
               :on-change (juxt (pass-edit data-key ks)
-                               #(when onchange
-                                  (onchange (-> % .-target .-value)))
+                               #(when on-change
+                                  (on-change (-> % .-target .-value)))
                                #(when errors
                                   (re-frame/dispatch [::revalidate data-key])))}
              (cond
@@ -290,7 +290,7 @@
        [common/error errors])]))
 
 (defn textarea
-  [{:keys [label key required? placeholder spec errors content data-key onchange]}]
+  [{:keys [label key required? placeholder spec errors content data-key on-change]}]
   [:div
    [:textarea.full-width-textarea
     (merge {:id        (name key)
@@ -298,8 +298,8 @@
             :style     {:resize :vertical}
             :type      :text
             :on-change (juxt (pass-edit data-key [key])
-                             #(when onchange
-                                (onchange (-> % .-target .-value)))
+                             #(when on-change
+                                (on-change (-> % .-target .-value)))
                              #(when errors
                                 (re-frame/dispatch [::revalidate data-key])))}
            (cond
@@ -434,7 +434,7 @@
        [:span "remove"]]]
      [text {:key         [:figure-data hash :content :caption]
             :data-key    dk
-            :onblur      #(re-frame/dispatch [::update-caption dk index])
+            :on-blur      #(re-frame/dispatch [::update-caption dk index])
             :content     caption
             :placeholder "additional info about figure"} ]]))
 
@@ -669,7 +669,7 @@
 (def extract-creation-form
   [{:component   textarea
     :label       "extract"
-    :onchange    #(when (< 4 (count %))
+    :on-change    #(when (< 4 (count %))
                     (re-frame/dispatch
                      [:openmind.components.search/search-request
                       {:term %} ::similar]))
@@ -702,7 +702,7 @@
     :placeholder "anything you think is important"}
    {:component   text
     :placeholder "find extract that might be related to this one"
-    :onchange    #(re-frame/dispatch
+    :on-change    #(re-frame/dispatch
                    (if (< 2 (count %))
                      [:openmind.components.search/search-request
                       {:term %} ::related-search-results]
