@@ -23,15 +23,16 @@
       {:errors (validation/interpret-explanation err)})))
 
 (defn prepare-extract
-  [author {:keys [figures] :as extract}]
+  [author {:keys [figure-data figures relations] :as extract}]
   (let [fimms   (->> figures
                      (map #(assoc % :author author))
                      (mapv util/immutable))
-        extract (assoc extract
-                       :figures (map :hash fimms)
-                       :author author)]
-    {:figures fimms
-     :extract extract}))
+        extract (->> extract
+                     (assoc :author author)
+                     (select-keys [:text :author :tags :source :extract/type
+                                   :figures]))]
+    {:snidbits (concat (map (partial get figure-data) figures) relations)
+     :extract  extract}))
 
 (re-frame/reg-event-fx
  ::revalidate
@@ -45,10 +46,11 @@
 
 (def extract-template
   {:selection []
-   :content   {:tags     #{}
-               :figures  []
-               :comments [""]
-               :relations  #{}}
+   :content   {:tags          #{}
+               :figures       []
+               :figure-data   {}
+               :comments      [""]
+               :relations     #{}}
    :errors    nil})
 
 (re-frame/reg-event-fx
@@ -168,9 +170,14 @@
 (re-frame/reg-event-fx
  ::add-figure
  (fn [{:keys [db]} [_ id data-url]]
-   (let [author (:login-info db)]
-     {:db (update-in db [::extracts id :content :figures] conj
-                     {:image-data data-url})})))
+   (let [author (:login-info db)
+         img    (util/immutable {:image-data data-url
+                                 :caption ""
+                                 :author     author})]
+     {:db (-> db
+              (update-in [::extracts id :content :figures] conj (:hash img))
+              (update-in [::extracts id :content :figure-data]
+                         assoc (:hash img) img))})))
 
 (re-frame/reg-event-fx
  ::load-figure
@@ -193,15 +200,17 @@
 (re-frame/reg-event-fx
  ::update-extract
  (fn [{:keys [db]} [_ id]]
-   (let [{:keys [figures extract]}
+   (let [{:keys [snidbits extract]}
          (prepare-extract (get db :login-info)
-                          (get-in db [::extracts id :content]))]
-     (let [{:keys [valid errors]} (validate-extract extract)]
-       (if errors
-         {:dispatch [::form-errors errors id]}
-         {:dispatch-n (into [[:->server [:openmind/index extract]]]
-                            (map #(do [:->server [:openmind/intern %]]))
-                            figures)})))))
+                          (get-in db [::extracts id :content]))
+         {:keys [valid errors]} (validate-extract extract)]
+     (if errors
+       {:dispatch [::form-errors errors id]}
+       ;; TODO: create an intern-all endpoint and don't send a slew of messages
+       ;; unnecessaril
+       {:dispatch-n (into [[:->server [:openmind/index extract]]]
+                          (map #(do [:->server [:openmind/intern %]]))
+                          snidbits)}))))
 
 (defn success? [status]
   (<= 200 status 299))
@@ -259,12 +268,13 @@
       (merge @(re-frame/subscribe [::form-input-data id key]))))
 
 (defn text
-  [{:keys [label key placeholder errors content data-key onchange]}]
+  [{:keys [label key placeholder errors content data-key onchange onblur]}]
   (let [ks (if (vector? key) key [key])]
     [:div.full-width
      [:input.full-width-textarea
       (merge {:id        (apply str ks)
               :type      :text
+              :on-blur   #(when onblur (onblur %))
               :on-change (juxt (pass-edit data-key ks)
                                #(when onchange
                                   (onchange (-> % .-target .-value)))
@@ -380,34 +390,61 @@
 (re-frame/reg-event-db
  ::remove-figure
  (fn [db [_ id i]]
-   (update-in db [::extracts id :content :figures]
-              #(let [[head [_ & tail]] (split-at i %)]
-                 (into (empty %) (concat head tail))))))
+   (let [fid (get-in db [::extracts id :content :figures i])]
+     (-> db
+         (update-in [::extracts id :content :figure-data] dissoc fid)
+         (update-in [::extracts id :content :figures]
+                    #(let [[head [_ & tail]] (split-at i %)]
+                       (into (empty %) (concat head tail))))))))
 
 (defn select-upload [dk e]
   (let [f (-> e .-target .-files (aget 0))]
     (re-frame/dispatch [::load-figure dk f])))
 
-(defn figure-preview [dk {:keys [image-data caption]} index]
-  [:div.flex.flex-column
-   [:div.p1.flex
-    {:style {:max-width "40rem"}}
-    [:img.border-round
-     {:src   image-data
-      :style {:width :max-content}}]
-    [:a.text-dark-grey.pl1
-     {:on-click (juxt halt #(re-frame/dispatch [::remove-figure dk index]))}
-     [:span "remove"]]]
-   [text {:key         [:figures index :caption]
-          :data-key    dk
-          :content     caption
-          :placeholder "additional info about figure"} ]])
+(re-frame/reg-event-db
+ ;; REVIEW: This is a kludge that's necessary due to the fact that rehashing the
+ ;; figure on every keystroke isn't feasible. This is clearly a sign that I'm
+ ;; doing something wrong, but it seems to work for the time being.
+ ::update-caption
+ (fn [db [_ dk index]]
+   (let [id  (get-in db [::extracts dk :content :figures index])
+         fig (get-in db [::extracts dk :content :figure-data id :content])
+         new (util/immutable fig)]
+     (if (= fig new)
+       db
+       (-> db
+           (update-in [::extracts dk :content :figure-data]
+                      #(-> %
+                           (dissoc id)
+                           (assoc (:hash new) new)))
+           (update-in [::extracts dk :content :figures]
+                      #(let [[head [_ & tail]] (split-at index %)]
+                         (into (empty %) (concat head [(:hash new)] tail)))))))))
+
+(defn figure-preview [dk {:keys [hash content]} index]
+  (let [{:keys [image-data caption]} content]
+    [:div.flex.flex-column
+     [:div.p1.flex
+      {:style {:max-width "40rem"}}
+      [:img.border-round
+       {:src   image-data
+        :style {:width :max-content}}]
+      [:a.text-dark-grey.pl1
+       {:on-click (juxt halt #(re-frame/dispatch [::remove-figure dk index]))}
+       [:span "remove"]]]
+     [text {:key         [:figure-data hash :content :caption]
+            :data-key    dk
+            :onblur      #(re-frame/dispatch [::update-caption dk index])
+            :content     caption
+            :placeholder "additional info about figure"} ]]))
 
 (defn figure-list [{:keys [data-key content] :as opts}]
-  [:div.flex.flex-column
-   (map-indexed (fn [i f]
-                  ^{:key (str "fig-" i)} [figure-preview data-key f i])
-                content)])
+  (let [{:keys [figures figure-data]} @(re-frame/subscribe [::content data-key])]
+    [:div.flex.flex-column
+     (map-indexed (fn [i f]
+                    ^{:key (str "fig-" i)}
+                    [figure-preview data-key (get figure-data f) i])
+                  figures)]))
 
 (defn image-drop
   [opts]
@@ -567,7 +604,6 @@
     "x"]])
 
 (defn relation [{:keys [attribute value entity] :as rel}]
-  (println rel)
   (let [extract @(re-frame/subscribe [:content value])]
     [:span
      [cancel-button #(re-frame/dispatch [::remove-relation entity rel])]
@@ -654,8 +690,8 @@
    {:component   image-drop
     :label       "figures"
     :key         :figures
-    :placeholder [:span [:b "choose a file"] " or drag it here"]
-    :feedback    figure-list}
+    :placeholder [:span [:b "choose a file"] " or drag it here"]}
+   {:component figure-list}
    {:component   text
     :label       "source materials"
     :placeholder "link to any code / data that you'd like to share"
@@ -673,8 +709,7 @@
                      [::clear-related-search]))
     :label       "search for related extracts"
     :key         :search}
-   {:component   extract-search-results
-    }
+   {:component extract-search-results}
    {:component related-extracts
     :label     "related extracts"
     :key       :relations}
@@ -722,4 +757,5 @@
                    :start (fn [{{id :id} :path}]
                             (let [id (edn/read-string id)]
                               (when-not @(re-frame/subscribe [::extract id])
-                                (re-frame/dispatch [:ensure id ::editing-copy]))))}]}]])
+                                (re-frame/dispatch
+                                 [:ensure id ::editing-copy]))))}]}]])
