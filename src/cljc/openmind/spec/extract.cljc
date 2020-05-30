@@ -43,6 +43,7 @@
 
 (s/def ::pubmed-reference
   (s/keys :req [:publication/date]
+          :opt-un [::vol ::issue]
           :req-un [::authors ::doi ::title ::abstract ::journal ::url]))
 
 (s/def :publication/date
