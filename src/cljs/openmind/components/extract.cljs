@@ -72,15 +72,14 @@
                       [:div.p1 caption])])))
           figures)))
 
-(defn edit-link [author hash]
-  (when-let [login @(re-frame/subscribe [:openmind.subs/login-info])]
-    (when true #_(= author login)
-      [:div.right.relative.text-grey.small
-       {:style {:top "-2rem" :right "1rem"}}
-       [:a {:on-click #(re-frame/dispatch [:navigate
-                                           {:route :extract/edit
-                                            :path  {:id hash}}])}
-        "edit"]])))
+(defn edit-link [hash]
+  ;; Users must be logged in to edit extracts
+  (when @(re-frame/subscribe [:openmind.subs/login-info])
+    [:div.right.relative.text-grey.small.ph.pr1
+     [:a {:on-click #(re-frame/dispatch [:navigate
+                                         {:route :extract/edit
+                                          :path  {:id hash}}])}
+      "edit"]]))
 
 (defn citation [authors date]
   (let [full (apply str (interpose ", " authors))]
@@ -96,12 +95,14 @@
       [:a.link-blue {:href url} text])))
 
 (defn source-content [{:keys [authors publication/date journal
-                            abstract doi title]}]
+                            abstract doi title volume issue]}]
   [:div
    [:h2 title]
    [:span.smaller.pb1
     [:span (str "(" date ")")]
-    [:span.plh  journal]
+    [:span.plh  journal
+     (when volume
+       (str " " volume "(" issue ")"))]
     [:span.plh " doi: " doi]
     [:em.small.pl1 (apply str (interpose ", " authors))]]
    [:p abstract]])
@@ -168,14 +169,15 @@
 (defn summary [{:keys [text author source comments figures tags hash]
                 :as   extract}
                & [{:keys [edit-link? controls meta-display] :as opts
-                   :or {meta-display metadata}}]]
+                   :or {meta-display metadata
+                        edit-link? true}}]]
   [:div.search-result.ph
    {:style {:height :min-content}}
+   (when edit-link?
+     [edit-link hash])
    (when meta-display
      [:div.ph [meta-display extract]])
    [:div.break-wrap.ph text]
-   (when edit-link?
-     [edit-link author hash])
    (when controls
      [controls extract])
    [:div.pth

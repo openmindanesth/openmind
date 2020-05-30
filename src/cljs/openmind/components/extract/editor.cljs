@@ -481,16 +481,15 @@
 (re-frame/reg-event-fx
  ::pubmed-lookup
  (fn [cofx [_ id url]]
-   (when (.includes url "pubmed.ncbi.nlm.nih.gov")
-     (println id url)
-     {:dispatch [:->server [:openmind/pubmed-lookup id url]]})))
+   (when (.includes url "ncbi.nlm.nih.gov")
+     {:dispatch [:->server [:openmind/pubmed-lookup {:res-id id :url url}]]})))
 
 (re-frame/reg-event-fx
  :openmind/pubmed-article
- (fn [{:keys [db]} [_ id url source]]
-   (let [current (get-in db [::extracts id :content :source :url])]
+ (fn [{:keys [db]} [_ {:keys [res-id url source]}]]
+   (let [current (get-in db [::extracts res-id :content :source :url])]
      (when (and (= url current) (seq source))
-       {:db (update-in db [::extracts id :content :source] merge source)}))))
+       {:db (update-in db [::extracts res-id :content :source] merge source)}))))
 
 (defn source-article [{:keys [content data-key] :as opts}]
   [text (assoc opts
@@ -624,7 +623,8 @@
     [:span
      [cancel-button #(re-frame/dispatch [::remove-relation entity rel])]
      [extract/summary extract
-      {:meta-display (relation-meta attribute)}]]))
+      {:meta-display (relation-meta attribute)
+       :edit-link?   false}]]))
 
 (defn related-extracts [{:keys [content]}]
   (into [:div.flex.flex-column]
@@ -636,7 +636,8 @@
     (into [:div.flex.flex-column]
           (map (fn [id]
                  [extract/summary @(re-frame/subscribe [:content id])
-                  {:controls (related-buttons data-key)}]))
+                  {:controls (related-buttons data-key)
+                   :edit-link? false}]))
           results)))
 
 (defn similar-extracts [{:keys [data-key] :as opts}]

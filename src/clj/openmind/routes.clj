@@ -138,14 +138,14 @@
       (assoc doc :source detail))))
 
 (defmethod dispatch :openmind/pubmed-lookup
-  [{[_ url id] :event :as req}]
+  [{[_ {:keys [url res-id] :as ev}] :event :as req}]
   (async/go
-    (println "got a hit")
     (respond-with-fallback
      req
      ;; TODO: this should be cached. That data is already in our store, we just
      ;; need an index.
-     [:openmind/pubmed-article id url (async/<! (pubmed/article-info url))])))
+     [:openmind/pubmed-article
+      (assoc ev :source (async/<! (pubmed/article-info url)))])))
 
 (defn write-extract!
   "Saves extract to S3 and indexes it in elastic."

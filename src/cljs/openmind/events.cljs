@@ -248,7 +248,7 @@
  (fn [_ _]))
 
 (re-frame/reg-event-fx
- :chsk/ping
+ :chsk/ws-ping
  (fn [_ _]))
 
 (re-frame/reg-event-fx
