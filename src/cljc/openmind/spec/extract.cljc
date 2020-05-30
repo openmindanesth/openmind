@@ -16,10 +16,13 @@
                    ::source]
           :req [:extract/type]
           :opt [:history/previous-version]
-          :opt-un [::figures]))
+          :opt-un [::figures ::source-material]))
 
 (s/def ::figures
   (s/coll-of ::u/hash :distinct true))
+
+(s/def ::source-material
+  string?)
 
 (s/def :extract/type
   (s/and some? keyword?))
@@ -43,7 +46,7 @@
 
 (s/def ::pubmed-reference
   (s/keys :req [:publication/date]
-          :opt-un [::vol ::issue]
+          :opt-un [::volume ::issue]
           :req-un [::authors ::doi ::title ::abstract ::journal ::url]))
 
 (s/def :publication/date

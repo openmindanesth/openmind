@@ -27,8 +27,8 @@
                   first)
         parts (string/split path #"/")
         id    (if (string/ends-with? path "/")
-                (last (butlast path))
-                (last path))]
+                (last (butlast parts))
+                (last parts))]
     (str "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
          "?db=pubmed&retmode=xml&id="
          id)))

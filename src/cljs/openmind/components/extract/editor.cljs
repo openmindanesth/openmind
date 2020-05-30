@@ -22,15 +22,21 @@
       (log/trace "Bad extract" err)
       {:errors (validation/interpret-explanation err)})))
 
+(def extract-keys
+  [:text
+   :author
+   :tags
+   :source
+   :extract/type
+   :figures
+   :source-material
+   :history/previous-version])
+
 (defn prepare-extract
   [author {:keys [figure-data figures relations] :as extract}]
-  (let [fimms   (->> figures
-                     (map #(assoc % :author author))
-                     (mapv util/immutable))
-        extract (->> extract
-                     (assoc :author author)
-                     (select-keys [:text :author :tags :source :extract/type
-                                   :figures]))]
+  (let [extract (-> extract
+                    (assoc :author author)
+                    (select-keys extract-keys))]
     {:snidbits (concat (map (partial get figure-data) figures) relations)
      :extract  extract}))
 
@@ -62,7 +68,9 @@
 (re-frame/reg-event-db
  ::clear
  (fn [db [_ id]]
-   (assoc-in db [::extracts id] extract-template)))
+   (-> db
+       (assoc-in [::extracts id] extract-template)
+       (dissoc ::similar ::related-search-results))))
 
 (re-frame/reg-event-db
  ::editing-copy
@@ -204,6 +212,7 @@
          (prepare-extract (get db :login-info)
                           (get-in db [::extracts id :content]))
          {:keys [valid errors]} (validate-extract extract)]
+     (println errors)
      (if errors
        {:dispatch [::form-errors errors id]}
        ;; TODO: create an intern-all endpoint and don't send a slew of messages
@@ -474,9 +483,9 @@
                   :on-change (partial select-upload data-key)}]]))))
 
 (defn source-preview [{:keys [data-key] :as opts}]
-  (let [content (:source @(re-frame/subscribe [::content data-key]))]
-    (when (:abstract content)
-      [extract/source-content content])))
+  (let [{:keys [source extract/type]} @(re-frame/subscribe [::content data-key])]
+    (when (and (= type :article) (:abstract source))
+      [extract/source-content source])))
 
 (re-frame/reg-event-fx
  ::pubmed-lookup
