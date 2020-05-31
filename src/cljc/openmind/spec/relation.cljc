@@ -13,7 +13,7 @@
   keyword?)
 
 (s/def ::entity
-  (s/or :new #(= :openmind.components.extract.editor/new)
+  (s/or :new #(= :openmind.components.extract.editor/new %)
         :ref ::u/hash))
 
 (s/def ::value

@@ -25,15 +25,15 @@
 
 (s/def ::extract-metadata
   (s/keys :req-un [::extract]
-          :opt-un [::comments ::related]))
+          :opt-un [::comments ::relations]))
 
 (s/def ::extract
   ::u/hash)
 
-(s/def ::extract-comments
+(s/def ::comments
   (s/coll-of ::comment :distinct true))
 
-(s/def ::extract-relations
+(s/def ::relations
   (s/coll-of ::relation :distinct true))
 
 ;; TODO: Somehow we have to sink this with the :openmind.spec.comment/comment
@@ -51,15 +51,15 @@
   (s/map-of ::u/author ::vote-summary))
 
 (s/def ::replies
-  ::extract-comments)
+  ::comments)
 
 (s/def ::rank
   int?)
 
 (s/def ::relation
-  (s/keys :req-un [::rel/type
-                   ::rel/subject
-                   ::rel/object
+  (s/keys :req-un [::u/hash
                    ::u/author
-                   ::u/hash]
-          :req    [:time/created]))
+                   ::rel/entity
+                   ::rel/attribute
+                   ::rel/value]
+          :req [:time/created]))

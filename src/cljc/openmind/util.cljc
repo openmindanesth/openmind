@@ -15,3 +15,6 @@
          :content      content})
       (log/error "Can't parse immutable"
                  (s/explain-data ::spec/content content)))))
+
+(defn immutable? [x]
+  (s/valid? ::spec/immutable x))

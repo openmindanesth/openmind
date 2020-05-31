@@ -120,9 +120,11 @@
 (defn assoc-index
   "Set key `k` in (associative) index `index` to `v` using the semantics of
   `swap!`. Applies the change transactionally and retries until success."
-  [index k v]
+  [index k v & kvs]
+  (assert (= 0 (mod (count kvs 2)))
+          "assoc-index requires an whole number of key-value pairs just as assoc")
   (let [old (get-index index)
-        new (util/immutable (assoc (:content old) k v))]
+        new (util/immutable (apply assoc (:content old) k v kvs))]
     (intern new)
     (let [{:keys [success? value]} (index-compare-and-set! index old new)]
       (if success?

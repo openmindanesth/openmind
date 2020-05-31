@@ -117,25 +117,12 @@
 (defn valid?
   "Checks that `doc` is a valid extract based on its spec."
   [doc]
-  (if (s/valid? :openmind.spec.extract/extract doc)
+  (if (s/valid? :openmind.spec.extract/extract (:content doc))
     true
     (do
       (log/warn "Invalid extract received from client:"
                 (s/explain-data :openmind.spec.extract/extract doc))
       false)))
-
-#_(defn expand-extract
-  "Fetches source data from pubmed and merges that into doc.
-  Returns a channel which will eventually emit the result."
-  [{:keys [source] :as doc}]
-  ;; REVIEW: This kind of threaded async code is hard to read. Is that only
-  ;; because it's new to me?
-  (async/go
-    (let [detail (-> source
-                      pubmed/article-info
-                      async/<!
-                      (assoc :url source))]
-      (assoc doc :source detail))))
 
 (defmethod dispatch :openmind/pubmed-lookup
   [{[_ {:keys [url res-id] :as ev}] :event :as req}]
@@ -155,22 +142,20 @@
       (async/<! (es/index-extract! extract)))))
 
 (defmethod dispatch :openmind/index
-  [{:keys [client-id send-fn ?reply-fn uid tokens] [_ doc] :event :as req}]
+  [{:keys [client-id send-fn ?reply-fn uid tokens] [_ imm] :event :as req}]
   ;; TODO: This should just be another subbranch on :openmind/intern
   (when (or (not= uid :taoensso.sente/nil-uid) env/dev-mode?)
     (async/go
       (when (check-author (select-keys (:orcid tokens) [:name :orcid-id])
-                          (:author doc))
-        (let [extract doc #_(async/<! (expand-extract doc))]
-          (when (valid? extract)
-            (let [imm (util/immutable extract)]
-              (when-let [res (write-extract! imm)]
-                (let [res (async/<! res)]
-                  (if (<= 200 (:status res) 299)
-                    (index/index imm)
-                    (log/error "Failed to index new extact" res))
-                  (respond-with-fallback
-                   req [:openmind/index-result (:status res)]))))))))))
+                          (:author (:content imm)))
+        (when (valid? imm)
+          (when-let [res (write-extract! imm)]
+            (let [res (async/<! res)]
+              (if (and res (<= 200 (:status res) 299))
+                (index/index imm)
+                (log/error "Failed to index new extact" imm))
+              (respond-with-fallback
+               req [:openmind/index-result (:status res)]))))))))
 
 ;; TODO: We shouldn't allow updating extracts until we get this sorted.
 #_(defmethod dispatch :openmind/update
@@ -192,7 +177,7 @@
 (defmethod dispatch :openmind/intern
   [{[_ imm] :event :as req}]
   ;; TODO: Author check. Validation is already done in several places.
-  (when (s3/intern imm)
+  (do (s3/intern imm)
     (when-let [res (index/index imm)]
       ;; REVIEW: This could be broadcast to all connected clients.
       ;;

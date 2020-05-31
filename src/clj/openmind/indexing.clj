@@ -109,3 +109,28 @@
   [_ _]
   ;; No op. We don't index figures, just store them.
   true)
+
+;;;;; Relations
+
+;; FIXME: I'm still glossing over the difference between names and values.
+
+(defn update-entity-attr-list [id key val]
+  (let [new (-> id
+                extract-metadata
+                (update key conj val)
+                util/immutable)]
+    (when (s3/intern new)
+      new)))
+
+(defmethod update-indicies :relation
+  [_ {:keys [hash content time/created] :as rel}]
+  (let [{:keys [entity value]} content
+
+        meta-rel    (assoc rel
+                           :time/created created
+                           :hash hash)
+        entity-meta (update-entity-attr-list entity :relations rel)
+        value-meta  ((update-entity-attr-list value :relations rel))]
+    (s3/assoc-index extract-metadata-uri
+                    entity (:hash entity-meta)
+                    value (:hash value-meta))))

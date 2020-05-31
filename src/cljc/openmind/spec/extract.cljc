@@ -38,11 +38,14 @@
   (s/or
    :pubmed  ::pubmed-reference
    :labnote ::labnote-source
-   :link    ::url))
+   :link    ::just-url))
 
 (s/def ::url
   ;; TODO: Validate url
   string?)
+
+(s/def ::just-url
+  (s/keys :req-un [::url]))
 
 (s/def ::pubmed-reference
   (s/keys :req [:publication/date]
