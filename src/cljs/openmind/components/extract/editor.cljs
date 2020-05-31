@@ -33,19 +33,30 @@
    :history/previous-version])
 
 (defn prepare-extract
-  [author {:keys [figure-data figures relations] :as extract}]
-  (let [extract (-> extract
-                    (assoc :author author)
-                    (select-keys extract-keys))]
-    {:snidbits (concat (map (partial get figure-data) figures) relations)
-     :extract  extract}))
+  [author extract]
+  (-> extract
+      (assoc :author author)
+      (select-keys extract-keys)))
+
+(defn sub-new [id]
+  (fn [{:keys [entity] :as rel}]
+    (if (= entity ::new)
+      (assoc rel :entity id)
+      rel)))
+
+(defn finalise-extract [prepared {:keys [figure-data relations]}]
+  (let [imm (util/immutable prepared)
+        rels (map (sub-new (:hash imm)) relations)]
+    {:imm imm
+     :snidbits (concat (map (partial get figure-data) (:figures prepared))
+                       (map util/immutable rels))}))
 
 (re-frame/reg-event-fx
  ::revalidate
  (fn [{:keys [db]} [_ id]]
-   (let [{:keys [extract]} (prepare-extract
-                            (:login-info db)
-                            (get-in db [::extracts id :content]))]
+   (let [extract (prepare-extract
+                  (:login-info db)
+                  (get-in db [::extracts id :content]))]
      {:dispatch [::form-errors (:errors (validate-extract extract)) id]})))
 
 ;;;;; New extract init
@@ -208,18 +219,17 @@
 (re-frame/reg-event-fx
  ::update-extract
  (fn [{:keys [db]} [_ id]]
-   (let [{:keys [snidbits extract]}
-         (prepare-extract (get db :login-info)
-                          (get-in db [::extracts id :content]))
+   (let [base                   (get-in db [::extracts id :content])
+         extract                (prepare-extract (get db :login-info) base)
          {:keys [valid errors]} (validate-extract extract)]
-     (println errors)
      (if errors
        {:dispatch [::form-errors errors id]}
        ;; TODO: create an intern-all endpoint and don't send a slew of messages
        ;; unnecessaril
-       {:dispatch-n (into [[:->server [:openmind/index extract]]]
-                          (map #(do [:->server [:openmind/intern %]]))
-                          snidbits)}))))
+       (let [{:keys [imm snidbits]} (finalise-extract extract base)]
+         {:dispatch-n (into [[:->server [:openmind/index imm]]]
+                            (map #(do [:->server [:openmind/intern %]]))
+                            snidbits)})))))
 
 (defn success? [status]
   (<= 200 status 299))
