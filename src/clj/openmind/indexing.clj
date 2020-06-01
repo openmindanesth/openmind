@@ -99,9 +99,10 @@
 (defmethod update-indicies :extract
   [_ {:keys [hash] {:keys [history/previous-version]} :content}]
   ;; TODO: updates
-  (let [blank-meta (util/immutable {:extract hash})]
-    (s3/intern blank-meta)
-    (s3/assoc-index extract-metadata-uri hash (:hash blank-meta))))
+  (when-not (extract-metadata hash)
+    (let [blank-meta (util/immutable {:extract hash})]
+      (s3/intern blank-meta)
+      (s3/assoc-index extract-metadata-uri hash (:hash blank-meta)))))
 
 ;;;;; Figures
 
@@ -114,23 +115,30 @@
 
 ;; FIXME: I'm still glossing over the difference between names and values.
 
-(defn update-entity-attr-list [id key val]
+(defn add-relation [id rel]
   (let [new (-> id
                 extract-metadata
-                (update key conj val)
+                (assoc :extract id)
+                (update :relations
+                        #(if (seq %)
+                           (conj % rel)
+                           #{rel}))
                 util/immutable)]
     (when (s3/intern new)
       new)))
+
+(defn metarel [{:keys [hash content time/created] :as rel}]
+  (assoc content
+         :time/created created
+         :hash hash))
 
 (defmethod update-indicies :relation
   [_ {:keys [hash content time/created] :as rel}]
   (let [{:keys [entity value]} content
 
-        meta-rel    (assoc rel
-                           :time/created created
-                           :hash hash)
-        entity-meta (update-entity-attr-list entity :relations rel)
-        value-meta  ((update-entity-attr-list value :relations rel))]
+        meta-rel    (metarel rel)
+        entity-meta (add-relation entity meta-rel)
+        value-meta  (add-relation value  meta-rel)]
     (s3/assoc-index extract-metadata-uri
                     entity (:hash entity-meta)
                     value (:hash value-meta))))
