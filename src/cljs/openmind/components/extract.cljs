@@ -109,6 +109,7 @@
 
 (defn source-hover [source]
   [:div.flex.flex-column.border-round.bg-white.border-solid.p1.pbh
+   {:style {:max-width "calc(60vh)"}}
    [source-content source]])
 
 (defn ilink [text route]
@@ -139,10 +140,17 @@
                        (= :right orientation) {:right "0"}
                        :else                  {:transform "translateX(-50%)"}))}
             [:div.relative.z101
-             {:style {:max-width     "45rem"
+             {:style {:max-width     "calc(75vw)"
                       :on-mouse-over halt
                       :on-mouse-out  halt}}
              float-content]]))])))
+
+(re-frame/reg-sub
+ ::relations
+ (fn [[_ id]]
+   (re-frame/subscribe [:lookup id]))
+ (fn [meta [_ id]]
+   (:relations (:content meta))))
 
 (def type-chars
   {:labnote    {:char  "⃤"
@@ -166,11 +174,42 @@
         [:span.text-dark-grey [:b (:name author)]]]
    [:span.pl1 [:em (.format comment/dateformat created)]]])
 
-(defn summary [{:keys [text author source comments figures tags hash]
-                :as   extract}
+(declare summary)
+
+(def relation-names
+  {:contrast  "in contrast to"
+   :confirmed "confirmed by"
+   :related   "related to"})
+
+(defn relation-meta [attribute]
+  (fn [extract]
+    [:span
+     [:span.border-round.border-solid.ph.bg-light-blue
+      (get relation-names attribute)]
+     [:span.pl1
+      [metadata extract]]]))
+
+(defn related-extracts [id]
+  (let [metaid @(re-frame/subscribe [:extract-metadata id])
+        relations (when metaid @(re-frame/subscribe [::relations metaid]))]
+    (when relations
+      (into
+       [:div.flex.flex-column.bg-plain
+        {:style {:width "calc(75vh)"}}]
+       (map (fn [{:keys [entity attribute value]}]
+              (let [other (if (= entity id) value entity)
+                    odata @(re-frame/subscribe [:content other])]
+                (with-meta
+                  [summary odata
+                   {:edit-link? false
+                    :meta-display (relation-meta attribute)}]
+                  {:key (str id "-" attribute "-" other)}))))
+       relations))))
+
+(defn summary [{:keys [text author source figures tags hash] :as extract}
                & [{:keys [edit-link? controls meta-display] :as opts
-                   :or {meta-display metadata
-                        edit-link? true}}]]
+                   :or   {meta-display metadata
+                          edit-link?   true}}]]
   [:div.search-result.ph
    {:style {:height :min-content}}
    (when edit-link?
@@ -187,7 +226,8 @@
       [comments-hover hash]
       {:orientation :left}]
      [hover-link "history"]
-     [hover-link "related" #_related]
+     [hover-link "related" [related-extracts hash]
+      {:orientation :right}]
      [hover-link "tags" [tag-hover tags] ]
      [hover-link [ilink "figure" {:route :extract/figure
                                   :path  {:id hash}}]

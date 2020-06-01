@@ -611,19 +611,6 @@
        [relation-button "in contrast to" (conj ev :contrast)]
        [relation-button "confirmed by" (conj ev :confirmed)]])))
 
-(def relation-names
-  {:contrast  "in contrast to"
-   :confirmed "confirmed by"
-   :related   "related to"})
-
-(defn relation-meta [attribute]
-  (fn [extract]
-    [:span
-     [:span.border-round.border-solid.ph.bg-light-blue
-      (get relation-names attribute)]
-     [:span.pl1
-      [extract/metadata extract]]]))
-
 (defn cancel-button [onclick]
   [:a.border-circle.bg-white.text-black.border-black
    {:style    {:position :relative
@@ -642,7 +629,7 @@
     [:span
      [cancel-button #(re-frame/dispatch [::remove-relation entity rel])]
      [extract/summary extract
-      {:meta-display (relation-meta attribute)
+      {:meta-display (extract/relation-meta attribute)
        :edit-link?   false}]]))
 
 (defn related-extracts [{:keys [content]}]
