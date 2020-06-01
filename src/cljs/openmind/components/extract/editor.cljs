@@ -73,7 +73,7 @@
 (re-frame/reg-event-fx
  ::new-extract-init
  (fn [{:keys [db]} _]
-   (when (empty? (-> db ::extracts ::new))
+   (when (empty? (-> db ::extracts ::new :content))
      {:db (assoc-in db [::extracts ::new] extract-template)})))
 
 (re-frame/reg-event-db
@@ -773,6 +773,8 @@
 
        [:button.bg-dark-grey.border-round.wide.text-white.p1
         {:on-click (fn [_]
+                     ;; TODO: Spinning cursor while waiting for response from
+                     ;; server.
                      (re-frame/dispatch [::update-extract id]))}
         (if (= ::new id) "CREATE" "SAVE")]]]
      (map input-row (map (partial add-form-data id) extract-creation-form)))))

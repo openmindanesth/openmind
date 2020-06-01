@@ -195,7 +195,7 @@
       [vote-widget comment login]
       [:div
        [:a.unlink {:href (str "https://orcid.org/" (:orcid-id author))}
-        [:span.text-black.small.no-wrap [:b (:name author)]]]]
+        [:span.text-dark-grey.small.no-wrap [:b (:name author)]]]]
       [:div.pl1
        [points rank]]
       [:span.pl1.no-wrap [:em (.format dateformat created)]]
