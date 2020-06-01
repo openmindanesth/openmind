@@ -35,7 +35,8 @@
                         {:text text :author author :extract page-id}
                         (when reply-id
                           {:reply-to reply-id}))]
-           ;; TODO: Clear comment entry area on successful intern
+           ;; TODO: Clear comment entry area on successful intern, rather than
+           ;; on clicking save as we do now
            {:db         (assoc-in db [::new-comments id] {})
             :dispatch-n [[:->server
                           [:openmind/intern (util/immutable comment)]]

@@ -103,9 +103,6 @@
  (fn [cofx [_ & tags]]
    (update-filter-tags cofx tags disj)))
 
-;;;;; REVIEW: Are Protocols really the way to encapsulate chunks of re-frame
-;;;;; state?
-
 (defprotocol TagDisplay
   "Methods to control the visual state of the tag selector."
   (get-path [this])

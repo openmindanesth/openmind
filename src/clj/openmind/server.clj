@@ -29,7 +29,7 @@
 
 ;; HACK: monkey patching works, but oh boy...
 ;;
-;; I can't get see any other way to do this without making a second request.
+;; I can't see any other way to do this without making a second request.
 ;; REVIEW: Would that be so bad?
 (alter-var-root #'ring.middleware.oauth2/format-access-token
                 (constantly my-format-access-token))

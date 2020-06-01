@@ -36,7 +36,7 @@
 (s/def ::relations
   (s/coll-of ::relation :distinct true))
 
-;; TODO: Somehow we have to sink this with the :openmind.spec.comment/comment
+;; TODO: Somehow we have to sync this with the :openmind.spec.comment/comment
 ;; spec. This is a strict extension. Same goes for ::relation
 (s/def ::comment
   (s/keys :req-un [::u/text ::u/author ::u/hash]

@@ -177,8 +177,7 @@
 (defmethod dispatch :openmind/intern
   [{[_ imm] :event :as req}]
   ;; TODO: Author check. Validation is already done in several places.
-  ;; FIXME:!!!!!!! temporary!
-  (do (s3/intern imm)
+  (when (s3/intern imm)
     (when-let [res (index/index imm)]
       ;; REVIEW: This could be broadcast to all connected clients.
       ;;

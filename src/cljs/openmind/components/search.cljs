@@ -177,8 +177,6 @@
         label (get values @content)]
        (when @open?
          [:div.border-round.border-solid.p1.bg-plain.absolute
-          ;; REVIEW: I don't like this. Required keywords, basically a bespoke
-          ;; and undocumented DSL...
           {:style {align     0
                    :top       "-.9rem"
                    :width     "100%"

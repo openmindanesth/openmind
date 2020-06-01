@@ -80,7 +80,7 @@
  ::clear
  (fn [db [_ id]]
    (-> db
-       (assoc-in [::extracts id] extract-template)
+       (update ::extracts dissoc id)
        (dissoc ::similar ::related-search-results))))
 
 (re-frame/reg-event-db
@@ -766,9 +766,7 @@
       [:div.flex.pb1.space-between.mb2
        [:button.bg-red.border-round.wide.text-white.p1
         {:on-click (fn [_]
-                     (when (= id ::new)
-                       (re-frame/dispatch [::clear ::new]))
-                     ;; TODO: Reset any chanes to edited extracts on cancel
+                     (re-frame/dispatch [::clear id])
                      (re-frame/dispatch [:navigate {:route :search}]))
          :style {:opacity 0.6}}
         "CANCEL"]

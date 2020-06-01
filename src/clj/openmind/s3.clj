@@ -35,7 +35,7 @@
   "Returns full doc from S3 associated with key `k`."
   [k]
   ;; REVIEW: We don't want to cache nils, because the fact that a doc does not
-  ;; exist yet, doesn't mean it never will (though the odds of that being a
+  ;; exist yet doesn't mean it never will (though the odds of that being a
   ;; problem are astronomically small, I'd rather rule it out). This seems
   ;; sufficient, but it breaks the snapshot capability. But I think that's
   ;; because of the retrying which isn't a problem. In fact if we retry forever
@@ -121,7 +121,7 @@
   "Set key `k` in (associative) index `index` to `v` using the semantics of
   `swap!`. Applies the change transactionally and retries until success."
   [index k v & kvs]
-  (assert (= 0 (mod (count kvs 2)))
+  (assert (= 0 (mod (count kvs) 2))
           "assoc-index requires an whole number of key-value pairs just as assoc")
   (let [old (get-index index)
         new (util/immutable (apply assoc (:content old) k v kvs))]
@@ -133,4 +133,4 @@
         ;; finite number of retries without breaking callers who assume this is
         ;; like assoc? RTFM isn't exactly an excuse.
         ;; TransactionCouldNotCompleteException maybe...
-        (recur index k v)))))
+        (apply assoc-index index k v kvs)))))

@@ -66,8 +66,6 @@
   "Creates a new index with a hard-coded set of things and resets the head
   pointer. Make sure you write down the old one in case you want to go back."
   []
-  ;; REVIEW: Do we gain anything from storing the master indicies as chunks in
-  ;; the datastore?
   (when-let [current (s3/lookup index/extract-metadata-uri)]
     (println "Replacing index head: " (:hash current)
              "with: " (:hash extract-metadata-stub)))

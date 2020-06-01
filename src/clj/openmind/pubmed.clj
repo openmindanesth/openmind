@@ -44,8 +44,6 @@
     out))
 
 (defn parse-xml-string [body]
-  ;; HACK: Strip the DTD declaration manually. DTD just breaks clojure.xml
-  ;; somehow.
   (let [stream (java.io.ByteArrayInputStream. (.getBytes ^String body))]
     (try
       (xml/parse stream)
@@ -77,7 +75,6 @@
        (content (filter-by-tag :Initials author)) " "
        (content (filter-by-tag :LastName author))))
 
-;; FIXME: What a monster.
 (defn extract-article-info [xml]
   (let [article       (first (filter-by-tag :Article xml))
         title         (content (filter-by-tag :ArticleTitle article))
