@@ -137,8 +137,6 @@
      {:dispatch [:navigate {:route :search
                             :query (assoc query :term term)}]})))
 
-
-
 (defn search-results []
   (let [results @(re-frame/subscribe [::extracts])]
     [:div (map (fn [r]

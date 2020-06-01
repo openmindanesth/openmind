@@ -190,28 +190,36 @@
       [metadata extract]]]))
 
 (defn related-extracts [id]
-  (let [metaid @(re-frame/subscribe [:extract-metadata id])
+  (let [metaid    @(re-frame/subscribe [:extract-metadata id])
         relations (when metaid @(re-frame/subscribe [::relations metaid]))]
     (when relations
       (into
        [:div.flex.flex-column.bg-plain
         {:style {:width "calc(75vh)"}}]
-       (map (fn [{:keys [entity attribute value]}]
-              (let [other (if (= entity id) value entity)
-                    odata @(re-frame/subscribe [:content other])]
-                (with-meta
-                  [summary odata
-                   {:edit-link? false
-                    :meta-display (relation-meta attribute)}]
-                  {:key (str id "-" attribute "-" other)}))))
+       (map-indexed
+        (fn [i {:keys [entity attribute value]}]
+          (let [other (if (= entity id) value entity)
+                odata @(re-frame/subscribe [:content other])]
+            (with-meta
+              [summary odata
+               {:edit-link?   false
+                :pb0?         true
+                :i            i
+                :c            (count relations)
+                :meta-display (relation-meta attribute)}]
+              {:key (str id "-" attribute "-" other)}))))
        relations))))
 
 (defn summary [{:keys [text author source figures tags hash] :as extract}
-               & [{:keys [edit-link? controls meta-display] :as opts
+               & [{:keys [edit-link? controls meta-display pb0? c i] :as opts
                    :or   {meta-display metadata
                           edit-link?   true}}]]
   [:div.search-result.ph
-   {:style {:height :min-content}}
+   {:style (merge {:height :min-content}
+                  (when pb0?
+                    {:margin-bottom "1px"})
+                  (when (and i c (= i c))
+                    {:margin-bottom 0}))}
    (when edit-link?
      [edit-link hash])
    (when meta-display
@@ -227,6 +235,7 @@
       {:orientation :left}]
      [hover-link "history"]
      [hover-link "related" [related-extracts hash]
+      ;; N.B.: Do not add :force? true here, it will launch an infinite render.
       {:orientation :right}]
      [hover-link "tags" [tag-hover tags] ]
      [hover-link [ilink "figure" {:route :extract/figure

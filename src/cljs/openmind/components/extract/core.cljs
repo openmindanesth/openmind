@@ -1,5 +1,6 @@
 (ns openmind.components.extract.core
   (:require [openmind.edn :as edn]
+            [reagent.ratom :as ratom]
             [re-frame.core :as re-frame]))
 
 ;; REVIEW: This namespace seems ill placed
@@ -35,11 +36,13 @@
  (fn [db]
    (::metadata db)))
 
-(re-frame/reg-sub
+(re-frame/reg-sub-raw
  :extract-metadata
- :<- [::metatable]
- (fn [metatable [_ id]]
-   (get metatable id)))
+ (fn [db [_ hash]]
+   (when-not (contains? (::metadata @db) hash)
+     (re-frame/dispatch [:extract-metadata hash]))
+   (ratom/make-reaction
+    (fn [] (get-in @db [::metadata hash])))))
 
 
 (re-frame/reg-event-fx

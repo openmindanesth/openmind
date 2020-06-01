@@ -169,7 +169,7 @@
    (re-frame/subscribe [:lookup id]))
  (fn [imm [_ id]]
    (when-not (= ::uninitialised imm)
-     (:content imm))))
+     (assoc (:content imm) :hash (:hash imm)))))
 
 (re-frame/reg-sub
  ::table
@@ -248,10 +248,6 @@
  (fn [_ _]))
 
 (re-frame/reg-event-fx
- :chsk/ws-ping
- (fn [_ _]))
-
-(re-frame/reg-event-fx
  :chsk/timeout
  (fn [_ _]
    (log/warn "Server websocker connection timed out.")))
@@ -259,6 +255,7 @@
 (re-frame/reg-event-fx
  :chsk/recv
  (fn [_ e]
-   (log/error "Received broadcast message from server"
-              e
-              "Broadcast support is not currently implemented.")))
+   (when-not (= e [:chsk/ws-ping])
+     (log/error "Received broadcast message from server"
+                e
+                "Broadcast support is not currently implemented."))))
