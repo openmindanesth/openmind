@@ -22,7 +22,7 @@
   (s/coll-of ::u/hash :distinct true))
 
 (s/def ::source-material
-  string?)
+  ::url)
 
 (s/def :extract/type
   (s/and some? keyword?))

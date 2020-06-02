@@ -718,7 +718,7 @@
    {:component   text
     :label       "source materials"
     :placeholder "link to any code / data that you'd like to share"
-    :key         :code-repo}
+    :key         :source-material}
    {:component   textarea-list
     :label       "comments"
     :key         :comments
