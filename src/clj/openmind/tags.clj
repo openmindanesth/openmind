@@ -78,6 +78,60 @@
                                  "breathing rate" {}
                                  "other effects"  {}}}})
 
+(def tag-tree-mark2
+  "For development purposes, I'm encoding the tress of tags here. Once we've got
+  the system up and running it will need to be an interactive search through
+  elastic. Something like graphiql (like graphiql) would be great."
+  {"anaesthesia" {"species"     {"human"  {}
+                                 "monkey" {}
+                                 "rat"    {}
+                                 "mouse"  {}}
+                  "awake"       {}
+                  "anaesthetic" {"GABAergic"        {"propofol"        {}
+                                                     "editomidate"     {}
+                                                     "benzodiazepines" {}
+                                                     "barbitol"        {}}
+                                 "vapours"          {"isoflurane"  {}
+                                                     "sevoflurane" {}
+                                                     "desflurane"  {}
+                                                     "halothane"   {}}
+                                 "α2 AR agonists"   {"(dex)metedetomidine" {}
+                                                     "xylazine"            {}}
+                                 "NMDA antagonists" {"ketamine" {}}}
+                  "level"       {"light"    {}
+                                 "moderate" {}
+                                 "deep"     {}}
+                  "physiology"  {"blood pressure" {}
+                                 "heart rate"     {}
+                                 "hemodynamics"   {}
+                                 "breathing rate" {}
+                                 "other effects"  {}}
+                  "modality"    {"hemodynamics" {"non-invasive" {}
+                                                 "invasive"     {}}
+                                 "electric"     {"non-invasive" {}
+                                                 "invasive"     {}}
+                                 "magnetic"     {}
+                                 "Ca²⁺"         {}
+                                 "other ionic"  {}}
+                  "scale"       {"neuron level" {}
+                                 "ensemble"     {}
+                                 "cortex"       {}
+                                 "large scale"  {}
+                                 "brain slice"  {}}
+                  "application" {"sensory"            {"visual"        {}
+                                                       "auditory"      {}
+                                                       "olfactory"     {}
+                                                       "somatosensory" {}}
+                                 "nociception & pain" {"nociceptive" {}
+                                                       "chronic"     {}}
+
+                                 "resting state" {"functional connectivity" {}}
+
+                                 "brain stimulation" {"deep brain"    {}
+                                                      "optogenetics"  {}
+                                                      "chemogenetics" {}
+                                                      "TMS"           {}
+                                                      "FUS"           {}}}}})
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; core logic
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
