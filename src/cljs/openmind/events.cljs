@@ -252,10 +252,19 @@
  (fn [_ _]
    (log/warn "Server websocker connection timed out.")))
 
+(defmulti broadcast-dispatch first)
+
+(defmethod broadcast-dispatch :default
+  [e]
+  (log/error "Received broadcast message from server"
+                e
+                "Broadcast support is not currently implemented."))
+
+(defmethod broadcast-dispatch :chsk/ws-ping
+  [_]
+  (log/info "caught a ping"))
+
 (re-frame/reg-event-fx
  :chsk/recv
- (fn [_ e]
-   (when-not (= e [:chsk/ws-ping])
-     (log/error "Received broadcast message from server"
-                e
-                "Broadcast support is not currently implemented."))))
+ (fn [_ [_ e]]
+   (broadcast-dispatch e)))
