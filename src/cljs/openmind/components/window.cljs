@@ -97,7 +97,12 @@
                        :z-index 500
                        :opacity 0.95}
       :id             "nav-menu"
-      :on-mouse-leave #(re-frame/dispatch [::events/close-menu])}
+      :on-mouse-leave (fn [e]
+                        (when-not (-> e
+                                      .-relatedTarget
+                                      .-id
+                                      (= "menu-button"))
+                          (re-frame/dispatch [::events/close-menu])))}
      [:div.mt4
       (when (seq login)
         [:span "welcome " (:name login)])]
@@ -117,25 +122,30 @@
                         :term)]
     [:div
      [:div.flex.space-between.mr2
-      [:button
-       {:style {:z-index 1000}
+      [:button.border-round.menu-button
+       {:id       "menu-button"
+        :style    {:z-index      1000
+                   :border-width "2px"}
         :on-click #(re-frame/dispatch (if @(re-frame/subscribe [::subs/menu-open?])
                                         [::events/close-menu]
                                         [::events/open-menu]))}
-       [:span.ham "Ξ"]]
+       [:span
+        {:style {:padding         "0.2rem"
+                 :text-decoration :underline}}
+        "menu"]]
       [:a.ctext.grow-1.pl1.pr1.xxl.pth.plain
-       {:href (href :search)
+       {:href  (href :search)
         :style {:cursor :pointer}}
        "open" [:b "mind"]]
       ;; REVIEW: I think this component should be with the rest of the search
       ;; logic.
-      [:input.grow-2 (merge {:type :text
+      [:input.grow-2 (merge {:type      :text
                              :on-change (fn [e]
                                           (let [v (-> e .-target .-value)]
                                             (re-frame/dispatch
                                              [::search/update-term v])))}
                             (if (empty? search-term)
-                              {:value nil
+                              {:value       nil
                                :placeholder "specific term"}
                               {:value search-term}))]]
      (when @(re-frame/subscribe [::subs/menu-open?])
