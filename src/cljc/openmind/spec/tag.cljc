@@ -8,7 +8,8 @@
 (s/def ::tag
   (s/keys :req-un [::name
                    ::parents
-                   ::domain]))
+                   ::domain]
+          :opt [:history/previous-version]))
 
 (s/def ::name
   string?)
