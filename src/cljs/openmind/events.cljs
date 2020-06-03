@@ -153,7 +153,7 @@
         :dispatch-later [{:ms 100 :dispatch [:ensure id event]}]}))))
 
 (re-frame/reg-sub-raw
- :lookup
+ ::lookup
  (fn [db [_ hash]]
    (when-not (contains? (::table @db) hash)
      (re-frame/dispatch [:s3-get hash]))
@@ -166,7 +166,7 @@
 (re-frame/reg-sub
  :content
  (fn [[_ id]]
-   (re-frame/subscribe [:lookup id]))
+   (re-frame/subscribe [::lookup id]))
  (fn [imm [_ id]]
    (when-not (= ::uninitialised imm)
      (assoc (:content imm) :hash (:hash imm)))))

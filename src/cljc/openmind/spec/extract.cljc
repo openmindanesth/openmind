@@ -21,6 +21,10 @@
 (s/def ::figures
   (s/coll-of ::u/hash :distinct true))
 
+(s/def ::url
+  ;; TODO: Validate url
+  string?)
+
 (s/def ::source-material
   ::url)
 
@@ -39,10 +43,6 @@
    :pubmed  ::pubmed-reference
    :labnote ::labnote-source
    :link    ::just-url))
-
-(s/def ::url
-  ;; TODO: Validate url
-  string?)
 
 (s/def ::just-url
   (s/keys :req-un [::url]))

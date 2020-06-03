@@ -54,9 +54,9 @@
 (re-frame/reg-sub
  ::comments
  (fn [[_ id]]
-   (re-frame/subscribe [:lookup id]))
+   (re-frame/subscribe [:content id]))
  (fn [meta [_ id]]
-   (:comments (:content meta))))
+   (:comments meta)))
 
 (def dateformat
   (new (.-DateTimeFormat js/Intl) "en-GB"

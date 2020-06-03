@@ -148,9 +148,9 @@
 (re-frame/reg-sub
  ::relations
  (fn [[_ id]]
-   (re-frame/subscribe [:lookup id]))
+   (re-frame/subscribe [:content id]))
  (fn [meta [_ id]]
-   (:relations (:content meta))))
+   (:relations meta)))
 
 (def type-chars
   {:labnote    {:char  "⃤"

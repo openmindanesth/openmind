@@ -42,13 +42,16 @@
    (when-not (contains? (::metadata @db) hash)
      (re-frame/dispatch [:extract-metadata hash]))
    (ratom/make-reaction
-    (fn [] (get-in @db [::metadata hash])))))
-
+    (fn []
+      (let [h (get-in @db [::metadata hash])]
+        (when-not (= h ::pending)
+          h))))))
 
 (re-frame/reg-event-fx
  :extract-metadata
- (fn [_ [_ id]]
-   {:dispatch [:->server [:openmind/extract-metadata id]]}))
+ (fn [{:keys [db]} [_ id]]
+   {:db (assoc-in db [::metadata id] ::pending)
+    :dispatch [:->server [:openmind/extract-metadata id]]}))
 
 (re-frame/reg-event-fx
  :openmind/extract-metadata
