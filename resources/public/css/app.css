@@ -447,15 +447,15 @@ button.filter-button {
 }
 
 .hover-link {
-		max-width: calc(75vw);
+		max-width: 100%;
+		max-height: calc(80vh);
 }
 
 @media only screen and (min-width: 680px) {
 
 		.hover-link {
-				max-width: {
-						max-width: 100%;
-				}
+				max-width: calc(75vw);
+		}
 		
 		.left-col {
 				width: 12rem;
