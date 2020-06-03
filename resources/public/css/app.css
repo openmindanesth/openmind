@@ -179,10 +179,6 @@ a {
 		float: left;
 }
 
-.w-12 {
-		width: 12rem;
-}
-
 .right {
 		float: right;
 }
@@ -242,23 +238,6 @@ f-align-start {
 		flex-grow: 2;
 }
 
-.grow-4 {
-		flex-grow: 4;
-}
-
-.shrink-2 {
-		flex-shrink: 2;
-}
-
-.basis-12 {
-		width: 12rem;
-		flex-basis: 12rem;
-}
-
-.bg-dull {
-		background-color: rgba(0,0,0,0.1);
-}
-
 .unlink {
 		text-decoration: inherit;
 }
@@ -266,14 +245,6 @@ f-align-start {
 .link-blue {
 		text-decoration: inherit;
 		color: #1EAEDB;
-}
-
-.filter-choose {
-		border: 0.1rem;
-		border-spacing: 0;
-		border-style: outset;
-		border-radius: 0.5rem;
-		padding-top: 1rem;
 }
 
 .border-solid {
@@ -300,15 +271,6 @@ f-align-start {
 		border-style: solid;
 		border-radius: 20rem;
 }
-
-.absolute-c {
-		margin-left: -8rem;
-}
-
-.a-top {
-		margin-top: -3rem;
-}
-
 
 .mt4 {
 		margin-top: 4rem;
@@ -450,9 +412,12 @@ input {
 		margin-bottom: 0;
 }
 
-span.ham {
-		padding-top: 0.4rem;
-		font-size: 2.5rem;
+.menu-button {
+		background-color: #CDCDDE;
+}
+
+.menu-button:hover {
+		background-color: #BCBCCD;
 }
 
 button.filter-button {
@@ -481,7 +446,16 @@ button.filter-button {
 		width: 100%;
 }
 
+.hover-link {
+		max-width: calc(75vw);
+}
+
 @media only screen and (min-width: 680px) {
+
+		.hover-link {
+				max-width: {
+						max-width: 100%;
+				}
 		
 		.left-col {
 				width: 12rem;
