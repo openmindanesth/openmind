@@ -162,17 +162,18 @@
 
 (defn type-indicator [{:keys [extract/type]}]
   (let [{:keys [char title]} (get type-chars type)]
-    [:span.pr2.blue
+    [:span.pr1.blue
      {:title title
       :style {:cursor :help}}
      char]))
 
 (defn metadata [{:keys [time/created author] :as extract}]
-  [:span.small.no-wrap
+  [:span.small
    [type-indicator extract]
    [:a.unlink {:href (str "https://orcid.org/" (:orcid-id author))}
-        [:span.text-dark-grey [:b (:name author)]]]
-   [:span.pl1 [:em (.format comment/dateformat created)]]])
+        [:span.text-dark-grey.no-wrap [:b (:name author)]]]
+   [:span " "]
+   [:span.plh.no-wrap [:em (.format comment/dateformat created)]]])
 
 (declare summary)
 
@@ -184,18 +185,16 @@
 (defn relation-meta [attribute]
   (fn [extract]
     [:span
-     [:span.border-round.border-solid.ph.bg-light-blue
+     [:span.border-round.border-solid.ph.mr1.bg-light-blue.no-wrap
       (get relation-names attribute)]
-     [:span.pl1
-      [metadata extract]]]))
+     [metadata extract]]))
 
 (defn related-extracts [id]
   (let [metaid    @(re-frame/subscribe [:extract-metadata id])
         relations (when metaid @(re-frame/subscribe [::relations metaid]))]
     (when relations
       (into
-       [:div.flex.flex-column.bg-plain
-        {:style {:width "calc(75vh)"}}]
+       [:div.flex.flex-column.bg-plain]
        (map-indexed
         (fn [i {:keys [entity attribute value]}]
           (let [other (if (= entity id) value entity)
