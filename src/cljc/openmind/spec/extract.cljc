@@ -48,6 +48,7 @@
   (s/keys :req-un [::url]))
 
 (s/def ::pubmed-reference
+  ;; TODO: Store the pubmed id separately from the URL.
   (s/keys :req [:publication/date]
           :opt-un [::volume ::issue]
           :req-un [::authors ::doi ::title ::abstract ::journal ::url]))
@@ -55,6 +56,7 @@
 (s/def :publication/date
   ;; As per scraping in general, these dates aren't generally well formatted, so
   ;; strings are the best I can do at present.
+  ;; TODO: With the API this is no longer true.
   string?)
 
 (s/def ::authors
