@@ -9,7 +9,7 @@ html::-webkit-scrollbar {
 }
 
 .z101 {
-		z-index: 101;
+		z-index: 1001;
 }
 
 .no-wrap {
@@ -447,6 +447,7 @@ button.filter-button {
 }
 
 .hover-link {
+		width: max-content;
 		max-width: 100%;
 		max-height: calc(80vh);
 }

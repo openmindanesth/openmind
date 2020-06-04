@@ -5,7 +5,8 @@
             [openmind.components.tags :as tags]
             [openmind.edn :as edn]
             [re-frame.core :as re-frame]
-            [reagent.core :as reagent]))
+            [reagent.core :as reagent]
+            [reagent.dom :as rdom]))
 
 ;;;;; Extract summary (search result or hover view)
 
@@ -109,7 +110,6 @@
 
 (defn source-hover [source]
   [:div.flex.flex-column.border-round.bg-white.border-solid.p1.pbh
-   {:style {:max-width "calc(60vh)"}}
    [source-content source]])
 
 (defn ilink [text route]
@@ -120,30 +120,77 @@
   (.preventDefault e)
   (.stopPropagation e))
 
-(defn hover-link [link float-content
+(defn cljsify [o]
+  {:width  (.-width o)
+   :height (.-height o)
+   :x      (.-x o)
+   :y      (.-y o)})
+
+(defn size-reflector [com size]
+  (letfn [(getsize [this] (when-let [node (rdom/dom-node this)]
+                            (let [box (->> node
+                                           .getBoundingClientRect
+                                           cljsify)]
+                              (when-not (= box @size)
+                                (reset! size box)))))]
+    (reagent/create-class
+     {:reagent-render       (fn [] com)
+      :component-did-mount  getsize
+      :component-did-update getsize})))
+
+;; REVIEW: Eegahd
+(defn fit-to-screen [{:keys [width height]} {:keys [x y]}]
+  (let [de (.-documentElement js/document)
+        vh (.-clientHeight de)
+        vw (.-clientWidth de)]
+    (when (and width height)
+      (let [hw (/ width 2)
+            space "-0.8rem"]
+        (merge {}
+               (if (< vw (+ x hw))
+                 {:right space}
+                 (let [l (- x hw)]
+                   {:left (if (pos? l) l space)}))
+               (when (< vh (+ height y))
+                 {:bottom (str "calc(2rem + " y "px - 100vh)")})
+               (when (< (* 0.8 vh) height)
+                 {:extra {:height "calc(80vh)"
+                          :overflow-y :auto}}))))))
+
+(defn hover-link [text float-content
                   {:keys [orientation style force?]}]
-  (let [hover? (reagent/atom false)]
+  (let [hover?     (reagent/atom false)
+        float-size (reagent/atom nil)
+        link-size  (reagent/atom false)]
     (fn [text float-content {:keys [orientation style force?]}]
-      [:div.plh.prh
-       {:on-mouse-over #(reset! hover? true)
-        :on-mouse-out  #(reset! hover? false)
-        :style         {:cursor :pointer}}
-       [:div.link-blue link]
-       (when float-content
-         ;; dev hack
-         (when (or force? @hover?)
-           [:div.absolute.ml1.mr1
-            {:style (merge
-                     style
-                     (cond
-                       (= :left orientation)  {:left "0"}
-                       (= :right orientation) {:right "0"}
-                       :else                  {:transform "translateX(-50%)"}))}
-            [:div.relative.z101
-             {:style {:max-width     "calc(75vw)"
-                      :on-mouse-over halt
-                      :on-mouse-out  halt}}
-             float-content]]))])))
+      (let [wrapper (size-reflector float-content float-size)
+            link    (size-reflector [:div.link-blue text] link-size)]
+        [:div.plh.prh
+         {:on-mouse-over  #(reset! hover? true)
+          :on-mouse-leave #(reset! hover? false)
+          :style          {:cursor :pointer}}
+         [link]
+         (when float-content
+           ;; dev hack
+           (when (or force? @hover?)
+             (let [{:keys [top left right bottom extra] :as o}
+                   (fit-to-screen @float-size @link-size)]
+               [:div.absolute.ml1.mr1.hover-link.z101
+                {:style         (merge {}
+                                       extra
+                                       (when orientation
+                                         {orientation 0})
+                                       (when top
+                                         {:top top})
+                                       (when left
+                                         {:left left})
+                                       (when right
+                                         {:right right})
+                                       (when bottom
+                                         {:bottom bottom}))
+                 :on-mouse-over halt
+                 :on-mouse-out  halt}
+                [wrapper]])))]))))
 
 (re-frame/reg-sub
  ::relations
@@ -213,7 +260,7 @@
                & [{:keys [edit-link? controls meta-display pb0? c i] :as opts
                    :or   {meta-display metadata
                           edit-link?   true}}]]
-  [:div.search-result.ph
+  [:div.search-result.ph.relative
    {:style (merge {:height :min-content}
                   (when pb0?
                     {:margin-bottom "1px"})

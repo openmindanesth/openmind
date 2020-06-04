@@ -262,7 +262,7 @@
 
 (defmethod broadcast-dispatch :chsk/ws-ping
   [_]
-  (log/info "caught a ping"))
+  nil)
 
 (re-frame/reg-event-fx
  :chsk/recv
