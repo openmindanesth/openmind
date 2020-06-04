@@ -140,25 +140,24 @@
 (defn fit-to-screen [{:keys [width height] :as p} {:keys [x y] :as l}]
   (let [de (.-documentElement js/document)
         vh (.-clientHeight de)
-        vw (.-clientWidth de)
-        lw (:width l)]
+        vw (.-clientWidth de)]
     (when (and width height)
-      (let [space "-0.8rem"]
-        (merge {:right :unset
-                :left  :unset}
-               (cond
-                 (< vw (+ x (/ width 2)))
-                 {:left (str "calc(100vw - 1.6rem - " (+ x width) "px)")}
+      (merge {:right :unset
+              :left  :unset}
+             (cond
+               (< vw (+ x (/ width 2)))
+               {:left (str "calc(100vw - 1.6rem - " (+ x width) "px)")}
 
-                 (< (- x (/ width 2)) 0)
-                 {:left (str "calc(0.3rem - " x "px)")}
+               (< (- x (/ width 2)) 0)
+               {:left (str "calc(0.3rem - " x "px)")}
 
-                 :else
-                 {:transform "translateX(-50%)"})
-               (when (< vh (+ height y))
-                 {:bottom (str "calc(2rem + " y "px - 100vh)")})
-               (when (< (* 0.8 vh) height)
-                 {:will-overflow true}))))))
+               :else
+               {:transform "translateX(-50%)"})
+             (when (< vh (+ height y))
+               {:bottom (str "calc(2rem + " y "px - 100vh)")})
+             (when (< (* 0.8 vh) height)
+               ;; Mixing CSS with control data!
+               {:will-overflow true})))))
 
 (defn hover-link [text float-content
                   {:keys [orientation style force?]}]
@@ -182,7 +181,9 @@
                                         :z-index 1001}
                                        (when orientation
                                          {orientation 0})
-                                       position)
+                                       position
+                                       (when-not @float-size
+                                         {:display :none}))
                  :on-mouse-over halt
                  :on-mouse-out  halt}
                 [:div (when (:will-overflow position)
