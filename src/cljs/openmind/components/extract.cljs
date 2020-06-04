@@ -45,7 +45,7 @@
           branches   (->> tags
                           (map tag-lookup)
                           (map (fn [{:keys [id parents]}] (conj parents id))))]
-      [:div.bg-white.p1.border-round.border-solid
+      [:div.p1
        (into [:div.flex.flex-column]
              (map (fn [t]
                     [tag-display tag-lookup t]))
@@ -53,12 +53,12 @@
 
 
 (defn comments-hover [id]
-  [:div.flex.flex-column.border-round.bg-white.border-solid.p1.pbh
+  [:div.flex.flex-column.p1.pbh
    [comment/comment-page-content id]])
 
 (defn figure-hover [figures]
   (when (seq figures)
-    (into [:div.border-round.border-solid.bg-white]
+    (into [:div]
           (map (fn [id]
                  (let [{:keys [image-data caption] :as fig}
                        @(re-frame/subscribe [:content id])]
@@ -109,7 +109,7 @@
    [:p abstract]])
 
 (defn source-hover [source]
-  [:div.flex.flex-column.border-round.bg-white.border-solid.p1.pbh
+  [:div.flex.flex-column.p1.pbh
    [source-content source]])
 
 (defn ilink [text route]
@@ -175,8 +175,9 @@
            (when (or force? @hover?)
              (let [{:keys [top left right bottom extra] :as o}
                    (fit-to-screen @float-size @link-size)]
-               [:div.absolute.ml1.mr1.hover-link.z101
-                {:style         (merge {}
+               [:div.absolute.ml1.mr1.hover-link.border-round.bg-plain.border-solid
+                {:style         (merge {:padding "0.1rem"
+                                        :z-index 1001}
                                        extra
                                        (when orientation
                                          {orientation 0})
@@ -231,10 +232,9 @@
 
 (defn relation-meta [attribute]
   (fn [extract]
-    [:span
+    [:div.ph
      [:span.border-round.border-solid.ph.mr1.bg-light-blue.no-wrap
-      (get relation-names attribute)]
-     [metadata extract]]))
+      (get relation-names attribute)]]))
 
 (defn related-extracts [id]
   (let [metaid    @(re-frame/subscribe [:extract-metadata id])
@@ -248,18 +248,17 @@
                 odata @(re-frame/subscribe [:content other])]
             (with-meta
               [summary odata
-               {:edit-link?   false
-                :pb0?         true
-                :i            i
-                :c            (count relations)
-                :meta-display (relation-meta attribute)}]
+               {:edit-link? false
+                :pb0?       true
+                :i          i
+                :c          (count relations)
+                :controls   (relation-meta attribute)}]
               {:key (str id "-" attribute "-" other)}))))
        relations))))
 
 (defn summary [{:keys [text author source figures tags hash] :as extract}
-               & [{:keys [edit-link? controls meta-display pb0? c i] :as opts
-                   :or   {meta-display metadata
-                          edit-link?   true}}]]
+               & [{:keys [edit-link? controls pb0? c i] :as opts
+                   :or   {edit-link?   true}}]]
   [:div.search-result.ph.relative
    {:style (merge {:height :min-content}
                   (when pb0?
@@ -268,13 +267,13 @@
                     {:margin-bottom 0}))}
    (when edit-link?
      [edit-link hash])
-   (when meta-display
-     [:div.ph [meta-display extract]])
-   [:div.break-wrap.ph text]
    (when controls
      [controls extract])
+   [:div.break-wrap.ph.ml1 text]
    [:div.pth
-    [:div.flex.flex-wrap.space-evenly
+    [:div.flex.flex-wrap.space-between
+     [hover-link [type-indicator extract] [metadata extract]
+      {:orientation :left}]
      [hover-link [ilink "comments" {:route :extract/comments
                                     :path  {:id hash}}]
       [comments-hover hash]

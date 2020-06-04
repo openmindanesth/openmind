@@ -631,7 +631,7 @@
     [:span
      [cancel-button #(re-frame/dispatch [::remove-relation entity rel])]
      [extract/summary extract
-      {:meta-display (extract/relation-meta attribute)
+      {:controls (extract/relation-meta attribute)
        :edit-link?   false}]]))
 
 (defn related-extracts [{:keys [content]}]
