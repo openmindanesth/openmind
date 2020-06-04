@@ -60,12 +60,17 @@
         (conj comment-tree c*)
         [c*]))))
 
+;; FIXME: I really need to send the extract and all snidbits to the server at
+;; once so that the set of changes can be coordinated.
 (defmethod update-indicies :comment
   [_ {:keys [hash] {:keys [extract history/previous-version]} :content
       :as   comment}]
   (let [old-meta (extract-metadata extract)
-        new-meta (update old-meta
-                         :comments insert-comment comment)
+        new-meta (if (nil? old-meta)
+                   {:extract  extract
+                    :comments (insert-comment [] comment)}
+                   (update old-meta
+                           :comments insert-comment comment))
         res      (intern-and-swap! extract (util/immutable new-meta))]
     [extract (-> res :content (get extract))]))
 

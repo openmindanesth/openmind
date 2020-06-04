@@ -44,12 +44,17 @@
       (assoc rel :entity id)
       rel)))
 
-(defn finalise-extract [prepared {:keys [figure-data relations]}]
+(defn finalise-extract [prepared {:keys [figure-data relations comments]}]
   (let [imm (util/immutable prepared)
-        rels (map (sub-new (:hash imm)) relations)]
+        rels (map (sub-new (:hash imm)) relations)
+        id (:hash imm)
+        author (:author prepared)]
     {:imm imm
      :snidbits (concat (map (partial get figure-data) (:figures prepared))
-                       (map util/immutable rels))}))
+                       (map util/immutable rels)
+                       (map (fn [t]
+                              (util/immutable {:author author :text t :extract id}))
+                            comments))}))
 
 (re-frame/reg-event-fx
  ::revalidate
