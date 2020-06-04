@@ -23,14 +23,19 @@ Steps:
    matter of `cider-jack-in-clj&cljs`.
 4. In the clj repl, load the `openmind.server` namespace and run `(init!)` to
    start the server.
-5. To initialise a local ElasticSearch instance, run
-   `(openmind.elastic/init-cluster!)`.
-6. There is a dump of example es data in `dev/es-data.edn` which can be loaded
-   via `(openmind.elastic/restore!  "dev/es-data.edn")`.
+5. Code to initialise a new Elastic search cluster is in
+   `dev/clj/setup.clj`. From this ns, run `(init-cluster!)` to start a new
+   cluster and `(load-es-from-s3!)` to populate it with data from S3.
 6. Navigate to http://localhost:3003 in your browser (if you didn't change the
    `:port` config in `conf.edn`.
 7. Have at it.
 
+# Acknowledgements
+
+OpenMind was born as an intellectual child of the MRathon, an hackathon for open
+science worldwide that was hosted in 2019 in Montreal as a satellite event to
+the ISMRM. We thank the organizers for bringing the team behind OpenMind
+together and the participants for their support and invaluable feedback.
 
 # License
 
