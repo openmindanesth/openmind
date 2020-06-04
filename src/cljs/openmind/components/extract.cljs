@@ -53,7 +53,7 @@
 
 
 (defn comments-hover [id]
-  [:div.flex.flex-column.p1.pbh
+  [:div.flex.flex-column.p1
    [comment/comment-page-content id]])
 
 (defn figure-hover [figures]
@@ -109,7 +109,7 @@
    [:p abstract]])
 
 (defn source-hover [source]
-  [:div.flex.flex-column.p1.pbh
+  [:div.flex.flex-column.p1
    [source-content source]])
 
 (defn ilink [text route]
@@ -155,6 +155,8 @@
                  {:bottom (str "calc(2rem + " y "px - 100vh)")})
                (when (< (* 0.8 vh) height)
                  {:extra {:height "calc(80vh)"
+                          :scrollbar-width :thin
+
                           :overflow-y :auto}}))))))
 
 (defn hover-link [text float-content
@@ -178,7 +180,6 @@
                [:div.absolute.ml1.mr1.hover-link.border-round.bg-plain.border-solid
                 {:style         (merge {:padding "0.1rem"
                                         :z-index 1001}
-                                       extra
                                        (when orientation
                                          {orientation 0})
                                        (when top
@@ -191,7 +192,9 @@
                                          {:bottom bottom}))
                  :on-mouse-over halt
                  :on-mouse-out  halt}
-                [wrapper]])))]))))
+                [:div (when extra
+                        {:style extra})
+                 [wrapper]]])))]))))
 
 (re-frame/reg-sub
  ::relations
