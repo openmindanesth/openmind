@@ -448,7 +448,7 @@ button.filter-button {
 
 .hover-link {
 		width: max-content;
-		max-width: 100%;
+		max-width: calc(95vw);
 		max-height: calc(80vh);
 }
 

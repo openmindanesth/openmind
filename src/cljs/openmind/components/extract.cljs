@@ -64,11 +64,9 @@
                        @(re-frame/subscribe [:content id])]
                    [:div
                     (when image-data
-                      [:img.relative.p1 {:src image-data
-                                         :style {:max-width "95%"
-                                                 :max-height "50vh"
-                                                 :left "2px"
-                                                 :top "2px"}}])
+                      [:img.p1 {:src image-data
+                                :style {:max-width "95%"
+                                        :max-height "50vh"}}])
                     (when (seq caption)
                       [:div.p1 caption])])))
           figures)))
@@ -76,7 +74,7 @@
 (defn edit-link [hash]
   ;; Users must be logged in to edit extracts
   (when @(re-frame/subscribe [:openmind.subs/login-info])
-    [:div.right.relative.text-grey.small.ph.pr1
+    [:div.right.text-grey.small.ph.pr1
      [:a {:on-click #(re-frame/dispatch [:navigate
                                          {:route :extract/edit
                                           :path  {:id hash}}])}
@@ -139,25 +137,28 @@
       :component-did-update getsize})))
 
 ;; REVIEW: Eegahd
-(defn fit-to-screen [{:keys [width height]} {:keys [x y]}]
+(defn fit-to-screen [{:keys [width height] :as p} {:keys [x y] :as l}]
   (let [de (.-documentElement js/document)
         vh (.-clientHeight de)
-        vw (.-clientWidth de)]
+        vw (.-clientWidth de)
+        lw (:width l)]
     (when (and width height)
-      (let [hw (/ width 2)
-            space "-0.8rem"]
-        (merge {}
-               (if (< vw (+ x hw))
-                 {:right space}
-                 (let [l (- x hw)]
-                   {:left (if (pos? l) l space)}))
+      (let [space "-0.8rem"]
+        (merge {:right :unset
+                :left  :unset}
+               (cond
+                 (< vw (+ x (/ width 2)))
+                 {:left (str "calc(100vw - 1.6rem - " (+ x width) "px)")}
+
+                 (< (- x (/ width 2)) 0)
+                 {:left (str "calc(0.3rem - " x "px)")}
+
+                 :else
+                 {:transform "translateX(-50%)"})
                (when (< vh (+ height y))
                  {:bottom (str "calc(2rem + " y "px - 100vh)")})
                (when (< (* 0.8 vh) height)
-                 {:extra {:height "calc(80vh)"
-                          :scrollbar-width :thin
-
-                          :overflow-y :auto}}))))))
+                 {:will-overflow true}))))))
 
 (defn hover-link [text float-content
                   {:keys [orientation style force?]}]
@@ -167,7 +168,7 @@
     (fn [text float-content {:keys [orientation style force?]}]
       (let [wrapper (size-reflector float-content float-size)
             link    (size-reflector [:div.link-blue text] link-size)]
-        [:div.plh.prh
+        [:div.plh.prh.relative
          {:on-mouse-over  #(reset! hover? true)
           :on-mouse-leave #(reset! hover? false)
           :style          {:cursor :pointer}}
@@ -175,25 +176,19 @@
          (when float-content
            ;; dev hack
            (when (or force? @hover?)
-             (let [{:keys [top left right bottom extra] :as o}
-                   (fit-to-screen @float-size @link-size)]
+             (let [position (fit-to-screen @float-size @link-size)]
                [:div.absolute.ml1.mr1.hover-link.border-round.bg-plain.border-solid
                 {:style         (merge {:padding "0.1rem"
                                         :z-index 1001}
                                        (when orientation
                                          {orientation 0})
-                                       (when top
-                                         {:top top})
-                                       (when left
-                                         {:left left})
-                                       (when right
-                                         {:right right})
-                                       (when bottom
-                                         {:bottom bottom}))
+                                       position)
                  :on-mouse-over halt
                  :on-mouse-out  halt}
-                [:div (when extra
-                        {:style extra})
+                [:div (when (:will-overflow position)
+                        {:style {:height          "calc(80vh)"
+                                 :scrollbar-width :thin
+                                 :overflow-y      :auto}})
                  [wrapper]]])))]))))
 
 (re-frame/reg-sub
@@ -263,7 +258,7 @@
 (defn summary [{:keys [text author source figures tags hash] :as extract}
                & [{:keys [edit-link? controls pb0? c i] :as opts
                    :or   {edit-link?   true}}]]
-  [:div.search-result.ph.relative
+  [:div.search-result.ph
    {:style (merge {:height :min-content}
                   (when pb0?
                     {:margin-bottom "1px"})
