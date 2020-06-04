@@ -216,20 +216,16 @@
     [:span.blue char]))
 
 (defn metadata [{:keys [time/created author extract/type] :as extract}]
-  [:div.flex.flex-column.p1.small.no-wrap
+  [:div.flex.flex-column.p1.no-wrap
    [:div.pbh
-    [:span "created: "]
-    [:em (.format comment/dateformat created)]]
-   [:div.pbh
-    [:span "by: "]
     [:a.unlink {:href (str "https://orcid.org/" (:orcid-id author))}
-     [:span.text-black [:b (:name author)]]]]
+     [:span.text-black (:name author)]]]
+   [:div.pbh [:em (.format comment/dateformat created)]]
    [:div.pbh
-    [:span "votes: "]
-    [:em "comming soon"]]
+    [:span "no voting yet"]]
    [:div
     [type-indicator extract]
-    [:span.text-dark-grey.plh.small (:title (get type-chars type))]]])
+    [:span.plh.blue (:title (get type-chars type))]]])
 
 (declare summary)
 
