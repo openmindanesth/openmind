@@ -209,19 +209,24 @@
                 :title "extract from peer reviewed article"}})
 
 (defn type-indicator [{:keys [extract/type]}]
-  (let [{:keys [char title]} (get type-chars type)]
-    [:span.pr1.blue
-     {:title title
-      :style {:cursor :help}}
-     char]))
+  (let [{:keys [char]} (get type-chars type)]
+    [:span.blue char]))
 
-(defn metadata [{:keys [time/created author] :as extract}]
-  [:span.small
-   [type-indicator extract]
-   [:a.unlink {:href (str "https://orcid.org/" (:orcid-id author))}
-        [:span.text-dark-grey.no-wrap [:b (:name author)]]]
-   [:span " "]
-   [:span.plh.no-wrap [:em (.format comment/dateformat created)]]])
+(defn metadata [{:keys [time/created author extract/type] :as extract}]
+  [:div.flex.flex-column.p1.small.no-wrap
+   [:div.pbh
+    [:span "created: "]
+    [:em (.format comment/dateformat created)]]
+   [:div.pbh
+    [:span "by: "]
+    [:a.unlink {:href (str "https://orcid.org/" (:orcid-id author))}
+     [:span.text-black [:b (:name author)]]]]
+   [:div.pbh
+    [:span "votes: "]
+    [:em "comming soon"]]
+   [:div
+    [type-indicator extract]
+    [:span.text-dark-grey.plh.small (:title (get type-chars type))]]])
 
 (declare summary)
 
