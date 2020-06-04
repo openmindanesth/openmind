@@ -640,13 +640,18 @@
         content))
 
 (defn search-results [key data-key]
-  (let [results @(re-frame/subscribe [key])]
+  (let [results @(re-frame/subscribe [key])
+        selected (into {} (map (fn [e] [(:value e) e]))
+                       (:relations @(re-frame/subscribe [::content data-key])))]
     (into [:div.flex.flex-column]
-          (map (fn [id]
-                 [extract/summary @(re-frame/subscribe [:content id])
-                  {:controls (related-buttons data-key)
-                   :edit-link? false}]))
-          results)))
+          (comp
+           (map (fn [id] @(re-frame/subscribe [:content id])))
+           (map (fn [extract]
+                  (if-let [rel (get selected (:hash extract))]
+                    [relation rel]
+                    [extract/summary extract {:controls (related-buttons data-key)
+                                              :edit-link? false}]))))
+           results)))
 
 (defn similar-extracts [{:keys [data-key] :as opts}]
   (let [open? (r/atom true)]
