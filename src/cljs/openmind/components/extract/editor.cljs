@@ -614,13 +614,15 @@
 (defn cancel-button [onclick]
   [:a.border-circle.bg-white.text-black.border-black
    {:style    {:position :relative
+               :cursor   :pointer
                :float    :right
+               :z-index  105
                :top      "-1px"
                :right    "-1px"}
-    :title "remove relation"
+    :title    "remove relation"
     :on-click (juxt common/halt onclick)}
    [:span.absolute
-    {:style {:top "-2px"
+    {:style {:top   "-2px"
              :right "5px"}}
     "x"]])
 
