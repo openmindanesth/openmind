@@ -1,9 +1,3 @@
-/emall* Is this the best way to hide scrollbars? */
-
-html::-webkit-scrollbar {
-		display: none;
-}
-
 .sticky {
 		position: sticky;
 }
@@ -25,7 +19,7 @@ html::-webkit-scrollbar {
 }
 
 html {
-		scrollbar-width: none;
+		scrollbar-width: thin;
 		background-color: #FEFEFB;
 }
 
