@@ -586,9 +586,11 @@
     [:div.feedback-col f]]])
 
 (defn input-row
-  [{:keys [label required? full-width? component feedback] :as field}]
-  (let [label-span [:span [:b label] (when required?
-                                       [:span.text-red.super.small " *"])]]
+  [{:keys [label required? full-width? component feedback sublabel] :as field}]
+  (let [label-span [:div  [:span [:b label]
+                           (when required?
+                             [:span.text-red.super.small " *"])]
+                    (when sublabel [sublabel field])]]
     (if full-width?
       [:div
        (when label
@@ -611,16 +613,14 @@
 (defn related-buttons [extract-id]
   (fn  [{:keys [hash] :as extract}]
     (let [ev [::add-relation extract-id hash]]
-      [:div.flex.space-evenly
-       [relation-button "related extract" (conj ev :related)]
-       [relation-button "in contrast to" (conj ev :contrast)]
-       [relation-button "confirmed by" (conj ev :confirmed)]])))
+      (into [:div.flex.space-evenly]
+            (map (fn [a]
+                   [relation-button (get extract/relation-names a) (conj ev a)]))
+            [:related :confirmed :contrast]))))
 
 (defn cancel-button [onclick]
-  [:a.border-circle.bg-white.text-black.border-black
-   {:style    {:position :relative
-               :cursor   :pointer
-               :float    :right
+  [:a.border-circle.bg-white.text-black.border-black.relative.right
+   {:style    {:cursor   :pointer
                :z-index  105
                :top      "-1px"
                :right    "-1px"}
@@ -631,6 +631,24 @@
              :right "5px"}}
     "x"]])
 
+(defn relation-summary [{:keys [content]}]
+  (let [summary (into {} (map (fn [[k v]] [k (count v)]))
+                      (group-by :attribute content))]
+    (into [:div.flex.flex-column]
+          (map (fn [a]
+                 (let [c (get summary a)]
+                   (when (< 0 c)
+                     [:div {:style {:margin-top "3rem"
+                                    :max-width "12rem"}}
+                      [:span
+                       {:style {:display :inline-block
+                                :width "70%"}}
+                       (get extract/relation-names a)]
+                      [:span.p1.border-solid.border-round
+                       {:style {:width "20%"}}
+                       c]]))))
+          [:related :confirmed :contrast])))
+
 (defn relation [{:keys [attribute value entity] :as rel}]
   (let [extract @(re-frame/subscribe [:content value])]
     [:span
@@ -639,24 +657,34 @@
       {:controls (extract/relation-meta attribute)
        :edit-link?   false}]]))
 
+(def scrollbox-style
+  {:style {:max-height      "40rem"
+           :padding         "0.1rem"
+           :scrollbar-width :thin
+           :overflow-y      :auto
+           :overflow-x      :visible}})
+
 (defn related-extracts [{:keys [content]}]
-  (into [:div.flex.flex-column]
+  (into [:div.flex.flex-column scrollbox-style]
         (map relation)
         content))
 
 (defn search-results [key data-key]
   (let [results @(re-frame/subscribe [key])
-        selected (into {} (map (fn [e] [(:value e) e]))
-                       (:relations @(re-frame/subscribe [::content data-key])))]
-    (into [:div.flex.flex-column]
-          (comp
-           (map (fn [id] @(re-frame/subscribe [:content id])))
-           (map (fn [extract]
-                  (if-let [rel (get selected (:hash extract))]
-                    [relation rel]
-                    [extract/summary extract {:controls (related-buttons data-key)
-                                              :edit-link? false}]))))
-           results)))
+        selected (:relations @(re-frame/subscribe [::content data-key]))
+        selected-keys (into #{} (map :value) selected)]
+    (into [:div.flex.flex-column scrollbox-style]
+          (concat
+           (into []
+                 (comp
+                  (remove (fn [id] (contains? selected-keys id)))
+                  (map (fn [id] @(re-frame/subscribe [:content id])))
+                  (map (fn [extract]
+                         [extract/summary extract
+                          {:controls (related-buttons data-key)
+                           :edit-link? false}])))
+                 results)
+           (map relation selected)))))
 
 (defn similar-extracts [{:keys [data-key] :as opts}]
   (let [open? (r/atom true)]
@@ -747,6 +775,7 @@
    {:component extract-search-results}
    {:component related-extracts
     :label     "related extracts"
+    :sublabel  relation-summary
     :key       :relations}
    {:component   tag-selector
     :label       "add filter tags"
