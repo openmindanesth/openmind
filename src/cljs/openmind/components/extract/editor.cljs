@@ -50,7 +50,7 @@
         id (:hash imm)
         author (:author prepared)]
     {:imm imm
-     :snidbits (concat (when figure figure-data)
+     :snidbits (concat (when figure [figure-data])
                        (map util/immutable rels)
                        (map (fn [t]
                               (util/immutable {:author author :text t :extract id}))
