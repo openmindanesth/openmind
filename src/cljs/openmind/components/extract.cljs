@@ -126,9 +126,10 @@
 
 (defn size-reflector [com size]
   (letfn [(getsize [this] (when-let [node (rdom/dom-node this)]
-                            (let [box (->> node
+                            (let [box (-> node
                                            .getBoundingClientRect
-                                           cljsify)]
+                                           cljsify
+                                           (assoc :top (.-offsetTop node)))]
                               (when-not (= box @size)
                                 (reset! size box)))))]
     (reagent/create-class
@@ -137,7 +138,7 @@
       :component-did-update getsize})))
 
 ;; REVIEW: Eegahd
-(defn fit-to-screen [{:keys [width height] :as p} {:keys [x y] :as l}]
+(defn fit-to-screen [{:keys [width height]} {:keys [x y top]}]
   (let [de (.-documentElement js/document)
         vh (.-clientHeight de)
         vw (.-clientWidth de)]
@@ -145,16 +146,14 @@
       (merge {:right :unset
               :left  :unset}
              (cond
-               (< vw (+ x (/ width 2)))
-               {:left (str "calc(100vw - 1.6rem - " (+ x width) "px)")}
-
-               (< (- x (/ width 2)) 0)
-               {:left (str "calc(0.3rem - " x "px)")}
-
-               :else
-               {:transform "translateX(-50%)"})
-             (when (< vh (+ height y))
-               {:bottom (str "calc(2rem + " y "px - 100vh)")})
+               (< vw (+ x (/ width 2))) {:right 0}
+               (< (- x (/ width 2)) 0)  {:left 0}
+               :else                    {:transform "translateX(-50%)"})
+             ;; HACK: I don't see any way to not use a concrete pixel value, but
+             ;; it isn't ideal.
+             (when (< vh (+ height y 32))
+               {:top (str "calc(100vh - 1.5rem + "
+                          top "px - " y "px - " height "px) ")})
              (when (< (* 0.8 vh) height)
                ;; Mixing CSS with control data!
                {:will-overflow true})))))
@@ -167,7 +166,7 @@
     (fn [text float-content {:keys [orientation style force?]}]
       (let [wrapper (size-reflector float-content float-size)
             link    (size-reflector [:div.link-blue text] link-size)]
-        [:div.plh.prh.relative
+        [:div.plh.prh
          {:on-mouse-over  #(reset! hover? true)
           :on-mouse-leave #(reset! hover? false)
           :style          {:cursor :pointer}}

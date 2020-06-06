@@ -128,10 +128,8 @@
     (unselect data children)))
 
 (defn cancel-button [onclick]
-  [:a.border-circle.bg-white.text-black.border-black
-   {:style    {:position :relative
-               :float    :right
-               :top      "-1px"
+  [:a.border-circle.bg-white.text-black.border-black.relative.right
+   {:style    {:top      "-1px"
                :right    "-9px"}
     :on-click (juxt common/halt onclick)}
    [:span.centre "x"]])
