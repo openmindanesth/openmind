@@ -28,7 +28,7 @@
    :tags
    :source
    :extract/type
-   :figures
+   :figure
    :source-material
    :history/previous-version])
 
@@ -44,13 +44,13 @@
       (assoc rel :entity id)
       rel)))
 
-(defn finalise-extract [prepared {:keys [figure-data relations comments]}]
+(defn finalise-extract [prepared {:keys [figure-data relations comments figure]}]
   (let [imm (util/immutable prepared)
         rels (map (sub-new (:hash imm)) relations)
         id (:hash imm)
         author (:author prepared)]
     {:imm imm
-     :snidbits (concat (map (partial get figure-data) (:figures prepared))
+     :snidbits (concat (when figure figure-data)
                        (map util/immutable rels)
                        (map (fn [t]
                               (util/immutable {:author author :text t :extract id}))
@@ -69,8 +69,6 @@
 (def extract-template
   {:selection []
    :content   {:tags          #{}
-               :figures       []
-               :figure-data   {}
                :comments      [""]
                :relations     #{}}
    :errors    nil})
@@ -88,10 +86,25 @@
        (update ::extracts dissoc id)
        (dissoc ::similar ::related-search-results))))
 
-(re-frame/reg-event-db
+(re-frame/reg-event-fx
  ::editing-copy
- (fn [db [_ id]]
-   (update db ::extracts assoc id (events/extract db id))))
+ (fn [{:keys [db]} [_ id]]
+   (let [ext (events/table-lookup db id)
+         hacked (if (and (seq (:figures (:content ext)))
+                         (nil? (:figure (:content ext))))
+                  (assoc-in ext [:content :figure]
+                            (first (:figures (:content ext)))))
+         fid (:figure (:content hacked))]
+     (merge
+      {:db (update db ::extracts assoc id hacked)}
+      (when fid
+        {:dispatch [:ensure fid [::set-figure-data fid id]]})))))
+
+(re-frame/reg-event-db
+ ::set-figure-data
+ (fn [db [_ fid id]]
+   (assoc-in db [::extracts id :content :figure-data]
+             (events/table-lookup db fid))))
 
 ;;;;; Subs
 
@@ -199,9 +212,8 @@
                                  :caption ""
                                  :author     author})]
      {:db (-> db
-              (update-in [::extracts id :content :figures] conj (:hash img))
-              (update-in [::extracts id :content :figure-data]
-                         assoc (:hash img) img))})))
+              (assoc-in [::extracts id :content :figure] (:hash img))
+              (assoc-in [::extracts id :content :figure-data] img))})))
 
 (re-frame/reg-event-fx
  ::load-figure
@@ -413,13 +425,8 @@
 
 (re-frame/reg-event-db
  ::remove-figure
- (fn [db [_ id i]]
-   (let [fid (get-in db [::extracts id :content :figures i])]
-     (-> db
-         (update-in [::extracts id :content :figure-data] dissoc fid)
-         (update-in [::extracts id :content :figures]
-                    #(let [[head [_ & tail]] (split-at i %)]
-                       (into (empty %) (concat head tail))))))))
+ (fn [db [_ id]]
+   (update-in db [::extracts id :content] dissoc :figure :figure-data)))
 
 (defn select-upload [dk e]
   (let [f (-> e .-target .-files (aget 0))]
@@ -429,24 +436,21 @@
  ;; REVIEW: This is a kludge that's necessary due to the fact that rehashing the
  ;; figure on every keystroke isn't feasible. This is clearly a sign that I'm
  ;; doing something wrong, but it seems to work for the time being.
+ ;;
+ ;; And on top of all that, it's still too slow with big images (100+ KB, not
+ ;; that big even)
  ::update-caption
- (fn [db [_ dk index]]
-   (let [id  (get-in db [::extracts dk :content :figures index])
-         fig (get-in db [::extracts dk :content :figure-data id :content])
-         new (util/immutable fig)]
-     (if (= fig new)
-       db
-       (-> db
-           (update-in [::extracts dk :content :figure-data]
-                      #(-> %
-                           (dissoc id)
-                           (assoc (:hash new) new)))
-           (update-in [::extracts dk :content :figures]
-                      #(let [[head [_ & tail]] (split-at index %)]
-                         (into (empty %) (concat head [(:hash new)] tail)))))))))
+ (fn [db [_ dk]]
+   (let [fig   (get-in db [::extracts dk :content :figure-data])
+         fdata (util/immutable (:content fig))]
+     (-> db
+         (update-in [::extracts dk :content] assoc
+                    :figure (:hash fdata)
+                    :figure-data fdata)))))
 
-(defn figure-preview [dk {:keys [hash content]} index]
-  (let [{:keys [image-data caption]} content]
+(defn figure-preview [{:keys [data-key]}]
+  (let [{:keys [image-data caption]}
+        (:content (:figure-data @(re-frame/subscribe [::content data-key])))]
     [:div.flex.flex-column
      [:div.p1.flex
       {:style {:max-width "40rem"}}
@@ -454,29 +458,20 @@
        {:src   image-data
         :style {:width :max-content}}]
       [:a.text-dark-grey.pl1
-       {:on-click (juxt halt #(re-frame/dispatch [::remove-figure dk index]))}
+       {:on-click (juxt halt #(re-frame/dispatch [::remove-figure data-key]))}
        [:span "remove"]]]
-     [text {:key         [:figure-data hash :content :caption]
-            :data-key    dk
-            :on-blur      #(re-frame/dispatch [::update-caption dk index])
+     [text {:key         [:figure-data :content :caption]
+            :data-key    data-key
+            :on-blur      #(re-frame/dispatch [::update-caption data-key])
             :content     caption
             :placeholder "additional info about figure"} ]]))
-
-(defn figure-list [{:keys [data-key content] :as opts}]
-  (let [{:keys [figures figure-data]} @(re-frame/subscribe [::content data-key])]
-    [:div.flex.flex-column
-     (map-indexed (fn [i f]
-                    ^{:key (str "fig-" i)}
-                    [figure-preview data-key (get figure-data f) i])
-                  figures)]))
 
 (defn image-drop
   [opts]
   (let [id          (str (gensym))
         drag-hover? (r/atom false)]
     (fn [{:keys [key placeholder content data-key]}]
-      (let [figures    (get content key)
-            drop-state {:style         {:border    :dashed
+      (let [drop-state {:style         {:border    :dashed
                                         :cursor    :pointer
                                         :max-width "250px"}
                         :class         (if @drag-hover?
@@ -497,6 +492,10 @@
                   :accept    "image/png,image/gif,image/jpeg"
                   :on-change (partial select-upload data-key)}]]))))
 
+(defn figure-select [{:keys [content] :as opts}]
+  (if content
+    [figure-preview opts]
+    [image-drop opts]))
 (defn source-preview [{:keys [data-key] :as opts}]
   (let [{:keys [source extract/type]} @(re-frame/subscribe [::content data-key])]
     (when (and (= type :article) (:abstract source))
@@ -750,11 +749,10 @@
    {:component   shared-source
     :key         :same-article
     :full-width? true}
-   {:component   image-drop
-    :label       "figures"
-    :key         :figures
+   {:component   figure-select
+    :label       "figure"
+    :key         :figure
     :placeholder [:span [:b "choose a file"] " or drag it here"]}
-   {:component figure-list}
    {:component   text
     :label       "source materials"
     :placeholder "link to any code / data that you'd like to share"
@@ -822,4 +820,4 @@
                             (let [id (edn/read-string id)]
                               (when-not @(re-frame/subscribe [::extract id])
                                 (re-frame/dispatch
-                                 [:ensure id ::editing-copy]))))}]}]])
+                                 [:ensure id [::editing-copy id]]))))}]}]])

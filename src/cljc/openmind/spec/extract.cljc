@@ -16,10 +16,10 @@
                    ::source]
           :req [:extract/type]
           :opt [:history/previous-version]
-          :opt-un [::figures ::source-material]))
+          :opt-un [::figure ::source-material]))
 
-(s/def ::figures
-  (s/coll-of ::u/hash :distinct true))
+(s/def ::figure
+  ::u/hash)
 
 (s/def ::url
   ;; TODO: Validate url
