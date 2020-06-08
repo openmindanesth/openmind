@@ -119,10 +119,9 @@
   [doc]
   (if (s/valid? :openmind.spec.extract/extract (:content doc))
     true
-    (do
+    (boolean
       (log/warn "Invalid extract received from client:"
-                (s/explain-data :openmind.spec.extract/extract doc))
-      false)))
+                (s/explain-data :openmind.spec.extract/extract doc)))))
 
 (defmethod dispatch :openmind/pubmed-lookup
   [{[_ {:keys [url res-id] :as ev}] :event :as req}]

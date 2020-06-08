@@ -86,23 +86,23 @@
        (update ::extracts dissoc id)
        (dissoc ::similar ::related-search-results))))
 
-;; HACK: I've actually had to invent names for layers of nested hacks. This is
-;; brittle.
 (re-frame/reg-event-fx
  ::editing-copy
  (fn [{:keys [db]} [_ id]]
-   (let [ext    (events/table-lookup db id)
-         hacked (if (and (seq (:figures (:content ext)))
-                         (nil? (:figure (:content ext))))
-                  (assoc-in ext [:content :figure]
-                            (first (:figures (:content ext))))
-                  ext)
-         fid    (:figure (:content hacked))
-         nudged (update-in hacked [:content :tags] set)]
-     (merge
-      {:db (update db ::extracts assoc id nudged)}
-      (when fid
-        {:dispatch [:ensure fid [::set-figure-data fid id]]})))))
+   (let [content (:content (events/table-lookup db id))
+         hacked (if (and (seq (:figures content))
+                         (nil? (:figure content)))
+                  (assoc content :figure (first (:figures content)))
+                  content)
+         hacked (update hacked :tags set)]
+     {:db (update db ::extracts assoc id {:content hacked})})))
+
+(re-frame/reg-event-db
+ ::reconcile-metadata
+ (fn [db [_ hash metadata]]
+   (update-in db [::extracts hash :content]
+              assoc :comments (:comments metadata)
+              :relations (:relations metadata))))
 
 (re-frame/reg-event-db
  ::set-figure-data
@@ -675,20 +675,26 @@
 
 (defn search-results [key data-key]
   (let [results @(re-frame/subscribe [key])
-        selected (:relations @(re-frame/subscribe [::content data-key]))
-        selected-keys (into #{} (map :value) selected)]
+        selected (into {}
+                       (map (fn [rel] [(:value rel) rel]))
+                       (:relations @(re-frame/subscribe [::content data-key])))]
     (into [:div.flex.flex-column scrollbox-style]
           (concat
            (into []
                  (comp
-                  (remove (fn [id] (contains? selected-keys id)))
+                  (remove (fn [id] (contains? selected id)))
                   (map (fn [id] @(re-frame/subscribe [:content id])))
                   (map (fn [extract]
                          [extract/summary extract
                           {:controls (related-buttons data-key)
                            :edit-link? false}])))
                  results)
-           (map relation selected)))))
+           (into []
+                 (comp
+                  (map #(get selected %))
+                  (remove nil?)
+                  (map relation))
+                 results)))))
 
 (defn similar-extracts [{:keys [data-key] :as opts}]
   (let [open? (r/atom true)]
@@ -785,11 +791,52 @@
     :key         :tags
     :full-width? true}])
 
+(re-frame/reg-sub
+ ::invisihack
+ (fn [db [_ id]]
+   (contains? (::invisihack db) id)))
+
+(re-frame/reg-event-db
+ ::start-hack
+ (fn [db [_ id]]
+   (if (contains? db ::invisihack)
+     (update db ::invisihack conj id)
+     (assoc db ::invisihack #{id}))))
+
+(re-frame/reg-event-db
+ ::end-hack
+ (fn [db [_ id]]
+   (update db ::invisihack disj id)))
+
+(defn invisihack [id]
+  (when-not (= id ::new)
+      (let [content @(re-frame/subscribe [::content id])
+            metaid @(re-frame/subscribe [:extract-metadata id])
+            metadata (when metaid @(re-frame/subscribe
+                                    [:openmind.events/lookup metaid]))]
+        (when (and (:figure content) (empty? (:figure-data content)))
+          (re-frame/dispatch [::set-figure-data (:figure content) id]))
+        (when metadata
+          (let [metadata (:content metadata)]
+            (when (or (not= (:relations content) (:relations metadata))
+                      (not= (:comments content) (:comments metadata)))
+              ;; HACK: Issuing events from the component is not recommended. The
+              ;; problem is that I need an event to react to a subscription that
+              ;; reacts to events that ... Subscribptions are beautifully reactive,
+              ;; but trying to have an event only process if a chain of previous
+              ;; events are already complete eludes me. Hence this.
+              (re-frame/dispatch [::reconcile-metadata id metadata])
+              (re-frame/dispatch [::end-hack id]))))))
+  [:div {:style {:display :none}}])
+
 (defn extract-editor
   [{{:keys [id] :or {id ::new}} :path-params}]
-  (let [id (if (= ::new id) id (edn/read-string id))]
+  (let [id (if (= ::new id) id (edn/read-string id))
+        invisihack? @(re-frame/subscribe [::invisihack id])]
     (into
      [:div.flex.flex-column.flex-start.pl2.pr2
+      (when invisihack?
+        [invisihack id])
       [:div.flex.space-around
        [:h2 (if (= ::new id)
               "create a new extract"
@@ -824,5 +871,6 @@
                    :start (fn [{{id :id} :path}]
                             (let [id (edn/read-string id)]
                               (when-not @(re-frame/subscribe [::extract id])
+                                (re-frame/dispatch [::start-hack id])
                                 (re-frame/dispatch
                                  [:ensure id [::editing-copy id]]))))}]}]])
