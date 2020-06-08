@@ -654,10 +654,12 @@
                        c]]))))
           [:related :confirmed :contrast])))
 
-(defn relation [{:keys [attribute value entity] :as rel}]
-  (let [extract @(re-frame/subscribe [:content value])]
+(defn relation [{:keys [attribute value entity author] :as rel}]
+  (let [extract @(re-frame/subscribe [:content value])
+        login @(re-frame/subscribe [:openmind.subs/login-info])]
     [:span
-     [cancel-button #(re-frame/dispatch [::remove-relation entity rel])]
+     (when (= login author)
+       [cancel-button #(re-frame/dispatch [::remove-relation entity rel])])
      [extract/summary extract
       {:controls (extract/relation-meta attribute)
        :edit-link?   false}]]))
