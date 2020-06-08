@@ -1,8 +1,11 @@
 (ns openmind.components.extract.editor
   (:require [cljs.spec.alpha :as s]
+            [clojure.data :as set]
             [clojure.string :as string]
+            [openmind.components.comment :as comment]
             [openmind.components.common :as common :refer [halt]]
             [openmind.components.extract :as extract]
+            [openmind.components.extract.core :as core]
             [openmind.components.tags :as tags]
             [openmind.edn :as edn]
             [openmind.events :as events]
@@ -101,8 +104,7 @@
  ::reconcile-metadata
  (fn [db [_ hash metadata]]
    (update-in db [::extracts hash :content]
-              assoc :comments (:comments metadata)
-              :relations (:relations metadata))))
+              assoc :relations (:relations metadata))))
 
 (re-frame/reg-event-db
  ::set-figure-data
@@ -237,6 +239,21 @@
  (fn [db [_ errors id]]
    (assoc-in db [::extracts id :errors] errors)))
 
+(defn extract-diff [prev pmeta new]
+  (let [fig?     (not= (:figure prev) (:figure new))
+        author   (:author new)
+        old-rels (:relations pmeta)
+        new-rels (:relations new)
+        imm      (util/immutable new)]
+    {:imm    imm
+     :extras (concat
+              (when fig? [(:figure-data new)])
+              (map #(do [:openmind/intern  %])
+                   (map util/immutable
+                        (set/diff new-rels old-rels)))
+              (map #(do [:openmind/retract-relation (:hash imm) (:hash %)])
+                   (set/diff old-rels new-rels)))}))
+
 (re-frame/reg-event-fx
  ::update-extract
  (fn [{:keys [db]} [_ id]]
@@ -247,11 +264,21 @@
        {:dispatch [::form-errors errors id]}
        ;; TODO: create an intern-all endpoint and don't send a slew of messages
        ;; unnecessaril
-       (when (= id ::new)
+       (if (= id ::new)
          (let [{:keys [imm snidbits]} (finalise-extract extract base)]
            {:dispatch-n (into [[:->server [:openmind/index imm]]]
                               (map #(do [:->server [:openmind/intern %]]))
-                              snidbits)}))))))
+                              snidbits)})
+         (let [original (events/table-lookup db id)
+               ometa (events/table-lookup db (core/metadata db id))
+               extract  (assoc extract :history/previous-version id)
+               {:keys [imm extras]}
+               (extract-diff original ometa extract)]
+           (println extras)
+           {:dispatch-n
+            (into [[:->server [:openmind/update imm]]]
+                  (map #(do [:->server %]))
+                  extras)}))))))
 
 (defn success? [status]
   (<= 200 status 299))
@@ -610,6 +637,15 @@
          label-span
          [component field]]))))
 
+(defn comment-widget [{:keys [data-key] :as opts}]
+  (if (= data-key ::new)
+    [textarea-list opts]
+    [comment/comment-page-content data-key]
+    #_(let [meta-id @(re-frame/subscribe [:extract-metadata data-key])
+          comments (when meta-id
+                     (:comments @(re-frame/subscribe [:content meta-id])))]
+      [comment/comment-tree data-key comments])))
+
 (defn relation-button [text event]
   [:button.text-white.ph.border-round.bg-dark-grey
    {:on-click #(re-frame/dispatch event)}
@@ -771,7 +807,7 @@
     :label       "source materials"
     :placeholder "link to any code / data that you'd like to share"
     :key         :source-material}
-   {:component   textarea-list
+   {:component   comment-widget
     :label       "comments"
     :key         :comments
     :placeholder "anything you think is important"}
@@ -821,8 +857,7 @@
           (re-frame/dispatch [::set-figure-data (:figure content) id]))
         (when metadata
           (let [metadata (:content metadata)]
-            (when (or (not= (:relations content) (:relations metadata))
-                      (not= (:comments content) (:comments metadata)))
+            (when (not= (:relations content) (:relations metadata))
               ;; HACK: Issuing events from the component is not recommended. The
               ;; problem is that I need an event to react to a subscription that
               ;; reacts to events that ... Subscribptions are beautifully reactive,

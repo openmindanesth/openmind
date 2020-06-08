@@ -31,11 +31,6 @@
 ;;;;; Events
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(re-frame/reg-sub
- ::metatable
- (fn [db]
-   (::metadata db)))
-
 (re-frame/reg-sub-raw
  :extract-metadata
  (fn [db [_ hash]]
@@ -46,6 +41,9 @@
       (let [h (get-in @db [::metadata hash])]
         (when-not (= h ::pending)
           h))))))
+
+(defn metadata [db id]
+  (get-in db [::metadata id]))
 
 (re-frame/reg-event-fx
  :extract-metadata
