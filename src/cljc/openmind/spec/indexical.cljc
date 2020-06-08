@@ -25,16 +25,19 @@
 
 (s/def ::extract-metadata
   (s/keys :req-un [::extract]
-          :opt-un [::comments ::relations]))
+          :opt-un [::comments ::relations ::history]))
 
 (s/def ::extract
   ::u/hash)
+
+(s/def ::history
+  (s/coll-of ::u/hash :kind vector?))
 
 (s/def ::comments
   (s/coll-of ::comment :distinct true))
 
 (s/def ::relations
-  (s/coll-of ::relation :distinct true))
+  (s/coll-of ::relation :kind set?))
 
 ;; TODO: Somehow we have to sync this with the :openmind.spec.comment/comment
 ;; spec. This is a strict extension. Same goes for ::relation

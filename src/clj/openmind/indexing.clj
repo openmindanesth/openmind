@@ -147,3 +147,25 @@
     (s3/assoc-index extract-metadata-uri
                     entity (:hash entity-meta)
                     value (:hash value-meta))))
+
+(defn remove-metadata [eid key metaid]
+  (let [old-meta (extract-metadata eid)
+        new-meta (util/immutable
+                  (update old-meta key #(into (empty %)
+                                              (remove (= metaid (:hash %)))
+                                              %)))]
+    (s3/assoc-index extract-metadata-uri
+                    eid new-meta)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;; Updating extracts
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn forward-metadata [prev id]
+  (let [prev-meta (extract-metadata prev)
+        new-meta (-> prev-meta
+                     (assoc :extract id)
+                     (update :history #(if (empty? %) [prev] (conj % prev)))
+                     util/immutable)]
+    (when (s3/intern new-meta)
+      (s3/assoc-index extract-metadata-uri id new-meta))))

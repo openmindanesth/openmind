@@ -42,6 +42,11 @@
           :url (str base-url "/" index "/_doc/" key)
           :body (json/write-str doc)}))
 
+(defn delete-req [index key]
+  (-> (index-req index nil key)
+      (dissoc :body)
+      (assoc :method :delete)))
+
 (defn search [index body]
   (let [qbody (json/write-str body)]
     (merge base-req
@@ -130,9 +135,17 @@
             key (.-hash-string ^ValueRef (:hash imm))
             res (async/<! (send-off!
                            (index-req index ext key)))]
-        (log/trace "Indexed" res)
+        (log/trace "Indexed" (:hash imm) res)
         res)
       (log/error "Trying to index invalid extract:" imm))))
+
+(defn retract-extract! [{:keys [^ValueRef hash]}]
+  (async/go
+    (let [res (-> (delete-req index (.-hash-string hash))
+                  send-off!
+                  async/<!)]
+      (log/trace "Retracted " hash res)
+      res)))
 
 ;;;;; Testing helpers
 

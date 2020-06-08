@@ -156,22 +156,25 @@
               (respond-with-fallback
                req [:openmind/index-result (:status res)]))))))))
 
-;; TODO: We shouldn't allow updating extracts until we get this sorted.
-#_(defmethod dispatch :openmind/update
-  [{:keys [client-id send-fn ?reply-fn uid tokens] [_ doc] :event :as req}]
-  (let [auth (select-keys (:orcid tokens) [:name :orcid-id])]
-    (when (= uid (:orcid-id (:orcid tokens)))
-      (async/go
-        (let [res (->> doc
-                       (validate auth)
-                       remove-empty
-                       parse-dates
-                       (es/update-doc es/index (:id doc))
-                       es/send-off!
-                       async/<!)]
-          (when-not (<= 200 (:status res) 299)
-            (log/error "failed to update doc" (:id doc) res))
-          (respond-with-fallback req [:openmind/update-response (:status res)]))))))
+(defn update-extract! [{id :hash {prev :history/previous-version} :content :as imm}]
+  (async/go
+    (when-not (= id prev)
+      (when (s3/intern imm)
+        (index/forward-metadata prev id)
+        (async/<! (es/retract-extract! prev))
+        (async/<! (es/index-extract! imm))))))
+
+(defmethod dispatch :openmind/update
+  [{:keys [client-id send-fn ?reply-fn uid tokens] [_ imm] :event :as req}]
+  (when (or (not= uid :taoensso.sente/nil-uid) env/dev-mode?)
+    (async/go
+      (when (check-author (select-keys (:orcid tokens) [:name :orcid-id])
+                          (:author (:content imm)))
+        (when (valid? imm)
+          (if-let [res (async/<! (update-extract! imm))]
+            (respond-with-fallback
+             req [:openmind/index-result (:status res)])
+            (log/error "Failed to update extract" imm)))))))
 
 (defmethod dispatch :openmind/intern
   [{[_ imm] :event :as req}]
@@ -189,6 +192,11 @@
       ;; snapshot in time with perfect reproducability and "live" mode which
       ;; queries the latest data.
       (respond-with-fallback req (into [:openmind/extract-metadata] res)))))
+
+;; FIXME: This should really be integrated with the intern logic.
+(defmethod dispatch :openmind/retract-relation
+  [{[_ eid relid] :event :as req}]
+  (index/remove-metadata eid :relations relid))
 
 (defmethod dispatch :openmind/extract-metadata
   [{[ev hash] :event :as req}]
