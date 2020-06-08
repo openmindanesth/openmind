@@ -405,11 +405,12 @@
 
 (defn tag-selector
   [{id :data-key}]
-  [tags/tag-widget {:selection {:read [::editor-tag-view-selection id]
-                                :set  [::set-editor-selection id]}
-                    :edit      {:read   [::editor-selected-tags id]
-                                :add    [::add-editor-tag id]
-                                :remove [::remove-editor-tag id]}}])
+  [:div {:style {:min-height "40rem"}}
+   [tags/tag-widget {:selection {:read [::editor-tag-view-selection id]
+                                 :set  [::set-editor-selection id]}
+                     :edit      {:read   [::editor-selected-tags id]
+                                 :add    [::add-editor-tag id]
+                                 :remove [::remove-editor-tag id]}}]])
 
 (defn drop-upload
   "Extracts the dropped image from the drop event and adds it to the app state."
