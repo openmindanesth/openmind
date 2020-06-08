@@ -86,17 +86,21 @@
        (update ::extracts dissoc id)
        (dissoc ::similar ::related-search-results))))
 
+;; HACK: I've actually had to invent names for layers of nested hacks. This is
+;; brittle.
 (re-frame/reg-event-fx
  ::editing-copy
  (fn [{:keys [db]} [_ id]]
-   (let [ext (events/table-lookup db id)
+   (let [ext    (events/table-lookup db id)
          hacked (if (and (seq (:figures (:content ext)))
                          (nil? (:figure (:content ext))))
                   (assoc-in ext [:content :figure]
-                            (first (:figures (:content ext)))))
-         fid (:figure (:content hacked))]
+                            (first (:figures (:content ext))))
+                  ext)
+         fid    (:figure (:content hacked))
+         nudged (update-in hacked [:content :tags] set)]
      (merge
-      {:db (update db ::extracts assoc id hacked)}
+      {:db (update db ::extracts assoc id nudged)}
       (when fid
         {:dispatch [:ensure fid [::set-figure-data fid id]]})))))
 

@@ -36,7 +36,7 @@
   (s/and string? not-empty))
 
 (s/def :extract/tags
-  (s/coll-of ::u/hash :distinct true))
+  (s/coll-of ::u/hash :kind set?))
 
 (s/def ::source
   (s/or
