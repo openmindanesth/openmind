@@ -124,12 +124,20 @@
                               (re-frame/dispatch
                                [::s3-receive response])))))))
 
+(def waiting-rx
+  (atom nil))
+
 (re-frame/reg-event-fx
  ::s3-receive
  (fn [{:keys [db]} [_ res]]
    (when-let [hash (:hash res)]
-     (let [value (assoc res :fetched (js/Date.))]
-       {:db (assoc-in db [::table hash] value)}))))
+     (let [value (assoc res :fetched (js/Date.))
+           cbs   (get @waiting-rx hash)]
+       (swap! waiting-rx dissoc hash)
+       (merge
+        {:db         (assoc-in db [::table hash] value)}
+        (when (seq cbs)
+          {:dispatch-n cbs}))))))
 
 (re-frame/reg-event-fx
  :s3-get
@@ -149,8 +157,10 @@
    (let [ex (table-lookup db id)]
      (if (and (some? ex) (not= ::uninitialised ex))
        {:dispatch event}
-       {:dispatch [:s3-get id]
-        :dispatch-later [{:ms 100 :dispatch [:ensure id event]}]}))))
+       (do
+         (swap! waiting-rx update id conj event)
+         (when (nil? ex)
+           {:dispatch [:s3-get id]}))))))
 
 (re-frame/reg-sub-raw
  ::lookup
