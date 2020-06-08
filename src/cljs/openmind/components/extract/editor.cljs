@@ -247,10 +247,11 @@
        {:dispatch [::form-errors errors id]}
        ;; TODO: create an intern-all endpoint and don't send a slew of messages
        ;; unnecessaril
-       (let [{:keys [imm snidbits]} (finalise-extract extract base)]
-         {:dispatch-n (into [[:->server [:openmind/index imm]]]
-                            (map #(do [:->server [:openmind/intern %]]))
-                            snidbits)})))))
+       (when (= id ::new)
+         (let [{:keys [imm snidbits]} (finalise-extract extract base)]
+           {:dispatch-n (into [[:->server [:openmind/index imm]]]
+                              (map #(do [:->server [:openmind/intern %]]))
+                              snidbits)}))))))
 
 (defn success? [status]
   (<= 200 status 299))
