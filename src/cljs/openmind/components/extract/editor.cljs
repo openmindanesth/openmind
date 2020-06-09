@@ -469,19 +469,42 @@
  ;; that big even)
  ::update-caption
  (fn [db [_ dk]]
-   (let [fig   (get-in db [::extracts dk :content :figure-data])
-         fdata (util/immutable (:content fig))]
-     (-> db
-         (update-in [::extracts dk :content] assoc
-                    :figure (:hash fdata)
-                    :figure-data fdata)))))
+   (let [fid        (get-in db [::extracts dk :content :figure])
+         author     (:login-info db)
+         new        (get-in db [::extracts dk :content :figure-data :content])
+         original   (:content (events/table-lookup db fid))
+         image-data (or (:image-data new)
+                        (:image-data original))
+         caption    (or (:caption new)
+                        (:caption original))]
+     (if (and (= image-data (:image-data original))
+              (= caption (:caption original)))
+       db
+       (let [fdata (util/immutable {:author     author
+                                    :caption    caption
+                                    :image-data image-data})]
+         (-> db
+             (update-in [::extracts dk :content] assoc
+                        :figure (:hash fdata)
+                        :figure-data fdata)))))))
 
 (defn figure-preview [{:keys [data-key content]}]
-  (let [{:keys [image-data caption]}
-        (or
-         (:content (:figure-data @(re-frame/subscribe [::content data-key])))
-         ;; Figure is either just uploaded, or in the data store.
-         @(re-frame/subscribe [:content content]))]
+  ;; Figure is either just uploaded, or in the data store. Except that one can
+  ;; edit the caption without changing the figure, and we have to deal with
+  ;; that...
+  (let [image-data (or
+                    (-> @(re-frame/subscribe [::content data-key])
+                        :figure-data
+                        :content
+                        :image-data)
+                    (:image-data
+                     @(re-frame/subscribe [:content content])))
+        caption (or (-> @(re-frame/subscribe [::content data-key])
+                        :figure-data
+                        :content
+                        :caption)
+                    (:caption
+                     @(re-frame/subscribe [:content content])))]
     [:div.flex.flex-column
      [:div.p1.flex
       {:style {:max-width "40rem"}}
@@ -493,7 +516,7 @@
        [:span "remove"]]]
      [text {:key         [:figure-data :content :caption]
             :data-key    data-key
-            :on-blur      #(re-frame/dispatch [::update-caption data-key])
+            :on-blur     #(re-frame/dispatch [::update-caption data-key])
             :content     caption
             :placeholder "additional info about figure"} ]]))
 
@@ -638,11 +661,7 @@
 (defn comment-widget [{:keys [data-key] :as opts}]
   (if (= data-key ::new)
     [textarea-list opts]
-    [comment/comment-page-content data-key]
-    #_(let [meta-id @(re-frame/subscribe [:extract-metadata data-key])
-          comments (when meta-id
-                     (:comments @(re-frame/subscribe [:content meta-id])))]
-      [comment/comment-tree data-key comments])))
+    [comment/comment-page-content data-key]))
 
 (defn relation-button [text event]
   [:button.text-white.ph.border-round.bg-dark-grey
