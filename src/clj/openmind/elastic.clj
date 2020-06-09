@@ -139,7 +139,7 @@
         res)
       (log/error "Trying to index invalid extract:" imm))))
 
-(defn retract-extract! [{:keys [^ValueRef hash]}]
+(defn retract-extract! [^ValueRef hash]
   (async/go
     (let [res (-> (delete-req index (.-hash-string hash))
                   send-off!

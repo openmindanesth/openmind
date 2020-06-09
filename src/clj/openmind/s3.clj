@@ -75,8 +75,7 @@
         (do
           (log/trace "Interning object" obj)
           (write! key obj))))
-    (log/error "Invalid data received to intern"
-               (s/explain-data :openmind.spec/immutable obj))))
+    (log/error "Invalid data received to intern" obj)))
 
 ;; TODO: subscription based logic and events tracking changes to the
 ;; master-index. We don't want 2 round trips for every lookup.
@@ -121,8 +120,9 @@
   "Set key `k` in (associative) index `index` to `v` using the semantics of
   `swap!`. Applies the change transactionally and retries until success."
   [index k v & kvs]
-  (assert (= 0 (mod (count kvs) 2))
-          "assoc-index requires an whole number of key-value pairs just as assoc")
+  (assert
+   (= 0 (mod (count kvs) 2))
+   "assoc-index requires an whole number of key-value pairs just as assoc")
   (let [old (get-index index)
         new (util/immutable (apply assoc (:content old) k v kvs))]
     (intern new)

@@ -27,7 +27,8 @@
     ;; But if it's the only way to return the result to you...
     (not= :taoensso.sente/nil-uid uid) (send-fn uid msg)
 
-    :else (log/warn "No way to return response to sender." uid msg))  )
+    :else (log/warn "No way to return response to sender." uid msg))
+  true)
 
 (defmulti dispatch (fn [{:keys [id] :as e}]
                      ;; Ignore all internal sente messages at present
@@ -120,8 +121,7 @@
   (if (s/valid? :openmind.spec.extract/extract (:content doc))
     true
     (boolean
-      (log/warn "Invalid extract received from client:"
-                (s/explain-data :openmind.spec.extract/extract doc)))))
+      (log/warn "Invalid extract received from client:" doc))))
 
 (defmethod dispatch :openmind/pubmed-lookup
   [{[_ {:keys [url res-id] :as ev}] :event :as req}]
@@ -192,11 +192,6 @@
       ;; snapshot in time with perfect reproducability and "live" mode which
       ;; queries the latest data.
       (respond-with-fallback req (into [:openmind/extract-metadata] res)))))
-
-;; FIXME: This should really be integrated with the intern logic.
-(defmethod dispatch :openmind/retract-relation
-  [{[_ eid relid] :event :as req}]
-  (index/remove-metadata eid :relations relid))
 
 (defmethod dispatch :openmind/extract-metadata
   [{[ev hash] :event :as req}]

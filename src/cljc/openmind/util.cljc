@@ -13,8 +13,7 @@
         {:hash         h
          :time/created #?(:clj (java.util.Date.) :cljs (js/Date.))
          :content      content})
-      (log/error "Can't parse immutable"
-                 (s/explain-data ::spec/content content)))))
+      (log/error "Can't parse immutable" content))))
 
 (defn immutable? [x]
   (s/valid? ::spec/immutable x))

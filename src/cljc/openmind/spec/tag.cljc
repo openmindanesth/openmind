@@ -23,4 +23,4 @@
 (defn validate [tag]
   (if (s/valid? ::tag tag)
     tag
-    (log/error "Invalid tag: " (s/explain ::tag tag))))
+    (log/error "Invalid tag: " tag)))
