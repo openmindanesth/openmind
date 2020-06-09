@@ -31,7 +31,12 @@
   ::u/hash)
 
 (s/def ::history
-  (s/coll-of ::u/hash :kind vector?))
+  (s/coll-of ::edit :kind vector?))
+
+(s/def ::edit
+  (s/keys :req [:history/previous-version
+                :time/created]
+          :req-un [::u/author]))
 
 (s/def ::comments
   (s/coll-of ::comment :distinct true))

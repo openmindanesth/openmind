@@ -241,9 +241,10 @@
    (assoc-in db [::extracts id :errors] errors)))
 
 (defn extract-changed? [old new]
-  (when-not (= (:content old) new)
-    (util/immutable
-     (assoc new :history/previous-version (:hash old)))))
+  (let [content (dissoc (:content old) :hash :time/created)]
+    (when-not (= content new)
+      (util/immutable
+       (assoc new :history/previous-version (:hash old))))))
 
 (re-frame/reg-event-fx
  ::update-extract
@@ -292,7 +293,8 @@
  :openmind/update-response
  (fn [cofx [_ status]]
    (if (success? status)
-     {:dispatch-n [[:notify {:status :success
+     {:dispatch-n [[::clear nil]
+                   [:notify {:status  :success
                              :message "changes submitted successfully"}]
                    [:navigate {:route :search}]]}
      {:dispatch [:notify {:status :error :message "failed to save changes"}]})))
@@ -922,6 +924,7 @@
                  :controllers
                  [{:parameters {:path [:id]}
                    :start (fn [{{id :id} :path}]
+                            (re-frame/dispatch [::clear nil])
                             (let [id (edn/read-string id)]
                               (when-not @(re-frame/subscribe [::extract id])
                                 (re-frame/dispatch [::start-hack id])
