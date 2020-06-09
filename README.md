@@ -23,9 +23,9 @@ Steps:
    matter of `cider-jack-in-clj&cljs`.
 4. In the clj repl, load the `openmind.server` namespace and run `(init!)` to
    start the server.
-5. Code to initialise a new Elastic search cluster is in
-   `dev/clj/setup.clj`. From this ns, run `(init-cluster!)` to start a new
-   cluster and `(load-es-from-s3!)` to populate it with data from S3.
+5. To load the elastic search cluster with the extracts in s3, use the dev code
+   in `dev/clj/setup.clj`. The function `(setup/load-es-from-s3!)` is all you
+   need.
 6. Navigate to http://localhost:3003 in your browser (if you didn't change the
    `:port` config in `conf.edn`.
 7. Have at it.
