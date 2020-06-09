@@ -56,7 +56,8 @@
      :snidbits (concat (when figure [figure-data])
                        (map util/immutable rels)
                        (map (fn [t]
-                              (util/immutable {:author author :text t :extract id}))
+                              (util/immutable
+                               {:author author :text t :extract id}))
                             comments))}))
 
 (re-frame/reg-event-fx
@@ -239,20 +240,10 @@
  (fn [db [_ errors id]]
    (assoc-in db [::extracts id :errors] errors)))
 
-(defn extract-diff [prev pmeta new]
-  (let [fig?     (not= (:figure prev) (:figure new))
-        author   (:author new)
-        old-rels (:relations pmeta)
-        new-rels (:relations new)
-        imm      (util/immutable new)]
-    {:imm    imm
-     :extras (concat
-              (when fig? [(:figure-data new)])
-              (map #(do [:openmind/intern  %])
-                   (map util/immutable
-                        (set/diff new-rels old-rels)))
-              (map #(do [:openmind/retract-relation (:hash imm) (:hash %)])
-                   (set/diff old-rels new-rels)))}))
+(defn extract-changed? [old new]
+  (when-not (= (:content old) new)
+    (util/immutable
+     (assoc new :history/previous-version (:hash old)))))
 
 (re-frame/reg-event-fx
  ::update-extract
@@ -262,26 +253,28 @@
          {:keys [valid errors]} (validate-extract extract)]
      (if errors
        {:dispatch [::form-errors errors id]}
-       ;; TODO: create an intern-all endpoint and don't send a slew of messages
-       ;; unnecessaril
        (if (= id ::new)
          (let [{:keys [imm snidbits]} (finalise-extract extract base)]
            {:dispatch-n (into [[:->server [:openmind/index imm]]]
                               (map #(do [:->server [:openmind/intern %]]))
                               snidbits)})
          (let [original (events/table-lookup db id)
-               ometa (events/table-lookup db (core/metadata db id))
-               extract  (assoc extract :history/previous-version id)
-               {:keys [imm extras]}
-               (extract-diff original ometa extract)]
-           (println extras)
-           {:dispatch-n
-            (into [[:->server [:openmind/update imm]]]
-                  (map #(do [:->server %]))
-                  extras)}))))))
+               fig      (when-not (= (:figure extract) (:figure original))
+                          (:figure-data base))
+               imm      (extract-changed? original extract)]
+           (if-not (and (nil? imm) (nil? fig)
+                          (= (:relations extract) (:relations base)))
+             {:dispatch [:->server [:openmind/update
+                                    {:extract   imm
+                                     :figure    fig
+                                     :relations (:relations base)}]]}
+             ;; no change, just go back to search
+             {:dispatch-n [[:notify {:status  :warn
+                                     :message "no changes to save"}]
+                           [:navigate {:route :search}]]})) )))))
 
 (defn success? [status]
-  (<= 200 status 299))
+  (and status (<= 200 status 299)))
 
 (re-frame/reg-event-fx
  :openmind/index-result
@@ -289,20 +282,20 @@
    (if (success? status)
      {:dispatch-n [[::clear ::new]
                    [:notify {:status  :success
-                             :message "Extract Successfully Created!"}]
+                             :message "extract successfully created"}]
                    [:navigate {:route :search}]]}
      ;;TODO: Fix notification bar.
      {:dispatch [:notify {:status :error
-                          :message "Failed to create extract."}]})))
+                          :message "failed to create extract"}]})))
 
 (re-frame/reg-event-fx
  :openmind/update-response
  (fn [cofx [_ status]]
    (if (success? status)
      {:dispatch-n [[:notify {:status :success
-                             :message "changes saved successfully"}]
+                             :message "changes submitted successfully"}]
                    [:navigate {:route :search}]]}
-     {:dispatch [:notify {:status :error :message "failed to save changes."}]})))
+     {:dispatch [:notify {:status :error :message "failed to save changes"}]})))
 
 (re-frame/reg-event-db
  ::clear-status-message
@@ -313,11 +306,13 @@
  ::add-relation
  (fn [db [_ id object-id type]]
    (let [author (:login-info db)
-         rel {:attribute type
-              :value object-id
-              :entity id
-              :author author}]
-     (update-in db [::extracts id :content :relations] conj rel))))
+         rel    {:attribute type
+                 :value     object-id
+                 :entity    id
+                 :author    author}]
+     (if (get-in db [::extracts id :content :relations])
+       (update-in db [::extracts id :content :relations] conj rel)
+       (assoc-in db [::extracts id :content :relations] #{rel})))))
 
 (re-frame/reg-event-db
  ::remove-relation
@@ -481,9 +476,12 @@
                     :figure (:hash fdata)
                     :figure-data fdata)))))
 
-(defn figure-preview [{:keys [data-key]}]
+(defn figure-preview [{:keys [data-key content]}]
   (let [{:keys [image-data caption]}
-        (:content (:figure-data @(re-frame/subscribe [::content data-key])))]
+        (or
+         (:content (:figure-data @(re-frame/subscribe [::content data-key])))
+         ;; Figure is either just uploaded, or in the data store.
+         @(re-frame/subscribe [:content content]))]
     [:div.flex.flex-column
      [:div.p1.flex
       {:style {:max-width "40rem"}}
@@ -853,18 +851,16 @@
             metaid @(re-frame/subscribe [:extract-metadata id])
             metadata (when metaid @(re-frame/subscribe
                                     [:openmind.events/lookup metaid]))]
-        (when (and (:figure content) (empty? (:figure-data content)))
-          (re-frame/dispatch [::set-figure-data (:figure content) id]))
         (when metadata
           (let [metadata (:content metadata)]
             (when (not= (:relations content) (:relations metadata))
               ;; HACK: Issuing events from the component is not recommended. The
               ;; problem is that I need an event to react to a subscription that
-              ;; reacts to events that ... Subscribptions are beautifully reactive,
-              ;; but trying to have an event only process if a chain of previous
-              ;; events are already complete eludes me. Hence this.
-              (re-frame/dispatch [::reconcile-metadata id metadata])
-              (re-frame/dispatch [::end-hack id]))))))
+              ;; reacts to events that ... Subscribptions are beautifully
+              ;; reactive, but trying to have an event only process if a chain
+              ;; of previous events are already complete eludes me. Hence this.
+              (re-frame/dispatch [::reconcile-metadata id metadata]))
+            (re-frame/dispatch [::end-hack id])))))
   [:div {:style {:display :none}}])
 
 (defn extract-editor

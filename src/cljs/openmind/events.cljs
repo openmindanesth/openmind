@@ -168,7 +168,10 @@
    (when-not (contains? (::table @db) hash)
      (re-frame/dispatch [:s3-get hash]))
    (ratom/make-reaction
-    (fn [] (get-in @db [::table hash]))
+    (fn []
+      (let [v (get-in @db [::table hash])]
+        (when-not (= v ::uninitialised)
+          v)))
     :on-dispose (fn []
                   ;; TODO: Consider some simple ref counting and gc on ::table
                   ))))
@@ -178,7 +181,7 @@
  (fn [[_ id]]
    (re-frame/subscribe [::lookup id]))
  (fn [imm [_ id]]
-   (when-not (= ::uninitialised imm)
+   (when imm
      (assoc (:content imm) :hash (:hash imm)))))
 
 (re-frame/reg-sub

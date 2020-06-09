@@ -56,20 +56,16 @@
   [:div.flex.flex-column.p1
    [comment/comment-page-content id]])
 
-(defn figure-hover [figures]
-  (when (seq figures)
-    (into [:div]
-          (map (fn [id]
-                 (let [{:keys [image-data caption] :as fig}
-                       @(re-frame/subscribe [:content id])]
-                   [:div
-                    (when image-data
-                      [:img.p1 {:src image-data
-                                :style {:max-width "95%"
-                                        :max-height "50vh"}}])
-                    (when (seq caption)
-                      [:div.p1 caption])])))
-          figures)))
+(defn figure-hover [figure]
+  (let [{:keys [image-data caption]}
+        @(re-frame/subscribe [:content figure])]
+    [:div
+     (when image-data
+       [:img.p1 {:src image-data
+                 :style {:max-width "95%"
+                         :max-height "50vh"}}])
+     (when (seq caption)
+       [:div.p1 caption])]))
 
 (defn edit-link [hash]
   ;; Users must be logged in to edit extracts
@@ -255,7 +251,7 @@
               {:key (str id "-" attribute "-" other)}))))
        relations))))
 
-(defn summary [{:keys [text author source figures tags hash] :as extract}
+(defn summary [{:keys [text author source figure figures tags hash] :as extract}
                & [{:keys [edit-link? controls pb0? c i] :as opts
                    :or   {edit-link?   true}}]]
   [:div.search-result.ph
@@ -284,7 +280,7 @@
      [hover-link "tags" [tag-hover tags] ]
      [hover-link [ilink "figure" {:route :extract/figure
                                   :path  {:id hash}}]
-      [figure-hover figures]
+      [figure-hover (or figure (first figures))]
       {:orientation :right}]
      [hover-link [source-link source] [source-hover source]
       {:orientation :right}]]]])
@@ -294,16 +290,13 @@
 (defn figure-page
   [{{:keys [id] :or {id ::new}} :path-params}]
   (let [id                (edn/read-string id)
-        {:keys [figures]} @(re-frame/subscribe [:content id])]
-    (if (seq figures)
-      (into [:div]
-            (map (fn [fid]
-                   (let [{:keys [image-data caption]}
-                         @(re-frame/subscribe [:content fid])]
-                     [:div
-                      [:img.p2 {:style {:max-width "95%"} :src image-data}]
-                      [:p.pl1.pb2 caption]])))
-            figures)
+        {:keys [figures figure]} @(re-frame/subscribe [:content id])]
+    (if-let [fid (or figure (first figures))]
+      (let [{:keys [image-data caption]}
+            @(re-frame/subscribe [:content fid])]
+        [:div
+         [:img.p2 {:style {:max-width "95%"} :src image-data}]
+         [:p.pl1.pb2 caption]])
       [:span.p2 "This extract doesn't have an associated figure."])))
 
 ;;;;; Comments

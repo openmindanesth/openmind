@@ -118,9 +118,9 @@
 (defn valid?
   "Checks that `doc` is a valid extract based on its spec."
   [doc]
-  (if (s/valid? :openmind.spec.extract/extract (:content doc))
-    true
-    (boolean
+  (when doc
+    (if (s/valid? :openmind.spec.extract/extract (:content doc))
+      true
       (log/warn "Invalid extract received from client:" doc))))
 
 (defmethod dispatch :openmind/pubmed-lookup
