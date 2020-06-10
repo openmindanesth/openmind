@@ -156,25 +156,32 @@
               (respond-with-fallback
                req [:openmind/index-result (:status res)]))))))))
 
-(defn update-extract! [{id :hash {prev :history/previous-version} :content :as imm}]
+(defn update-extract!
+  [{id :hash {prev :history/previous-version author :author} :content :as imm}]
   (async/go
     (when-not (= id prev)
       (when (s3/intern imm)
-        (index/forward-metadata prev id)
+        (index/forward-metadata prev id author)
         (async/<! (es/retract-extract! prev))
         (async/<! (es/index-extract! imm))))))
 
 (defmethod dispatch :openmind/update
-  [{:keys [client-id send-fn ?reply-fn uid tokens] [_ imm] :event :as req}]
-  (when (or (not= uid :taoensso.sente/nil-uid) env/dev-mode?)
+  [{:keys [client-id send-fn ?reply-fn uid tokens]
+    [_ {:keys [extract figure relations]}] :event :as req}]
+  #_(when (or (not= uid :taoensso.sente/nil-uid) env/dev-mode?)
     (async/go
       (when (check-author (select-keys (:orcid tokens) [:name :orcid-id])
-                          (:author (:content imm)))
-        (when (valid? imm)
-          (if-let [res (async/<! (update-extract! imm))]
-            (respond-with-fallback
-             req [:openmind/index-result (:status res)])
-            (log/error "Failed to update extract" imm)))))))
+                          (:author (:content extract)))
+        (when (valid? extract)
+          (when extract
+            (async/<! (update-extract! extract)))
+          (when figure
+            (s3/intern figure))
+          (index/edit-relations extract relations)
+
+          ;; TODO: how to detect errors?
+          (respond-with-fallback
+           req [:openmind/update-response 200]))))))
 
 (defmethod dispatch :openmind/intern
   [{[_ imm] :event :as req}]

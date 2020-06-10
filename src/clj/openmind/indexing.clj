@@ -149,23 +149,58 @@
                     value (:hash value-meta))))
 
 (defn remove-metadata [eid key metaid]
-  (let [old-meta (extract-metadata eid)
-        new-meta (util/immutable
-                  (update old-meta key #(into (empty %)
-                                              (remove (= metaid (:hash %)))
-                                              %)))]
-    (s3/assoc-index extract-metadata-uri
-                    eid new-meta)))
+  (let [old-meta (extract-metadata eid)]
+    (when old-meta
+      (let [new-meta (util/immutable
+                       (update old-meta
+                               key #(into (empty %)
+                                          (remove (= metaid (:hash %)))
+                                          %)))]
+        (s3/assoc-index extract-metadata-uri
+                        eid new-meta)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Updating extracts
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn forward-metadata [prev id]
+(defn retract-1 [id rel]
+  (let [m' (-> id
+               extract-metadata
+               (update :relations disj rel)
+               util/immutable)]
+    (when (s3/intern m')
+      m')))
+
+(defn retract-relation [{:keys [entity value] :as rel}]
+  (let [emeta (retract-1 entity rel)
+        vmeta (retract-1 value rel)]
+    (s3/assoc-index extract-metadata-uri
+                    entity (:hash emeta)
+                    value (:hash vmeta))))
+
+(defn edit-relations [{:keys [hash]} rels]
+  (let [meta (extract-metadata hash)
+        old-rels (:relations extract-metadata)
+        add (remove #(contains? old-rels %) rels)
+        retract (remove #(contains? rels %) old-rels)]
+    (run! #(update-indicies :relation (util/immutable %))
+          (map #(assoc % :entity hash) add))
+    (run! #(retract-relation %) retract)))
+
+(defn forward-metadata [prev id author]
+  (println "updating metadata")
   (let [prev-meta (extract-metadata prev)
-        new-meta (-> prev-meta
-                     (assoc :extract id)
-                     (update :history #(if (empty? %) [prev] (conj % prev)))
-                     util/immutable)]
-    (when (s3/intern new-meta)
-      (s3/assoc-index extract-metadata-uri id new-meta))))
+        relations (into #{} (map #(assoc % :entity id)) (:relations prev-meta))
+        new-meta  (-> prev-meta
+                      (assoc :extract id)
+                      (assoc :relations relations)
+                      (update :history #(or % []))
+                      (update :history
+                              conj
+                              {:history/previous-version prev
+                               :time/created             (java.util.Date.)
+                               :author                   author})
+                      (#(do (println %) %))
+                      util/immutable)]
+    (intern-and-swap! id new-meta)
+    (run! #(s3/intern (util/immutable %)) relations)))
