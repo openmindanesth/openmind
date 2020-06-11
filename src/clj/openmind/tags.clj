@@ -132,6 +132,7 @@
                                                       "chemogenetics" {}
                                                       "TMS"           {}
                                                       "FUS"           {}}}}})
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; core logic
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -160,3 +161,74 @@
          vals
          (map #(map :tag %))
          (map (fn [ts] {:terms {:tags ts}})))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;; Tag migration #2
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def new (into {} (map (fn [{:keys [hash content]}] [hash content])
+                        (create-tag-data "anaesthesia" tag-tree-mark2))))
+
+(def d  (remove #(contains? new (key %)) tag-tree ))
+
+(def simple-mapping
+  {"depth"    "level"
+   "light"    "light"
+   "moderate" "moderate"
+   "deep"     "deep"
+
+   "a2 AR antagonists"   "α2 AR agonists"
+   "(dex)metedetomidine" "(dex)metedetomidine"
+   "xylazine"            "xylazine"
+
+   "volatile ethers" "vapours"
+   "isoflurane"      "isoflurane"
+   "sevoflurane"     "sevoflurane"
+
+   "neuron level"       "neuron level"
+   "cortex (EEG)"       "cortex"
+   "large scale (fMRI)" "large scale"
+   "ensemble (LFP)"     "ensemble"
+
+   "sensory stimuli" "sensory"
+   "somatosensory"   "somatosensory"
+   "olfactory"       "olfactory"
+   "auditory"        "auditory"
+   "visual"          "visual"
+
+   "nociceptive" "nociceptive"})
+
+(def extra
+  {#openmind.hash/ref "90f270725ca50bb799bf2d77afe9ce2e"
+   #openmind.hash/ref "146e347748eec1108ac092c7ab0c3aff"})
+
+(def key-transfer
+  (let [new-by-name (into {} (map (fn [[id {:keys [name] :as content}]]
+                                    [name content]))
+                          new)]
+    (into {}
+          (map (fn [[id {:keys [name]}]]
+                 (let [t (get new-by-name (get simple-mapping name))]
+                   [id (util/immutable (assoc t :history/previous-version id))])))
+          d)))
+
+(def tag-update-map
+  (into extra
+        (map (fn [[k {:keys [hash]}]]
+               [k hash]))
+         key-transfer))
+
+(def tags-to-add
+  (concat
+   (into [(-> new
+              (get (val (first extra)))
+              (assoc :history/previous-version (key (first extra)))
+              util/immutable)]
+         (comp
+          (remove #(contains? tag-tree (key %)))
+          (remove (fn [[k {:keys [name]}]]
+                    (contains? (into #{} (vals simple-mapping)) name)))
+          (map val)
+          (map util/immutable))
+         (dissoc new (val (first extra))))
+   (vals key-transfer)))
