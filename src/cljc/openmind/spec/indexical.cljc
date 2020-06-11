@@ -39,7 +39,7 @@
           :req-un [::u/author]))
 
 (s/def ::comments
-  (s/coll-of ::comment :distinct true))
+  (s/coll-of ::comment :kind vector? :distinct true))
 
 (s/def ::relations
   (s/coll-of ::relation :kind set?))
