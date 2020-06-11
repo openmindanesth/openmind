@@ -4,6 +4,7 @@
             [clojure.spec.alpha :as s]
             [openmind.env :as env]
             [openmind.json :as json]
+            [openmind.s3 :as s3]
             [org.httpkit.client :as http]
             [taoensso.timbre :as log])
   (:import openmind.hash.ValueRef))
@@ -123,11 +124,26 @@
 ;;;;; Extract indexing
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(def active-es-index
+  "openmind.indexing/elastic-active")
+
+(defn add-to-index [id]
+  (s3/update-index active-es-index (fn [i]
+                                     (if (empty? i)
+                                       #{id}
+                                       (conj i id)))))
+
+(defn replace-in-index [old new]
+  (s3/update-index active-es-index (fn [i]
+                                     (conj (when (seq i)
+                                             (disj i old))
+                                           new))))
+
 (defn index-extract!
   "Given an immutable, index the contained extract in es."
   [imm]
   (async/go
-    (if (s/valid? :openmind.spec.extract/extract (:content imm))
+    (if true #_(s/valid? :openmind.spec.extract/extract (:content imm))
       ;; TODO: Index the nested object instead of flattening it.
       (let [ext (assoc (:content imm)
                        :hash (:hash imm)

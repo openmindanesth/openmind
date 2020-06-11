@@ -1,125 +1,121 @@
 (ns reindexing
   (:require [clojure.core.async :as async]
-            [openmind.edn :as edn]
-            [openmind.util :as util]
-            [openmind.s3 :as s3]
-            [openmind.json :as json]
             [openmind.elastic :as es]
-            [openmind.tags :as tags]))
+            [openmind.indexing :as index]
+            [openmind.pubmed :as pubmed]
+            [openmind.s3 :as s3]
+            [openmind.tags :as tags]
+            [openmind.util :as util]
+            setup))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;; Full scale migration #2 (10 June 2020)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;;;; Transitional logic
+(def valid-keys
+  [:text
+   :author
+   :tags
+   :source
+   :extract/type
+   :figure
+   :source-material
+   :history/previous-version])
 
-(def old-tags (edn/read-string (slurp "tags.edn")))
+(defn refetch* [{:keys [url]}]
+  (assoc (async/<!! (pubmed/article-info url)) :url url))
 
-(def old-tag-map
-  (into {"anaesthesia" (key (first old-tags))}
-        (map (fn [[k {:keys [tag-name]}]]
-               [tag-name k]))
-        (val (first old-tags))))
+(defonce refetch (memoize refetch*))
 
-(def old-tag-tree
-  (tags/invert-tag-tree
-   (assoc (val (first old-tags)) "8PvLV2wBvYu2ShN9w4NT"
-          {:tag-name "anaesthesia" :parents []})
-   {:tag-name "anaesthesia" :id "8PvLV2wBvYu2ShN9w4NT"}))
+(defn transfer-tags [tags]
+  (into #{} (map #(get tags/tag-update-map % %)) tags))
 
-(def new-tags
-  (tags/create-tag-data (key (first tags/demo-tag-tree)) tags/demo-tag-tree ))
+(defn update-extract [eid]
+  (let [current (:content (s3/lookup eid))]
+    (let [f (or (:figure current) (first (:figures current)))
+          source (refetch (:source current))]
+      (-> current
+          (update :tags transfer-tags)
+          (assoc :source source)
+          (select-keys valid-keys)
+          (merge (when f {:figure f}))
+          util/immutable))))
 
-(def tag-id-map
-  "Map from old es tag ids to hashes"
-  (into {}
-        (map (fn [t]
-               (let [tname (-> t :content :name)]
-                 [(get old-tag-map tname) (:hash t)])))
-        new-tags))
+(defn indexify [cs]
+  (reduce index/insert-comment [] cs))
 
+(defn flatten-comment-tree [eid ql comments reply-to]
+  (mapcat (fn [{:keys [replies] :as com}]
+            (let [c (-> com
+                        (select-keys [:text :author])
+                        (assoc :extract eid)
+                        (merge (when reply-to {:reply-to reply-to}))
+                        util/immutable)]
+              (into [c] (flatten-comment-tree eid ql replies (ql (:hash c))))))
+          comments))
 
-(def new-tag-map
-  (into {} (map (fn [x] [(:hash x) (:content x)])) new-tags))
+(defn update-comment-tree [eid ql comments]
+  (flatten-comment-tree (ql eid) ql comments nil))
 
-(def new-tag-map-imm
-  (util/immutable new-tag-map))
+(defn update-metadata [new-extracts-map [eid metaid]]
+  (let [ql   (into {} (map (fn [[k v]] [k (:hash v)])) new-extracts-map)
+        eid' (get ql eid)
 
-(def new-tag-tree
-  (tags/invert-tag-tree new-tag-map
-                   {:id #openmind.hash/ref "ad5f984737860c4602f4331efeb17463"
-                    :name "anaesthesia" :domain "anaesthesia" :parents []}))
+        {:keys [comments relations history] :as om} (:content (s3/lookup metaid))
 
-(def new-tags-imm
-  (util/immutable new-tag-tree))
+        rels
+        (into #{} (map (fn [{:keys [entity value time/created] :as rel}]
+                         (-> rel
+                             (dissoc :hash :time/created)
+                             (update :entity ql)
+                             (update :value ql)
+                             util/immutable
+                             (assoc :time/originally-created created))))
+              relations)
+        comms (update-comment-tree eid ql comments)]
+    {:new-relations rels
+     :new-comments comms
+     :old-id eid
+     :meta
+     (util/immutable
+      {:extract   eid'
+       :history   (mapv #(update % :history/previous-version ql)
+                        history)
+       :relations (into #{} (map (fn [{:keys [time/originally-created hash content]}]
+                                   (assoc content :hash hash
+                                          :time/created originally-created))
+                                 rels))
+       :comments  (indexify comms)})}))
 
+(defn v2-upgrade-all! []
+  ;; Add new tags
 
-(def extracts*
-  (-> "extracts.edn" slurp edn/read-string))
+  (let [old-meta-map     (:content (s3/lookup index/extract-metadata-uri))
+        new-extracts-map (into {}
+                               (map (fn [[id _]]
+                                      (println "updating" id)
+                                      [id (update-extract id)]))
+                               old-meta-map)
+        new-meta         (map (partial update-metadata new-extracts-map)
+                              old-meta-map)
+        new-rels         (into [] (comp (map :new-relations) cat) new-meta)
+        new-comments     (into [] (comp (map :new-comments) cat) new-meta)
+        meta             (into {} (map (fn [{:keys [old-id meta]}]
+                                         [old-id meta]))
+                               new-meta)
+        es-index         (into #{} (map :hash) (vals new-extracts-map))
+        meta-index       (into {} (map (fn [id]
+                                         [(:hash (get new-extracts-map id))
+                                          (:hash (get meta id))]))
+                               (keys old-meta-map))]
+    (run! s3/intern (concat
+                     tags/tags-to-add
+                     new-rels
+                     new-comments
+                     (vals new-extracts-map)
+                     (vals meta)))
 
-(def eids
-  "IDs of the extracts I know are correct."
-  #{"V_tDYW0BvYu2ShN9-IQM"
-    "WftGYW0BvYu2ShN9_4Ra"
-    "W_vcZG0BvYu2ShN90ITc"
-    "VvtDYW0BvYu2ShN9pYRI"
-    "b_shRG4BvYu2ShN9qYQU"})
+    (@#'s3/write! es/active-es-index (util/immutable es-index))
+    (@#'s3/write! index/extract-metadata-uri (util/immutable meta-index))
 
-(def extracts
-  (filter #(contains? eids (:id %)) extracts*))
-
-
-(def figrep
-  "https://github.com/openmindanesth/openmind/raw/27d246d42bbe8512ec3db67d75a820307ffe2e14/B8D82E08-3E2C-4F48-9A7A-ED7B92DBE7F6.png")
-
-(defn extract-figure [{:keys [figure figure-caption author text]}]
-  (when figure
-    (merge
-     {:image-data (if (< (count figure) 200) figrep figure)
-      :author     (or author
-                      {:orcid-id "0000-0003-1053-9256"
-                       :name     "Henning Matthias Reimann"})}
-     (when figure-caption
-       {:caption figure-caption}))))
-
-(def figures
-  (into {}
-        (map (fn [extract]
-               (let [f (extract-figure extract)]
-                 (when f
-                   [(:id extract) (util/immutable f)]))))
-        extracts))
-
-(def new-extracts
-  (map (fn [extract]
-         (let [sd (:source-detail extract)]
-           (merge
-            {:text         (:text extract)
-             :source       (-> sd
-                               (assoc  :url (:source extract))
-                               (assoc :publication/date
-                                      (:date sd))
-                               (dissoc :date))
-             :tags         (mapv tag-id-map (:tags extract))
-             :author       (or (:author extract)
-                               {:orcid-id "0000-0003-1053-9256"
-                                :name "Henning Matthias Reimann"})
-             :extract/type (keyword (:extract-type extract))}
-            (when-let [f (:hash (get figures (:id extract)))]
-              {:figures [f]})
-            {:time/created (if-let [t (:created-time extract)]
-                             (.parse  json/dateformat t)
-                             (java.util.Date.))})))
-       (filter #(contains? eids (:id %))
-               extracts)))
-
-(def imm-extracts
-  (mapv util/immutable new-extracts))
-
-
-(defn transfer! []
-  (run! s3/intern new-tags)
-  (s3/intern new-tag-map-imm)
-  (s3/intern new-tags-imm)
-  (run! s3/intern (vals figures))
-  (run! s3/intern imm-extracts))
-
-(defn index []
-  (run! es/index-extract! imm-extracts))
+    (setup/load-es-from-s3!)))

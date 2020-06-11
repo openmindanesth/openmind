@@ -20,10 +20,9 @@
      (async/<! (elastic/send-off! (elastic/set-mapping elastic/index))))))
 
 (defn load-es-from-s3! []
-  (let [extract-ids (-> index/extract-metadata-uri
+  (let [extract-ids (-> elastic/active-es-index
                         s3/lookup
-                        :content
-                        keys)
+                        :content)
         extracts (map s3/lookup extract-ids)]
     (async/go
       (async/<! (init-cluster!))

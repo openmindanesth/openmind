@@ -73,9 +73,9 @@
           (log/info "Attempting to add data with hash:" key
                     "which already exists. Doing nothing."))
         (do
-          (log/trace "Interning object" obj)
+          (log/trace "Interning object\n" obj)
           (write! key obj))))
-    (log/error "Invalid data received to intern" obj)))
+    (log/error "Invalid data received to intern\n" obj)))
 
 ;; TODO: subscription based logic and events tracking changes to the
 ;; master-index. We don't want 2 round trips for every lookup.
@@ -101,18 +101,23 @@
   [index old-value new-value]
   ;; TODO: lock between machines!! Zookeeper, et al..
   (if (s/valid? :openmind.spec.indexical/indexical (:content new-value))
-    (locking index
-      (let [current (lookup-raw index)]
-        (if (= current old-value)
-          (do
-            ;; TODO: Check for successful write.
-            (write! index new-value)
-            (swap! index-cache assoc index new-value)
-            {:success? true
-             :value new-value})
-          (do
-            (swap! index-cache assoc index current)
-            {:success? false}))))
+    (if (= old-value new-value)
+      (do
+        (log/info "No change to index value. Ignoring.")
+        {:success true
+         :value   old-value})
+      (locking index
+        (let [current (lookup-raw index)]
+          (if (= current old-value)
+            (do
+              ;; TODO: Check for successful write.
+              (write! index new-value)
+              (swap! index-cache assoc index new-value)
+              {:success? true
+               :value    new-value})
+            (do
+              (swap! index-cache assoc index current)
+              {:success? false})))))
     ;; Return false on fail, nil on error.
     (log/error "Invalid write to index" index new-value)))
 
@@ -134,3 +139,13 @@
         ;; like assoc? RTFM isn't exactly an excuse.
         ;; TransactionCouldNotCompleteException maybe...
         (apply assoc-index index k v kvs)))))
+
+(defn update-index [index f & args]
+  (let [old (get-index index)
+        new (util/immutable (apply f (:content old) args))]
+    ;; FIXME: Complete duplicate
+    (intern new)
+    (let [{:keys [success? value]} (index-compare-and-set! index old new)]
+      (if success?
+        value
+        (apply update-index index f args)))))

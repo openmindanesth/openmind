@@ -138,7 +138,8 @@
   [extract]
   (async/go
     (when (s3/intern extract)
-      (async/<! (es/index-extract! extract)))))
+      (async/<! (es/index-extract! extract))
+      (es/add-to-index (:hash extract)))))
 
 (defmethod dispatch :openmind/index
   [{:keys [client-id send-fn ?reply-fn uid tokens] [_ imm] :event :as req}]
@@ -163,7 +164,8 @@
       (when (s3/intern imm)
         (index/forward-metadata prev id author)
         (async/<! (es/retract-extract! prev))
-        (async/<! (es/index-extract! imm))))))
+        (async/<! (es/index-extract! imm))
+        (es/replace-in-index (:hash prev) (:hash imm))))))
 
 (defmethod dispatch :openmind/update
   [{:keys [client-id send-fn ?reply-fn uid tokens]

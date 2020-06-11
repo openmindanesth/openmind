@@ -13,9 +13,13 @@
 (s/def ::indexical
   (s/or
    :tag-lookup-table ::tag-lookup
+   :es-index ::searchable-index
    :tx-log ::tx-log
    :extract-metadata ::extract-metadata
    :extract-metadata-table ::extract-metadata-table))
+
+(s/def ::searchable-index
+  (s/coll-of ::u/hash :kind set?))
 
 (s/def ::tx-log
   (s/coll-of ::u/hash :kind vector?))
@@ -39,7 +43,7 @@
           :req-un [::u/author]))
 
 (s/def ::comments
-  (s/coll-of ::comment :kind vector? :distinct true))
+  (s/coll-of ::comment  :distinct true))
 
 (s/def ::relations
   (s/coll-of ::relation :kind set?))
