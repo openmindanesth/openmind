@@ -61,10 +61,44 @@
 (defn content [x]
   (-> x first :content first))
 
+(def months
+  "Why does this need to be done?"
+  {"jan"       0
+   "january"   0
+   "feb"       1
+   "february"  1
+   "mar"       2
+   "march"     2
+   "apr"       3
+   "april"     3
+   "may"       4
+   "jun"       5
+   "june"      5
+   "jul"       6
+   "july"      6
+   "aug"       7
+   "august"    7
+   "sep"       8
+   "sept"      8
+   "september" 8
+   "oct"       9
+   "october"   9
+   "nov"       10
+   "november"  10
+   "dec"       11
+   "december"  11})
+
+(defn parse-month [s]
+  (try
+    (dec (Long/parseLong s))
+    (catch Exception e
+      (or (get months (string/lower-case s)) 0))))
+
 (defn pubdate [issue]
-  (str (content (filter-by-tag :Year issue)) " "
-       (content (filter-by-tag :Month issue)) " "
-       (content (filter-by-tag :Day issue))))
+  (let [y (Long/parseLong (content (filter-by-tag :Year issue)))
+        m (parse-month (content (filter-by-tag :Month issue)))
+        d (Long/parseLong (or (content (filter-by-tag :Day issue)) "1"))]
+    (.getTime ^java.util.Calendar (java.util.GregorianCalendar. y m d))))
 
 (defn parse-author [author]
   ;; REVIEW: This has a lot more info than we're taking: Orcid id, affilliation, etc.

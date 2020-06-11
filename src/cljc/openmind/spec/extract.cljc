@@ -57,7 +57,7 @@
   ;; As per scraping in general, these dates aren't generally well formatted, so
   ;; strings are the best I can do at present.
   ;; TODO: With the API this is no longer true.
-  string?)
+  inst?)
 
 (s/def ::authors
   (s/coll-of string?))
