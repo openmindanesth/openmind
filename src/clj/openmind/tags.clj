@@ -151,9 +151,7 @@
 
 (def tag-lookup-hash
   ;;FIXME: This should *not* be hardcoded
-  #openmind.hash/ref "42e59ff5ec64661ce31241ac101df39e"
-  ;#openmind.hash/ref "34101d8a82a2714923a446f4bb203a31"
-  )
+  #openmind.hash/ref "2a202e1968481b27125ad459ed304a29")
 
 (def
   ^{:private true
@@ -178,6 +176,9 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Tag migration #2
+;;
+;; Everything here is massively inefficient. We iterate over maps over and over,
+;; and yet it's not noticably slow and this is a one off.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def old-tag-lookup-hash
@@ -192,16 +193,24 @@
       s3/lookup
       :content))
 
-(def new (into {} (map (fn [{:keys [hash content]}] [hash content])
-                        (create-tag-data "anaesthesia" tag-tree-mark2))))
-
-(def d  (remove #(contains? new (key %)) old-tag-tree ))
+(defn create-tag-data2 [domain tree]
+  (letfn [(inner [tree parents]
+            (mapcat (fn [[k v]]
+                      (when-let [t {:domain  domain
+                                    :name    k
+                                    :parents parents}]
+                        (conj (inner v (conj parents k))
+                              t)))
+                    tree))]
+    (inner tree [])))
 
 (def simple-mapping
   {"depth"    "level"
    "light"    "light"
    "moderate" "moderate"
    "deep"     "deep"
+
+   "modality" "scale"
 
    "a2 AR antagonists"   "α2 AR agonists"
    "(dex)metedetomidine" "(dex)metedetomidine"
@@ -224,51 +233,8 @@
 
    "nociceptive" "nociceptive"})
 
-(def extra
-  {#openmind.hash/ref "90f270725ca50bb799bf2d77afe9ce2e"
-   #openmind.hash/ref "146e347748eec1108ac092c7ab0c3aff"})
-
-(def key-transfer
-  (let [new-by-name (into {} (map (fn [[id {:keys [name] :as content}]]
-                                    [name content]))
-                          new)]
-    (into {}
-          (map (fn [[id {:keys [name]}]]
-                 (let [t (get new-by-name (get simple-mapping name))]
-                   [id (util/immutable (assoc t :history/previous-version id))])))
-          d)))
-
-(def tag-update-map
-  (into extra
-        (map (fn [[k {:keys [hash]}]]
-               [k hash]))
-         key-transfer))
-
-(def tags-to-add
-  (concat
-   (into [(-> new
-              (get (val (first extra)))
-              (assoc :history/previous-version (key (first extra)))
-              util/immutable)]
-         (comp
-          (remove #(contains? old-tag-tree (key %)))
-          (remove (fn [[k {:keys [name]}]]
-                    (contains? (into #{} (vals simple-mapping)) name)))
-          (map val)
-          (map util/immutable))
-         (dissoc new (val (first extra))))
-   (vals key-transfer)))
-
-(defn create-tag-data2 [domain tree]
-  (letfn [(inner [tree parents]
-            (mapcat (fn [[k v]]
-                      (when-let [t {:domain  domain
-                                    :name    k
-                                    :parents parents}]
-                        (conj (inner v (conj parents k))
-                              t)))
-                    tree))]
-    (inner tree [])))
+(def inv-simple
+  (into {} (comp (map reverse) (map vec)) simple-mapping))
 
 (defn doctored [name parents]
   (let [matches (filter #(and (= name (:name (:content %)))
@@ -293,13 +259,34 @@
 
 (def full-list
   (util/immutable
-   (reduce (fn [the-map {:keys [domain name parents]}]
-             (let [p' (orphan-quest the-map name parents)]
-))
+   (reduce (fn [the-map {:keys [domain name parents] :as tag}]
+             (let [p'   (orphan-quest the-map name parents)
+                   old-name (get inv-simple name)
+                   prev (when (and old-name (not= old-name name))
+                          (first
+                           (filter #(= old-name (:name (val %))) old-tag-tree)))]
+               (let [imm (util/immutable
+                          (merge
+                           (assoc tag :parents p')
+                           (when prev
+                             {:history/previous-version (key prev)})))]
+                 (assoc the-map (:hash imm) (:content imm)))))
            {}
            (sort-by #(count (:parents %))
-                    (create-tag-data2 "anaesthesia" tag-tree-mark2)))))
+                    (create-tag-data2 the-domain tag-tree-mark2)))))
 
+(defn find-by-name [name index]
+   (key (first (filter #(= name (:name (val %))) index))))
+
+(def tag-transfer-map
+  (into {}
+        (comp
+         (map (fn [names]
+                ;; This is probably too clever for my future self
+                (when-not (apply = names)
+                  (mapv find-by-name names [old-tag-tree (:content full-list)]))))
+         (remove nil?))
+        simple-mapping))
 
 (def lookup-tree-next
   (util/immutable
