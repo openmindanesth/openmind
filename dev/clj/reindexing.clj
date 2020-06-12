@@ -81,10 +81,7 @@
       {:extract   eid'
        :history   (mapv #(update % :history/previous-version ql)
                         history)
-       :relations (into #{} (map (fn [{:keys [time/originally-created hash content]}]
-                                   (assoc content :hash hash
-                                          :time/created originally-created))
-                                 rels))
+       :relations (into #{} (map :content rels))
        :comments  (indexify comms)})}))
 
 (defn v2-upgrade-all! []

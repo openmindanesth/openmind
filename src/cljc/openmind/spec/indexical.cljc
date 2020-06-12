@@ -69,9 +69,4 @@
   int?)
 
 (s/def ::relation
-  (s/keys :req-un [::u/hash
-                   ::u/author
-                   ::rel/entity
-                   ::rel/attribute
-                   ::rel/value]
-          :req [:time/created]))
+  ::rel/relation)
