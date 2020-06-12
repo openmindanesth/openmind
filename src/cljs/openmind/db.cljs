@@ -7,7 +7,8 @@
 (def default-db
   {::domain         "anaesthesia"
    :tag-tree-hash   (edn/read-string
-                     "#openmind.hash/ref \"c687683618491158660527fc338fc02f\"")
+                     "#openmind.hash/ref \"f6930475ab0646ad37ccb6420d6492ed\""
+                     )
    ;; FIXME: Hardcoded root of tag tree.
    :tag-root-id     (edn/read-string
                      "#openmind.hash/ref \"ad5f984737860c4602f4331efeb17463\"")
