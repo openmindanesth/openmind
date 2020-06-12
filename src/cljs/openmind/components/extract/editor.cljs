@@ -97,8 +97,7 @@
          hacked (if (and (seq (:figures content))
                          (nil? (:figure content)))
                   (assoc content :figure (first (:figures content)))
-                  content)
-         hacked (update hacked :tags set)]
+                  content)]
      {:db (update db ::extracts assoc id {:content hacked})})))
 
 (re-frame/reg-event-db

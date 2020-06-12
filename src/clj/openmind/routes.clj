@@ -72,7 +72,11 @@
   (es/search es/index query))
 
 (defn parse-search-response [res]
-  (mapv :_source res))
+  (mapv (fn [e]
+          (-> e
+              :_source
+              (update :tags set)))
+        res))
 
 (defmethod dispatch :openmind/search
   [{[_ query] :event :as req}]
