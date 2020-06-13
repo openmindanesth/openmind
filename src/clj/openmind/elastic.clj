@@ -143,7 +143,7 @@
   "Given an immutable, index the contained extract in es."
   [imm]
   (async/go
-    (if true #_(s/valid? :openmind.spec.extract/extract (:content imm))
+    (if (s/valid? :openmind.spec.extract/extract (:content imm))
       ;; TODO: Index the nested object instead of flattening it.
       (let [ext (assoc (:content imm)
                        :hash (:hash imm)
