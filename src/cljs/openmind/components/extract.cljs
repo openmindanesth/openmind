@@ -196,10 +196,10 @@
 (defn thumbnail [eid figure]
   [hover-link
    [figure-img figure {:style {:height        "100%"
+                               :width         "100%"
                                :margin-left   "-0.6em"
                                :margin-bottom "-0.6em"
-                               :margin-top    "-0.1em"
-                               :width         "100%"}}]
+                               :margin-top    "-0.1em"}}]
    [figure-hover figure]
    {:orientation :left
     :route       {:route :extract/figure :path {:id eid}}}])
@@ -277,9 +277,9 @@
                     {:margin-bottom "1px"})
                   (when (and i c (= i c))
                     {:margin-bottom 0}))}
-   [:div {:style {:width "10rem"
-                  :max-height "140px"
-                  :height :min-content}}
+   [:div {:style {:width      "10rem"
+                  :max-height "8rem"
+                  :overflow   :hidden}}
     [thumbnail hash figure]]
    [:div {:style {:flex 1}}
     (when edit-link?
