@@ -155,9 +155,10 @@
         (when (valid? imm)
           (when-let [res (write-extract! imm)]
             (let [res (async/<! res)]
-              (if (and res (<= 200 (:status res) 299))
+              (if (and (:status res) (<= 200 (:status res) 299))
                 (index/index imm)
-                (log/error "Failed to index new extact" imm))
+                (log/error "Failed to index new extact\n" imm
+                           "\nresponse from elastic\n" res))
               (respond-with-fallback
                req [:openmind/index-result (:status res)]))))))))
 
