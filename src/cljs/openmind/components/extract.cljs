@@ -57,15 +57,16 @@
    [comment/comment-page-content id]])
 
 (defn figure-hover [figure]
-  (let [{:keys [image-data caption]}
-        @(re-frame/subscribe [:content figure])]
-    [:div
-     (when image-data
-       [:img.p1 {:src image-data
-                 :style {:max-width "95%"
-                         :max-height "50vh"}}])
-     (when (seq caption)
-       [:div.p1 caption])]))
+  (when figure
+    (let [{:keys [image-data caption]}
+          @(re-frame/subscribe [:content figure])]
+      [:div
+       (when image-data
+         [:img.p1 {:src image-data
+                   :style {:max-width "95%"
+                           :max-height "50vh"}}])
+       (when (seq caption)
+         [:div.p1 caption])])))
 
 (defn edit-link [hash]
   ;; Users must be logged in to edit extracts
