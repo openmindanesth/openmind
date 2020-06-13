@@ -221,7 +221,7 @@
     [sort-order-selector]]])
 
 (defn search-view []
-  [:div
+  [:div.search-view
    [search-filters]
    [:hr.mb1.mt1]
    [search-results]])

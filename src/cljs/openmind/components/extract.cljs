@@ -56,15 +56,19 @@
   [:div.flex.flex-column.p1
    [comment/comment-page-content id]])
 
+(defn figure-img [figure {:keys [style]}]
+  (let [{:keys [image-data]} @(re-frame/subscribe [:content figure])]
+    (when image-data
+      [:img {:style style
+             :src   image-data}])))
+
 (defn figure-hover [figure]
   (when figure
-    (let [{:keys [image-data caption]}
-          @(re-frame/subscribe [:content figure])]
+    (let [{:keys [caption]} @(re-frame/subscribe [:content figure])]
       [:div
-       (when image-data
-         [:img.p1 {:src image-data
-                   :style {:max-width "95%"
-                           :max-height "50vh"}}])
+       [:div.p1
+        [figure-img figure {:style {:max-width  "95%"
+                                    :max-height "50vh"}}]]
        (when (seq caption)
          [:div.p1 caption])])))
 
@@ -188,6 +192,18 @@
                                  :overflow-y      :auto}})
                  [wrapper]]])))]))))
 
+
+(defn thumbnail [eid figure]
+  [hover-link
+   [figure-img figure {:style {:height        "100%"
+                               :margin-left   "-0.6em"
+                               :margin-bottom "-0.6em"
+                               :margin-top    "-0.1em"
+                               :width         "100%"}}]
+   [figure-hover figure]
+   {:orientation :left
+    :route       {:route :extract/figure :path {:id eid}}}])
+
 (re-frame/reg-sub
  ::relations
  (fn [[_ id]]
@@ -252,47 +268,54 @@
               {:key (str id "-" attribute "-" other)}))))
        relations))))
 
-(defn summary [{:keys [text author source figure figures tags hash] :as extract}
+(defn summary [{:keys [text author source figure tags hash] :as extract}
                & [{:keys [edit-link? controls pb0? c i] :as opts
-                   :or   {edit-link?   true}}]]
-  [:div.search-result.ph
+                   :or   {edit-link? true}}]]
+  [:div.search-result.ph.flex
    {:style (merge {:height :min-content}
                   (when pb0?
                     {:margin-bottom "1px"})
                   (when (and i c (= i c))
                     {:margin-bottom 0}))}
-   (when edit-link?
-     [edit-link hash])
-   (when controls
-     [controls extract])
-   [:div.break-wrap.ph.ml1 text]
-   [:div.pth
-    [:div.flex.flex-wrap.space-between
-     [hover-link [type-indicator extract] [metadata extract]
-      {:orientation :left}]
-     [hover-link [ilink "comments" {:route :extract/comments
-                                    :path  {:id hash}}]
-      [comments-hover hash]
-      {:orientation :left}]
-     [hover-link "history"]
-     [hover-link "related" [related-extracts hash]
-      ;; N.B.: Do not add :force? true here, it will launch an infinite render.
-      {:orientation :right}]
-     [hover-link "tags" [tag-hover tags] ]
-     [hover-link [ilink "figure" {:route :extract/figure
-                                  :path  {:id hash}}]
-      [figure-hover (or figure (first figures))]
-      {:orientation :right}]
-     [hover-link [source-link source] [source-hover source]
-      {:orientation :right}]]]])
+   [:div {:style {:width "10rem"
+                  :max-height "140px"
+                  :height :min-content}}
+    [thumbnail hash figure]]
+   [:div {:style {:flex 1}}
+    (when edit-link?
+      [edit-link hash])
+    (when controls
+      [controls extract])
+    [:div.flex.flex-column.space-between
+     {:style {:height "100%"}}
+     [:div.break-wrap.ph text]
+     [:div {:style {:flex 1}}]
+     [:div.pth.flex.full-width
+      [:div
+       [hover-link [type-indicator extract] [metadata extract]
+        {:orientation :left}]]
+      [:div.flex.flex-wrap.space-between.full-width
+
+       [hover-link [ilink "comments" {:route :extract/comments
+                                      :path  {:id hash}}]
+        [comments-hover hash]
+        {:orientation :left}]
+       [hover-link "history"]
+       [hover-link "related" [related-extracts hash]
+        ;; N.B.: Do not add :force? true here, it will launch an infinite render.
+        {:orientation :right}]
+       [hover-link "tags" [tag-hover tags] ]
+
+       [hover-link [source-link source] [source-hover source]
+        {:orientation :right}]]]]]])
 
 ;;;;; Figure page
 
 (defn figure-page
   [{{:keys [id] :or {id ::new}} :path-params}]
   (let [id                (edn/read-string id)
-        {:keys [figures figure]} @(re-frame/subscribe [:content id])]
-    (if-let [fid (or figure (first figures))]
+        {:keys [figure]} @(re-frame/subscribe [:content id])]
+    (if-let [fid figure]
       (let [{:keys [image-data caption]}
             @(re-frame/subscribe [:content fid])]
         [:div

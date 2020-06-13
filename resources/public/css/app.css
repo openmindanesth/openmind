@@ -446,6 +446,10 @@ button.filter-button {
 		max-height: calc(80vh);
 }
 
+.search-view {
+		max-width: 1600px
+}
+
 @media only screen and (min-width: 680px) {
 
 		.hover-link {
