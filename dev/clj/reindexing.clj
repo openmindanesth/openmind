@@ -28,7 +28,7 @@
 (defonce refetch (memoize refetch*))
 
 (defn transfer-tags [tags]
-  (into #{} (map #(get tags/tag-update-map % %)) tags))
+  (into #{} (map #(get tags/tag-transfer-map % %)) tags))
 
 (defn update-extract [eid]
   (let [current (:content (s3/lookup eid))]
@@ -106,7 +106,6 @@
                                           (:hash (get meta id))]))
                                (keys old-meta-map))]
     (run! s3/intern (concat
-                     tags/tags-to-add
                      new-rels
                      new-comments
                      (vals new-extracts-map)

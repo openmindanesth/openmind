@@ -46,7 +46,7 @@
   (s/coll-of ::comment  :distinct true))
 
 (s/def ::relations
-  (s/coll-of ::relation :kind set?))
+  (s/coll-of ::rel/relation :kind set?))
 
 ;; TODO: Somehow we have to sync this with the :openmind.spec.comment/comment
 ;; spec. This is a strict extension. Same goes for ::relation
@@ -67,6 +67,3 @@
 
 (s/def ::rank
   int?)
-
-(s/def ::relation
-  ::rel/relation)

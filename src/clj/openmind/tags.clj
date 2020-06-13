@@ -151,7 +151,7 @@
 
 (def tag-lookup-hash
   ;;FIXME: This should *not* be hardcoded
-  #openmind.hash/ref "2a202e1968481b27125ad459ed304a29")
+  #openmind.hash/ref "fff379f5824c511757d5868c3270f046")
 
 (def
   ^{:private true
@@ -257,7 +257,7 @@
               (throw (Exception. "danger will robinson"))))))
       ids)))
 
-(def full-list
+(def new-tag-tree
   (util/immutable
    (reduce (fn [the-map {:keys [domain name parents] :as tag}]
              (let [p'   (orphan-quest the-map name parents)
@@ -283,12 +283,17 @@
         (comp
          (map (fn [names]
                 ;; This is probably too clever for my future self
-                (when-not (apply = names)
-                  (mapv find-by-name names [old-tag-tree (:content full-list)]))))
+                (mapv find-by-name names [old-tag-tree (:content new-tag-tree)])))
          (remove nil?))
         simple-mapping))
 
 (def lookup-tree-next
   (util/immutable
    (build-tag-tree-from-strings the-domain tag-tree-mark2
-                                (:content full-list))))
+                                (:content new-tag-tree))))
+(defn intern-all! []
+  (s3/intern new-tag-tree)
+  (s3/intern lookup-tree-next)
+
+  (run! s3/intern
+        (map util/immutable (vals (:content new-tag-tree)))))
