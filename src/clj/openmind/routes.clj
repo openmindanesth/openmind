@@ -142,8 +142,9 @@
   [extract]
   (async/go
     (when (s3/intern extract)
-      (async/<! (es/index-extract! extract))
-      (es/add-to-index (:hash extract)))))
+      (let [res (async/<! (es/index-extract! extract))]
+        (es/add-to-index (:hash extract))
+        res))))
 
 (defmethod dispatch :openmind/index
   [{:keys [client-id send-fn ?reply-fn uid tokens] [_ imm] :event :as req}]
