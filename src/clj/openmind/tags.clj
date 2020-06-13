@@ -236,14 +236,6 @@
 (def inv-simple
   (into {} (comp (map reverse) (map vec)) simple-mapping))
 
-(defn doctored [name parents]
-  (let [matches (filter #(and (= name (:name (:content %)))
-                              (= parents (:parents (:content %))))
-                        tags-to-add)]
-    (if (< 1 (count matches))
-      (throw (Exception. "???"))
-      (first matches))))
-
 (defn orphan-quest [m n parents]
   (loop [ids []
          [p & ps] parents]
