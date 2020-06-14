@@ -7,7 +7,7 @@ Note, to create extracts, you must have, or create, an
 
 Feedback is welcome. Please feel free to create an issue.
 
-This is still an early iteration. Take a look at the [introduction](OpenMindIntro.pdf) for the
+This is still an early iteration. Take a look at the [abstract](OpenMindIntro.pdf) for the
 bigger idea.
 
 ## Development Mode
