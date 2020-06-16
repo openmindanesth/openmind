@@ -186,6 +186,10 @@
                ^{:key (:hash c)} [comment-box c]))
         (sort compare-comments comments)))
 
+(defn author-attrib [author]
+  [:a.unlink {:href (str "https://orcid.org/" (:orcid-id author))}
+   [:span.text-dark-grey.small.no-wrap [:b (:name author)]]])
+
 (defn comment-box
   [{:keys [text time/created replies author hash rank extract] :as comment}]
   (let [active-reply? @(re-frame/subscribe [::active-reply? hash])
@@ -193,9 +197,7 @@
     [:div.break-wrap.ph.mbh.flex.flex-column
      [:div.flex
       [vote-widget comment login]
-      [:div
-       [:a.unlink {:href (str "https://orcid.org/" (:orcid-id author))}
-        [:span.text-dark-grey.small.no-wrap [:b (:name author)]]]]
+      [:div [author-attrib author]]
       [:div.pl1
        [points rank]]
       [:span.pl1.no-wrap [:em (.format dateformat created)]]

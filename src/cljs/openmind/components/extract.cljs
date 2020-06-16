@@ -267,6 +267,30 @@
               {:key (str id "-" attribute "-" other)}))))
        relations))))
 
+(defn history-control [author created]
+  (fn []
+    [:div.nowrap
+     [:span "edited by "]
+     [comment/author-attrib author]
+     [:span " on "]
+     [:em (.format comment/dateformat created)]]))
+
+(defn edit-history [id]
+  (let [history (:history @(re-frame/subscribe [:extract-metadata id]))]
+    (when (seq history)
+      (into [:div.flex.flex-column.bg-plain]
+            (map-indexed
+             (fn [i {:keys [author time/created history/previous-version]}]
+               (let [pv @(re-frame/subscribe [:content previous-version])]
+                 (with-meta
+                   [summary pv {:edit-link? false
+                                :pb0? true
+                                :i i
+                                :c (count history)
+                                :controls (history-control author created)}]
+                   {:key (str "previous-" (.-hash-string previous-version))}))))
+            history))))
+
 (defn summary [{:keys [text author source figure tags hash] :as extract}
                & [{:keys [edit-link? controls pb0? c i] :as opts
                    :or   {edit-link? true}}]]
@@ -297,9 +321,8 @@
                                       :path  {:id hash}}]
         [comments-hover hash]
         {:orientation :left}]
-       [hover-link "history"]
+       [hover-link "history" [edit-history hash]]
        [hover-link "related" [related-extracts hash]
-        ;; N.B.: Do not add :force? true here, it will launch an infinite render.
         {:orientation :right}]
        [hover-link "tags" [tag-hover tags] ]
 
