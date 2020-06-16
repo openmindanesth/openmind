@@ -174,7 +174,7 @@
          [link]
          (when float-content
            ;; dev hack
-           (when (or force? @hover?)
+           (when @hover?
              (let [position (fit-to-screen @float-size @link-size)]
                [:div.absolute.ml1.mr1.hover-link.border-round.bg-plain.border-solid
                 {:style         (merge {:padding "0.1rem"
@@ -207,7 +207,7 @@
 (re-frame/reg-sub
  ::relations
  (fn [[_ id]]
-   (re-frame/subscribe [:content id]))
+   (re-frame/subscribe [:extract-metadata id]))
  (fn [meta [_ id]]
    (:relations meta)))
 
@@ -249,9 +249,8 @@
       (get relation-names attribute)]]))
 
 (defn related-extracts [id]
-  (let [metaid    @(re-frame/subscribe [:extract-metadata id])
-        relations (when metaid @(re-frame/subscribe [::relations metaid]))]
-    (when relations
+  (let [relations @(re-frame/subscribe [::relations id])]
+    (when (seq relations)
       (into
        [:div.flex.flex-column.bg-plain]
        (map-indexed
@@ -267,6 +266,30 @@
                 :controls   (relation-meta attribute)}]
               {:key (str id "-" attribute "-" other)}))))
        relations))))
+
+(defn history-control [author created]
+  (fn []
+    [:div.nowrap
+     [:span "edited by "]
+     [comment/author-attrib author]
+     [:span " on "]
+     [:em (.format comment/dateformat created)]]))
+
+(defn edit-history [id]
+  (let [history (:history @(re-frame/subscribe [:extract-metadata id]))]
+    (when (seq history)
+      (into [:div.flex.flex-column.bg-plain]
+            (map-indexed
+             (fn [i {:keys [author time/created history/previous-version]}]
+               (let [pv @(re-frame/subscribe [:content previous-version])]
+                 (with-meta
+                   [summary pv {:edit-link? false
+                                :pb0? true
+                                :i i
+                                :c (count history)
+                                :controls (history-control author created)}]
+                   {:key (str "previous-" (.-hash-string previous-version))}))))
+            history))))
 
 (defn summary [{:keys [text author source figure tags hash] :as extract}
                & [{:keys [edit-link? controls pb0? c i] :as opts
@@ -287,9 +310,7 @@
     (when controls
       [controls extract])
     [:div.flex.flex-column.space-between
-     {:style {:height "100%"}}
      [:div.break-wrap.ph text]
-     [:div {:style {:flex 1}}]
      [:div.pth.flex.full-width
       [:div
        [hover-link [type-indicator extract] [metadata extract]
@@ -300,9 +321,8 @@
                                       :path  {:id hash}}]
         [comments-hover hash]
         {:orientation :left}]
-       [hover-link "history"]
+       [hover-link "history" [edit-history hash]]
        [hover-link "related" [related-extracts hash]
-        ;; N.B.: Do not add :force? true here, it will launch an infinite render.
         {:orientation :right}]
        [hover-link "tags" [tag-hover tags] ]
 

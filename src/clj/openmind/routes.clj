@@ -158,7 +158,7 @@
             (let [res (async/<! res)]
               (if (and (:status res) (<= 200 (:status res) 299))
                 (index/index imm)
-                (log/error "Failed to index new extact:\n" imm
+                (log/error "Failed to index new extract:\n" imm
                            "\nresponse from elastic:\n" res))
               (respond-with-fallback
                req [:openmind/index-result (:status res)]))))))))
@@ -176,7 +176,7 @@
 (defmethod dispatch :openmind/update
   [{:keys [client-id send-fn ?reply-fn uid tokens]
     [_ {:keys [extract figure relations]}] :event :as req}]
-  #_(when (or (not= uid :taoensso.sente/nil-uid) env/dev-mode?)
+  (when (or (not= uid :taoensso.sente/nil-uid) env/dev-mode?)
     (async/go
       (when (check-author (select-keys (:orcid tokens) [:name :orcid-id])
                           (:author (:content extract)))
