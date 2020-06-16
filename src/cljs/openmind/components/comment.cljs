@@ -54,7 +54,7 @@
 (re-frame/reg-sub
  ::comments
  (fn [[_ id]]
-   (re-frame/subscribe [:content id]))
+   (re-frame/subscribe [:extract-metadata id]))
  (fn [meta [_ id]]
    (:comments meta)))
 
@@ -225,9 +225,7 @@
   [id]
   (let [content (r/atom [])]
     (fn [id]
-      (let [meta-id  @(re-frame/subscribe [:extract-metadata id])
-            comments (when meta-id
-                       @(re-frame/subscribe [::comments meta-id]))]
+      (let [comments @(re-frame/subscribe [::comments id])]
         (when comments
           (reset! content comments))
         [comment-tree id @content]))))

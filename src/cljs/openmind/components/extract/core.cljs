@@ -32,7 +32,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (re-frame/reg-sub-raw
- :extract-metadata
+ :extract-metaid
  (fn [db [_ hash]]
    (when-not (contains? (::metadata @db) hash)
      (re-frame/dispatch [:extract-metadata hash]))
@@ -41,6 +41,14 @@
       (let [h (get-in @db [::metadata hash])]
         (when-not (= h ::pending)
           h))))))
+
+(re-frame/reg-sub-raw
+ :extract-metadata
+ (fn [db [_ id]]
+   (ratom/make-reaction
+    (fn []
+      (when-let [meta-id @(re-frame/subscribe [:extract-metaid id])]
+        @(re-frame/subscribe [:content meta-id]))))))
 
 (defn metadata [db id]
   (get-in db [::metadata id]))

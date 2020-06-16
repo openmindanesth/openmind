@@ -207,7 +207,7 @@
 (re-frame/reg-sub
  ::relations
  (fn [[_ id]]
-   (re-frame/subscribe [:content id]))
+   (re-frame/subscribe [:extract-metadata id]))
  (fn [meta [_ id]]
    (:relations meta)))
 
@@ -249,9 +249,8 @@
       (get relation-names attribute)]]))
 
 (defn related-extracts [id]
-  (let [metaid    @(re-frame/subscribe [:extract-metadata id])
-        relations (when metaid @(re-frame/subscribe [::relations metaid]))]
-    (when relations
+  (let [relations @(re-frame/subscribe [::relations id])]
+    (when (seq relations)
       (into
        [:div.flex.flex-column.bg-plain]
        (map-indexed

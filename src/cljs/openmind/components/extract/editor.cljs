@@ -868,19 +868,16 @@
 (defn invisihack [id]
   (when-not (= id ::new)
       (let [content @(re-frame/subscribe [::content id])
-            metaid @(re-frame/subscribe [:extract-metadata id])
-            metadata (when metaid @(re-frame/subscribe
-                                    [:openmind.events/lookup metaid]))]
+            metadata @(re-frame/subscribe [:extract-metadata id])]
         (when metadata
-          (let [metadata (:content metadata)]
-            (when (not= (:relations content) (:relations metadata))
-              ;; HACK: Issuing events from the component is not recommended. The
-              ;; problem is that I need an event to react to a subscription that
-              ;; reacts to events that ... Subscribptions are beautifully
-              ;; reactive, but trying to have an event only process if a chain
-              ;; of previous events are already complete eludes me. Hence this.
-              (re-frame/dispatch [::reconcile-metadata id metadata]))
-            (re-frame/dispatch [::end-hack id])))))
+          (when (not= (:relations content) (:relations metadata))
+            ;; HACK: Issuing events from the component is not recommended. The
+            ;; problem is that I need an event to react to a subscription that
+            ;; reacts to events that ... Subscribptions are beautifully
+            ;; reactive, but trying to have an event only process if a chain
+            ;; of previous events are already complete eludes me. Hence this.
+            (re-frame/dispatch [::reconcile-metadata id metadata]))
+          (re-frame/dispatch [::end-hack id]))))
   [:div {:style {:display :none}}])
 
 (defn extract-editor
