@@ -174,7 +174,7 @@
          [link]
          (when float-content
            ;; dev hack
-           (when (or force? @hover?)
+           (when @hover?
              (let [position (fit-to-screen @float-size @link-size)]
                [:div.absolute.ml1.mr1.hover-link.border-round.bg-plain.border-solid
                 {:style         (merge {:padding "0.1rem"
@@ -287,9 +287,7 @@
     (when controls
       [controls extract])
     [:div.flex.flex-column.space-between
-     {:style {:height "100%"}}
      [:div.break-wrap.ph text]
-     [:div {:style {:flex 1}}]
      [:div.pth.flex.full-width
       [:div
        [hover-link [type-indicator extract] [metadata extract]
