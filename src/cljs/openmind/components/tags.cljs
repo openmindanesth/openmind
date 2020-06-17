@@ -139,7 +139,7 @@
   navigated."
   [{:keys [name id children] :as tag} display data]
   (let [selected? (contains? (tags data) (:id tag))]
-    [:button.filter-button.border-round.mb1.text-white.mrh.mlh
+    [:button.filter-button.border-round.mb1.text-white.mrh.mlh.no-wrap
      {:on-click (fn [_]
                   (if (contains? display tag)
                     (close-path display tag)
@@ -174,7 +174,7 @@
 
 (defn leaf-filter [{:keys [name id] :as tag} display data]
   (let [active? (contains? (tags data) (:id tag))]
-    [:button.border-round.mb1.filter-button.text-white.mrh.mlh
+    [:button.border-round.mb1.filter-button.text-white.mrh.mlh.no-wrap
      {:class    (if active? "bg-light-blue" "bg-grey")
       :on-click #(if active?
                    (unselect data [tag])
@@ -194,6 +194,75 @@
     (= (first v1) (first v2)) (recur (rest v1) (rest v2))
     :else                     (throw (js/Error. "Ah Ah Ah!"))))
 
+(def tag-sort-hack
+  {#{"species" "awake" "anaesthetic" "level" "physiology"
+     "modality" "scale" "application"}
+   [["species"] ["awake"] ["anaesthetic" "level" "physiology"]
+    ["modality" "scale" "application"]]
+
+   #{"human" "monkey" "rat" "mouse"}
+   [["human" "monkey" "rat" "mouse"]]
+
+   #{"propofol" "benzodiazepines" "editomidate" "barbitol"}
+   [["propofol" "benzodiazepines" "editomidate" "barbitol"]]
+
+   #{"isoflurane" "sevoflurane" "desflurane" "halothane"}
+   [["isoflurane" "sevoflurane" "desflurane" "halothane"]]
+
+   #{"(dex)metedetomidine" "xylazine"}
+   [["(dex)metedetomidine" "xylazine"]]
+
+   #{"GABAergic" "vapours" "α2 AR agonists" "NMDA antagonists"}
+   [["GABAergic" "vapours" "α2 AR agonists" "NMDA antagonists"]]
+
+   #{"light" "moderate" "deep"}
+   [["light" "moderate" "deep"]]
+
+   #{"hemodynamics" "blood pressure" "heart rate" "breathing rate" "other effects"}
+   [["hemodynamics" "blood pressure" "heart rate" "breathing rate" "other effects"]]
+
+   #{"non-invasive" "invasive"}
+   [["non-invasive" "invasive"]]
+
+   #{"hemodynamics" "electric" "magnetic" "Ca²⁺" "other ionic"}
+   [["hemodynamics"] ["electric"] ["magnetic" "Ca²⁺" "other ionic"]]
+
+   #{"large scale" "cortex" "ensemble" "neuron level" "brain slice"}
+   [["large scale"] ["cortex"] ["ensemble" "neuron level"] ["brain slice"]]
+
+   #{"visual" "auditory" "somatosensory" "olfactory"}
+   [["visual" "auditory" "somatosensory" "olfactory"]]
+
+   #{"nociceptive" "chronic"}
+   [["nociceptive" "chronic"]]
+
+   #{"optogenetics" "chemogenetics" "TMS" "FUS" "deep brain"}
+   [["optogenetics" "chemogenetics" "TMS" "FUS" "deep brain"]]
+
+   #{"sensory" "nociception & pain" "resting state" "brain stimulation"}
+   [["sensory" "nociception & pain" "resting state" "brain stimulation"]]
+   })
+
+(defn tag-sort [display data nodes]
+  (let [names (into #{} (map :name nodes))
+        order (get tag-sort-hack names)]
+    (if order
+      (let [by-name (into {} (map (fn [{:keys [name] :as n}] [name n])) nodes)]
+        (map (fn [group]
+               (into [:div.flex.flex-wrap.space-between]
+                     (map (fn [name]
+                            (let [{:keys [id] :as sub-tag} (get by-name name)]
+                              [filter-button sub-tag
+                               display
+                               data])))
+                     group))
+             order))
+      (map (fn [{:keys [id] :as sub-tag}]
+                         [filter-button sub-tag
+                          display
+                          data])
+           nodes))))
+
 (defn filter-view
   "The taxonomy of tags forms a tree, but from that tree, only one thread of
   nodes can be visible at a time in the interface. Given that display-path,
@@ -204,11 +273,7 @@
           current (first path)]
       [:div.border-round.pl2.pr2.pb1.pt2.border-solid
        (into [:div.flex.flex-wrap.space-evenly]
-             (map (fn [{:keys [id] :as sub-tag}]
-                    [filter-button sub-tag
-                     display
-                     data]))
-             (vals (:children tag)))
+             (tag-sort display data (vals (:children tag))))
        (let [sub-sel (second path)]
          (filter-view (get (:children tag) sub-sel) display data))])))
 
