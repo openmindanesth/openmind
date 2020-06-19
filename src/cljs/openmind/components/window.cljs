@@ -1,5 +1,6 @@
 (ns openmind.components.window
-  (:require [openmind.components.search :as search]
+  (:require [clojure.string :as string]
+            [openmind.components.search :as search]
             [openmind.events :as events]
             [openmind.subs :as subs]
             [re-frame.core :as re-frame]
@@ -151,20 +152,47 @@
      (when @(re-frame/subscribe [::subs/menu-open?])
        [menu])]))
 
-(defn status-message-bar [{:keys [status message]}]
-  [:div.pt1.pb1.pl1
-   {:class (if (= status :success)
-             "bg-green"
-             "bg-red")}
-   [:span message]])
+(re-frame/reg-sub
+ ::status-message
+ (fn [db]
+   (::status-message db)))
+
+(re-frame/reg-event-db
+ ::wipe-notify
+ (fn [db _]
+   (dissoc db ::status-message)))
+
+(re-frame/reg-event-fx
+ ::dismiss-notify
+ (fn [{:keys [db]} _]
+   {:db (update db ::status-message #(when % (assoc % :closing? true)))
+    :dispatch-later [{:ms 1000 :dispatch [::wipe-notify]}]}))
+
+(re-frame/reg-event-fx
+ :notify
+ (fn [{:keys [db]} [_ msg]]
+   {:db (assoc db ::status-message msg)
+    :dispatch-later [{:ms 3000 :dispatch [::dismiss-notify]}]}))
+
+(defn status-message-bar [{:keys [status message closing?] :as notif}]
+  (when notif
+    [:div.vspacer
+     {:style {:opacity (if closing? 0.0 0.8)
+              :transition "opacity 2s ease"}}
+     [:div.pt1.pb1.pl1.border-round
+      {:class (if (= status :success)
+                "bg-green"
+                "bg-red")}
+      [:a.right.pr2.underline
+       {:on-click #(re-frame/dispatch [::dismiss-notify])} "dismiss"]
+      (into [:div]
+            (map #(do [:p %]) (string/split-lines message)))]]))
 
 (defn main [content]
-  (let [status-message @(re-frame/subscribe [::subs/status-message])]
+  (let [status-message @(re-frame/subscribe [::status-message])]
     [:div.ph
      [title-bar]
-     (when status-message
-       [:div.vspacer
-        [status-message-bar status-message]])
+     [status-message-bar status-message]
      [:div.vspacer]
      [content]]))
 

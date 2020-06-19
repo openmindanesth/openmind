@@ -6,11 +6,6 @@
 ;;;;; Misc
 
 (re-frame/reg-sub
- ::status-message
- (fn [db]
-   (:status-message db)))
-
-(re-frame/reg-sub
  ::login-info
  (fn [db]
    (:login-info db)))

@@ -2,6 +2,10 @@
 		position: sticky;
 }
 
+.underline {
+		text-decoration: underline;
+}
+
 .z101 {
 		z-index: 1001;
 }
