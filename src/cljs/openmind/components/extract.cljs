@@ -91,13 +91,12 @@
   (let [text (if (seq authors)
                (citation authors (first (string/split date #"[- ]")))
                url)]
-    (when text
-      [:a.link-blue {:href url} text])))
+    text))
 
-(defn source-content [{:keys [authors publication/date journal
+(defn source-content [{:keys [authors publication/date journal url
                             abstract doi title volume issue]}]
   [:div
-   [:h2 title]
+   [:h2 [:a.link-blue {:href url} title]]
    [:span.smaller.pb1
     [:span (str "(" date ")")]
     [:span.plh  journal
@@ -160,24 +159,28 @@
                {:will-overflow true})))))
 
 (defn hover-link [text float-content
-                  {:keys [orientation style force?]}]
-  (let [hover?     (reagent/atom false)
+                  {:keys [orientation style hover?]}]
+  (let [open?      (reagent/atom false)
         float-size (reagent/atom nil)
         link-size  (reagent/atom false)]
     (fn [text float-content {:keys [orientation style force?]}]
       (let [wrapper (size-reflector float-content float-size)
             link    (size-reflector [:div.link-blue text] link-size)]
         [:div.plh.prh
-         {:on-mouse-over  #(reset! hover? true)
-          :on-mouse-leave #(reset! hover? false)
-          :style          {:cursor :pointer}}
+         (merge
+          {:on-mouse-leave #(reset! open? false)}
+          (if hover?
+            {:on-mouse-over #(reset! open? true)}
+            {:on-click #(reset! open? true)
+             :style    {:cursor :pointer}}))
          [link]
          (when float-content
            ;; dev hack
-           (when @hover?
+           (when @open?
              (let [position (fit-to-screen @float-size @link-size)]
                [:div.absolute.ml1.mr1.hover-link.border-round.bg-plain.border-solid
                 {:style         (merge {:padding "0.1rem"
+                                        :cursor  :default
                                         :z-index 1001}
                                        (when orientation
                                          {orientation 0})
@@ -202,6 +205,7 @@
                                :margin-top    "-0.1em"}}]
    [figure-hover figure]
    {:orientation :left
+    :hover?      true
     :route       {:route :extract/figure :path {:id eid}}}])
 
 (re-frame/reg-sub
@@ -317,8 +321,7 @@
         {:orientation :left}]]
       [:div.flex.flex-wrap.space-between.full-width
 
-       [hover-link [ilink "comments" {:route :extract/comments
-                                      :path  {:id hash}}]
+       [hover-link "comments"
         [comments-hover hash]
         {:orientation :left}]
        [hover-link "history" [edit-history hash]]
