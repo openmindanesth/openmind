@@ -245,6 +245,12 @@
       (util/immutable
        (assoc new :history/previous-version (:hash old))))))
 
+(defn changed? [imm fig extract base]
+  (let [rels (:relations @(re-frame/subscribe [:extract-metadata (:hash extract)]))]
+    (or (some? imm)
+        (some? fig)
+        (not= rels (:relations base)))))
+
 (re-frame/reg-event-fx
  ::update-extract
  (fn [{:keys [db]} [_ id]]
@@ -261,12 +267,13 @@
                fig      (when-not (= (:figure extract) (:figure original))
                           (:figure-data base))
                imm      (extract-changed? original extract)]
-           (if-not (and (nil? imm) (nil? fig)
-                          (= (:relations extract) (:relations base)))
+           (if (changed? imm fig original base)
              {:dispatch [:->server [:openmind/update
-                                    {:extract   imm
-                                     :figure    fig
-                                     :relations (:relations base)}]]}
+                                    {:new-extract imm
+                                     :editor      (get db :login-info)
+                                     :previous-id (:hash original)
+                                     :figure      fig
+                                     :relations   (:relations base)}]]}
              ;; no change, just go back to search
              {:dispatch-n [[:notify {:status  :warn
                                      :message "no changes to save"}]

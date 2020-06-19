@@ -173,7 +173,6 @@
 
 (defn update-extract!
   [{id :hash {prev :history/previous-version author :author} :content :as imm}]
-  (println prev)
   (async/go
     (when-not (= id prev)
       (when (s3/intern imm)
@@ -184,21 +183,21 @@
 
 (defmethod dispatch :openmind/update
   [{:keys [client-id send-fn ?reply-fn uid tokens]
-    [_ {:keys [extract figure relations]}] :event :as req}]
+    [_ {:keys [previous-id new-extract figure relations editor]}] :event :as req}]
   (when (or (not= uid :taoensso.sente/nil-uid) env/dev-mode?)
     (async/go
-      (when (check-author (select-keys (:orcid tokens) [:name :orcid-id])
-                          (:author (:content extract)))
-        (when (valid? extract)
-          (when extract
-            (async/<! (update-extract! extract)))
-          (when figure
-            (s3/intern figure))
-          (index/edit-relations extract relations))))
+      (when (check-author (select-keys (:orcid tokens) [:name :orcid-id]) editor)
+        (when new-extract
+          (when (valid? new-extract)
+            (async/<! (update-extract! new-extract))
+            (when figure
+              (s3/intern figure))))
+
+        (index/edit-relations previous-id (:hash new-extract) relations)))
           ;; TODO: how to detect errors?
     (respond-with-fallback
      req [:openmind/update-response {:status :success
-                                     :id     (:hash extract)}])))
+                                     :id     previous-id}])))
 
 (defmethod dispatch :openmind/intern
   [{[_ imm] :event :as req}]

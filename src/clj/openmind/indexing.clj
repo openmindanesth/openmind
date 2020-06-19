@@ -164,6 +164,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn retract-1 [id rel]
+  (println "prev meta" (-> id extract-metadata))
   (let [m' (-> id
                extract-metadata
                (update :relations disj rel)
@@ -178,17 +179,18 @@
                     entity (:hash emeta)
                     value (:hash vmeta))))
 
-(defn edit-relations [{:keys [hash]} rels]
-  (let [meta (extract-metadata hash)
-        old-rels (:relations extract-metadata)
+(defn edit-relations [prev-id new-id rels]
+  (let [metadata (extract-metadata prev-id)
+        old-rels (:relations metadata)
         add (remove #(contains? old-rels %) rels)
         retract (remove #(contains? rels %) old-rels)]
     (run! #(update-indicies :relation (util/immutable %))
-          (map #(assoc % :entity hash) add))
+          (if new-id
+            (map #(assoc % :entity new-id) add)
+            add))
     (run! #(retract-relation %) retract)))
 
 (defn forward-metadata [prev id author]
-  (println "updating metadata")
   (let [prev-meta (extract-metadata prev)
         relations (into #{} (map #(assoc % :entity id)) (:relations prev-meta))
         new-meta  (-> prev-meta
@@ -200,7 +202,6 @@
                               {:history/previous-version prev
                                :time/created             (java.util.Date.)
                                :author                   author})
-                      (#(do (println %) %))
                       util/immutable)]
     (intern-and-swap! id new-meta)
     (run! #(s3/intern (util/immutable %)) relations)))
