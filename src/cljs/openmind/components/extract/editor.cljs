@@ -255,9 +255,8 @@
        {:dispatch [::form-errors errors id]}
        (if (= id ::new)
          (let [{:keys [imm snidbits]} (finalise-extract extract base)]
-           {:dispatch-n (into [[:->server [:openmind/index imm]]]
-                              (map #(do [:->server [:openmind/intern %]]))
-                              snidbits)})
+           {:dispatch [:->server [:openmind/index
+                                  {:extract imm :extras snidbits}]]})
          (let [original (events/table-lookup db id)
                fig      (when-not (= (:figure extract) (:figure original))
                           (:figure-data base))
@@ -273,28 +272,30 @@
                                      :message "no changes to save"}]
                            [:navigate {:route :search}]]})) )))))
 
-(defn success? [status]
-  (and status (<= 200 status 299)))
-
 (re-frame/reg-event-fx
  :openmind/index-result
- (fn [_ [_ status]]
-   (if (success? status)
+ (fn [_ [_ {:keys [status message]}]]
+   (if (= :success status)
      {:dispatch-n [[::clear ::new]
                    [:notify {:status  :success
-                             :message "extract successfully created"}]
+                             :message
+                             (str "new extract successfully submitted\n"
+                                  "your search results will reflect the search"
+                                  " index once it has been updated")}]
                    [:navigate {:route :search}]]}
      ;;TODO: Fix notification bar.
-     {:dispatch [:notify {:status :error
+     {:dispatch [:notify {:status  :error
                           :message "failed to create extract"}]})))
 
 (re-frame/reg-event-fx
  :openmind/update-response
- (fn [cofx [_ status]]
-   (if (success? status)
+ (fn [cofx [_ {:keys [status message]}]]
+   (if (= :success status)
      {:dispatch-n [[::clear nil]
                    [:notify {:status  :success
-                             :message "changes submitted successfully"}]
+                             :message (str "changes submitted successfully\n"
+                                           "it may take a moment for the changes"
+                                           " to be reflected in your results.")}]
                    [:navigate {:route :search}]]}
      {:dispatch [:notify {:status :error :message "failed to save changes"}]})))
 

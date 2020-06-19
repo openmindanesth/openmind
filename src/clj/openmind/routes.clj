@@ -30,6 +30,10 @@
     :else (log/warn "No way to return response to sender." uid msg))
   true)
 
+(defn intern-and-index [imm]
+ (when (s3/intern imm)
+   (index/index imm)))
+
 (defmulti dispatch (fn [{:keys [id] :as e}]
                      ;; Ignore all internal sente messages at present
                      (when-not (= "chsk" (namespace id))
@@ -147,21 +151,25 @@
         res))))
 
 (defmethod dispatch :openmind/index
-  [{:keys [client-id send-fn ?reply-fn uid tokens] [_ imm] :event :as req}]
+  [{:keys                        [client-id send-fn ?reply-fn uid tokens]
+    [_ {:keys [extract extras]}] :event
+    :as                          req}]
   ;; TODO: This should just be another subbranch on :openmind/intern
   (when (or (not= uid :taoensso.sente/nil-uid) env/dev-mode?)
     (async/go
       (when (check-author (select-keys (:orcid tokens) [:name :orcid-id])
-                          (:author (:content imm)))
-        (when (valid? imm)
-          (when-let [res (write-extract! imm)]
+                          (:author (:content extract)))
+        (when (valid? extract)
+          (when-let [res (write-extract! extract)]
             (let [res (async/<! res)]
               (if (and (:status res) (<= 200 (:status res) 299))
-                (index/index imm)
-                (log/error "Failed to index new extract:\n" imm
-                           "\nresponse from elastic:\n" res))
-              (respond-with-fallback
-               req [:openmind/index-result (:status res)]))))))))
+                (do
+                  (index/index extract)
+                  (run! intern-and-index extras))
+                (log/error "Failed to index new extract:\n" extract
+                           "\nresponse from elastic:\n" res)))))))
+    (respond-with-fallback
+     req [:openmind/index-result {:status :success}])))
 
 (defn update-extract!
   [{id :hash {prev :history/previous-version author :author} :content :as imm}]
@@ -185,28 +193,17 @@
             (async/<! (update-extract! extract)))
           (when figure
             (s3/intern figure))
-          (index/edit-relations extract relations)
-
+          (index/edit-relations extract relations))))
           ;; TODO: how to detect errors?
-          (respond-with-fallback
-           req [:openmind/update-response 200]))))))
+    (respond-with-fallback
+     req [:openmind/update-response {:status :success
+                                     :id     (:hash extract)}])))
 
 (defmethod dispatch :openmind/intern
   [{[_ imm] :event :as req}]
   ;; TODO: Author check. Validation is already done in several places.
-  (when (s3/intern imm)
-    (when-let [res (index/index imm)]
-      ;; REVIEW: This could be broadcast to all connected clients.
-      ;;
-      ;; That would be technically correct and make the interface more "live",
-      ;; but my fear is that it will break the reproducibility I'm trying to
-      ;; build in if comments and votes and relations just pop without you
-      ;; taking any action.
-      ;;
-      ;; I think we need to distinguish between "fixed" mode which operates on a
-      ;; snapshot in time with perfect reproducability and "live" mode which
-      ;; queries the latest data.
-      (respond-with-fallback req (into [:openmind/extract-metadata] res)))))
+  (when-let [res (intern-and-index imm)]
+    (respond-with-fallback req [:openmind/extract-metadata] res)))
 
 (defmethod dispatch :openmind/extract-metadata
   [{[ev hash] :event :as req}]
