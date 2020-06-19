@@ -59,8 +59,15 @@
   ;; TODO: With the API this is no longer true.
   inst?)
 
-(s/def ::authors
-  (s/coll-of string?))
+(s/def ::author-details
+  (s/keys :req-un [::full-name ::short-name]
+          :opt-un [::u/orcid-id]))
+
+(s/def ::full-name
+  string?)
+
+(s/def ::short-name
+  string?)
 
 (s/def ::doi
   string?)

@@ -102,9 +102,15 @@
 
 (defn parse-author [author]
   ;; REVIEW: This has a lot more info than we're taking: Orcid id, affilliation, etc.
-  (str (content (filter-by-tag :ForeName author)) " "
-       (content (filter-by-tag :Initials author)) " "
-       (content (filter-by-tag :LastName author))))
+  (let [first    (content (filter-by-tag :ForeName author))
+        initials (content (filter-by-tag :Initials author))
+        last     (content (filter-by-tag :LastName author))
+        orcid-id (content (filter-by-attr :Source "ORCID" author))]
+    (merge
+     {:full-name  (str first " " last)
+      :short-name (str last ", " initials)}
+     (when orcid-id
+       {:orcid-id orcid-id}))))
 
 (defn extract-article-info [xml]
   (let [article       (first (filter-by-tag :Article xml))
