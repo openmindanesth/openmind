@@ -173,13 +173,14 @@
 
 (defn update-extract!
   [{id :hash {prev :history/previous-version author :author} :content :as imm}]
+  (println prev)
   (async/go
     (when-not (= id prev)
       (when (s3/intern imm)
         (index/forward-metadata prev id author)
         (async/<! (es/retract-extract! prev))
         (async/<! (es/index-extract! imm))
-        (es/replace-in-index (:hash prev) (:hash imm))))))
+        (es/replace-in-index prev (:hash imm))))))
 
 (defmethod dispatch :openmind/update
   [{:keys [client-id send-fn ?reply-fn uid tokens]

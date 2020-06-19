@@ -134,10 +134,12 @@
                                        (conj i id)))))
 
 (defn replace-in-index [old new]
+  (println "o" old)
+  (println "n" new)
   (s3/update-index active-es-index (fn [i]
-                                     (conj (when (seq i)
-                                             (disj i old))
-                                           new))))
+                                     (-> i
+                                         (disj old)
+                                         (conj new)))))
 
 (defn index-extract!
   "Given an immutable, index the contained extract in es."
