@@ -289,7 +289,7 @@
                                 :c (count history)
                                 :controls (history-control author created)}]
                    {:key (str "previous-" (.-hash-string previous-version))}))))
-            history))))
+            (reverse history)))))
 
 (defn summary [{:keys [text author source figure tags hash] :as extract}
                & [{:keys [edit-link? controls pb0? c i] :as opts
