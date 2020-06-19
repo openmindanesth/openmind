@@ -159,22 +159,28 @@
 
 (re-frame/reg-event-db
  ::wipe-notify
- (fn [db _]
-   (dissoc db ::status-message)))
+ (fn [db [_ id]]
+   (let [nid (get-in db [::status-message :id])]
+     (if (= nid id)
+       (dissoc db ::status-message)
+       db))))
 
 (re-frame/reg-event-fx
  ::dismiss-notify
- (fn [{:keys [db]} _]
-   {:db (update db ::status-message #(when % (assoc % :closing? true)))
-    :dispatch-later [{:ms 1000 :dispatch [::wipe-notify]}]}))
+ (fn [{:keys [db]} [_ id]]
+   (let [nid (get-in db [::status-message :id])]
+     (when (= id nid)
+       {:db (update db ::status-message #(when % (assoc % :closing? true)))
+        :dispatch-later [{:ms 1000 :dispatch [::wipe-notify id]}]}))))
 
 (re-frame/reg-event-fx
  :notify
  (fn [{:keys [db]} [_ msg]]
-   {:db (assoc db ::status-message msg)
-    :dispatch-later [{:ms 3000 :dispatch [::dismiss-notify]}]}))
+   (let [id (keyword (gensym "notification"))]
+     {:db (assoc db ::status-message (assoc msg :id id))
+      :dispatch-later [{:ms 3000 :dispatch [::dismiss-notify id]}]})))
 
-(defn status-message-bar [{:keys [status message closing?] :as notif}]
+(defn status-message-bar [{:keys [status message closing? id] :as notif}]
   (when notif
     [:div.vspacer
      {:style {:opacity (if closing? 0.0 0.8)
@@ -184,7 +190,7 @@
                 "bg-green"
                 "bg-red")}
       [:a.right.pr2.underline
-       {:on-click #(re-frame/dispatch [::dismiss-notify])} "dismiss"]
+       {:on-click #(re-frame/dispatch [::dismiss-notify id])} "dismiss"]
       (into [:div]
             (map #(do [:p %]) (string/split-lines message)))]]))
 
