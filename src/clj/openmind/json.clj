@@ -27,9 +27,9 @@
 
 (defn val-reader [k v]
   (case k
-    :extract/type (keyword v)
-    ;; REVIEW: We're still treating :publication/date as a string.
-    :time/created (.parse dateformat v)
+    :extract/type     (keyword v)
+    :publication/date (.parse dateformat v)
+    :time/created     (.parse dateformat v)
     v))
 
 (defn read-str [s]

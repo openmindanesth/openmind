@@ -96,7 +96,7 @@
 
 (defn source-link [{:keys [authors url publication/date]}]
   (let [text (if (seq authors)
-               (citation authors (first (string/split date #"[- ]")))
+               (citation authors (.getFullYear date))
                url)]
     text))
 
@@ -105,7 +105,7 @@
   [:div
    [:h2 [:a.link-blue {:href url} title]]
    [:span.smaller.pb1
-    [:span (str "(" (.format dateformat (js/Date. date)) ")")]
+    [:span (str "(" (.format dateformat date) ")")]
     [:span.plh  journal
      (when volume
        (str " " volume "(" issue ")"))]
