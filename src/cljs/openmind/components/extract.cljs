@@ -83,10 +83,16 @@
       "edit"]]))
 
 (defn citation [authors date]
-  (let [full (apply str (interpose ", " authors))]
+  (let [full (apply str (interpose ", " (map :full-name authors)))]
     (str
-     (if (< (count full) 25) full (str (first authors) ", et al."))
+     (if (< (count full) 25) full (str (:short-name (first authors)) ", et al."))
      " (" date ")")))
+
+(def dateformat
+  (new (.-DateTimeFormat js/Intl) "en-GB"
+       (clj->js {:year   "numeric"
+                 :month  "long"
+                 :day    "numeric"})))
 
 (defn source-link [{:keys [authors url publication/date]}]
   (let [text (if (seq authors)
@@ -99,12 +105,12 @@
   [:div
    [:h2 [:a.link-blue {:href url} title]]
    [:span.smaller.pb1
-    [:span (str "(" date ")")]
+    [:span (str "(" (.format dateformat (js/Date. date)) ")")]
     [:span.plh  journal
      (when volume
        (str " " volume "(" issue ")"))]
     [:span.plh " doi: " doi]
-    [:em.small.pl1 (apply str (interpose ", " authors))]]
+    [:em.small.pl1 (apply str (interpose ", " (map :full-name authors)))]]
    [:p abstract]])
 
 (defn source-hover [source]
