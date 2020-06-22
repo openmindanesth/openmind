@@ -21,11 +21,11 @@
 
 (re-frame/reg-event-fx
  ::fetch-sub-data
- (fn [{:keys [db]} [_ {:keys [figures]} mid]]
-   {:dispatch-n (into [[:s3-get mid]]
-                      (comp (remove #(nil? %))
-                            (map (fn [f] [:s3-get f])))
-                      figures)}))
+ (fn [{:keys [db]} [_ {:keys [figure]} mid]]
+   {:dispatch-n (concat (when mid
+                          [[:s3-get mid]])
+                        (when figure
+                          [[:s3-get figure]]))}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Events
