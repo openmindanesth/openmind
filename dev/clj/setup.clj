@@ -21,7 +21,7 @@
 
 (defn load-es-from-s3! []
   (let [extract-ids (-> elastic/active-es-index
-                        s3/lookup
+                        s3/get-index
                         :content)
         extracts (map s3/lookup extract-ids)]
     (async/go

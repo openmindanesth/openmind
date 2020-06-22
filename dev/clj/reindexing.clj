@@ -4,7 +4,7 @@
             [openmind.indexing :as index]
             [openmind.pubmed :as pubmed]
             [openmind.s3 :as s3]
-            [openmind.tags :as tags]
+            [tag-migration :as tags]
             [openmind.util :as util]
             setup))
 
@@ -79,15 +79,16 @@
      :meta
      (util/immutable
       {:extract   eid'
-       :history   (mapv #(update % :history/previous-version ql)
-                        history)
+       :history   (into [] (remove (comp nil? :history/previous-version)
+                                   (map #(update % :history/previous-version ql)
+                                         history)))
        :relations (into #{} (map :content rels))
        :comments  (indexify comms)})}))
 
 (defn v2-upgrade-all! []
   ;; Add new tags
 
-  (let [old-meta-map     (:content (s3/lookup index/extract-metadata-uri))
+  (let [old-meta-map     (:content (s3/lookup index/extract-metadata-index))
         new-extracts-map (into {}
                                (map (fn [[id _]]
                                       (println "updating" id)
@@ -112,6 +113,41 @@
                      (vals meta)))
 
     (@#'s3/write! es/active-es-index (util/immutable es-index))
-    (@#'s3/write! index/extract-metadata-uri (util/immutable meta-index))
+    (@#'s3/write! (:bucket index/extract-metadata-index) (util/immutable meta-index))
 
     (setup/load-es-from-s3!)))
+
+(defn update-source [eid]
+  (let [current (:content (s3/lookup eid))]
+    (let [source (refetch (:source current))]
+      (-> current
+          (assoc :source source)
+          (select-keys valid-keys)
+          util/immutable))))
+
+(defn reimport-pubmed []
+  (let [old-meta-map     (:content (s3/get-index index/extract-metadata-index))
+        new-extracts-map (into {}
+                               (map (fn [[id _]]
+                                      (println "updating" id)
+                                      [id (update-source id)]))
+                               old-meta-map)
+        new-meta         (map (partial update-metadata new-extracts-map)
+                              old-meta-map)
+        meta             (into {} (map (fn [{:keys [old-id meta]}]
+                                         [old-id meta]))
+                               new-meta)
+        es-index         (into #{} (map :hash) (vals new-extracts-map))
+        meta-index       (into {} (map (fn [id]
+                                         [(:hash (get new-extracts-map id))
+                                          (:hash (get meta id))]))
+                               (keys old-meta-map))]
+    (run! s3/intern (concat
+                     (vals new-extracts-map)
+                     (vals meta)))
+
+    (@#'s3/write! (:bucket es/active-es-index) (util/immutable es-index))
+    (@#'s3/write! (:bucket index/extract-metadata-index) (util/immutable meta-index))
+
+    (setup/load-es-from-s3!))
+  )

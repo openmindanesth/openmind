@@ -130,7 +130,7 @@
   this doesn't use clojure.core.memoize."
   ;; REVIEW: Though maybe it should...
   [index]
-  (:content @(:current-value index)))
+  @(:current-value index))
 
 (defn update-index [txs]
   (fn [v0]
