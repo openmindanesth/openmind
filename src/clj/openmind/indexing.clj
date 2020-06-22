@@ -6,13 +6,14 @@
             [openmind.util :as util]
             [taoensso.timbre :as log]))
 
-(def extract-metadata-uri
-  "openmind.indexing/extract-metadata")
+(def extract-metadata-index
+  (s3/create-index
+   "openmind.indexing/extract-metadata"))
 
 (defn extract-meta-ref
   "Returns the hash of the metadoc for doc referrenced by `hash`."
   [hash]
-  (-> extract-metadata-uri
+  (-> extract-metadata-index
       s3/get-index
       :content
       (get hash)))
@@ -36,7 +37,7 @@
   the global index to point to this new value."
   [k imm]
   (when (s3/intern imm)
-    (s3/assoc-index extract-metadata-uri k (:hash imm))))
+    (s3/assoc-index extract-metadata-index k (:hash imm))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Comments
@@ -107,7 +108,7 @@
   (when-not (extract-metadata hash)
     (let [blank-meta (util/immutable {:extract hash})]
       (s3/intern blank-meta)
-      (s3/assoc-index extract-metadata-uri hash (:hash blank-meta)))))
+      (s3/assoc-index extract-metadata-index hash (:hash blank-meta)))))
 
 ;;;;; Figures
 
@@ -144,7 +145,7 @@
         meta-rel    (metarel rel)
         entity-meta (add-relation entity meta-rel)
         value-meta  (add-relation value  meta-rel)]
-    (s3/assoc-index extract-metadata-uri
+    (s3/assoc-index extract-metadata-index
                     entity (:hash entity-meta)
                     value (:hash value-meta))))
 
@@ -156,7 +157,7 @@
                                key #(into (empty %)
                                           (remove (= metaid (:hash %)))
                                           %)))]
-        (s3/assoc-index extract-metadata-uri
+        (s3/assoc-index extract-metadata-index
                         eid new-meta)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -175,7 +176,7 @@
 (defn retract-relation [{:keys [entity value] :as rel}]
   (let [emeta (retract-1 entity rel)
         vmeta (retract-1 value rel)]
-    (s3/assoc-index extract-metadata-uri
+    (s3/assoc-index extract-metadata-index
                     entity (:hash emeta)
                     value (:hash vmeta))))
 

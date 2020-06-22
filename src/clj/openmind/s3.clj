@@ -57,16 +57,17 @@
 (defn- write! [k obj]
   (.putObject client bucket (str k) (str obj)))
 
-(defn intern
-  "If obj is a valid :openmind.spec/immutable, then it is stored in S3 with key
-  equal to its :openmind.hash/ref hash. Returns AWS api put object result on
-  success (of the call, you should check the put), or nil on failure. Failure
-  cause is logged, but not returned. "
-  [obj]
-  (if (s/valid? :openmind.spec/immutable obj)
-    (let [key (:hash obj)]
-      ;; TODO: Locking. We really want to catch and abort on collisions, as
-      ;; improbable as they may be.
+(def ^:private intern-queue
+  (ref (clojure.lang.PersistentQueue/EMPTY)))
+
+(defn- get-all [q]
+  (dosync
+   (let [xs @q]
+     (ref-set q (clojure.lang.PersistentQueue/EMPTY))
+     xs)))
+
+(defn- intern-from-queue [obj]
+  (let [key (:hash obj)]
       (if (exists? key)
         (if (not= (:content obj) (:content (lookup key)))
           (log/error "Collision in data store! Failed to add" obj)
@@ -74,52 +75,88 @@
                     "which already exists. Doing nothing."))
         (do
           (log/trace "Interning object\n" obj)
-          (write! key obj))))
+          (write! key obj)))))
+
+(def running
+  (atom #{}))
+
+(defn- drain-intern-queue! []
+  (let [runv @running]
+    (when-not (contains? runv intern-queue)
+      (if (compare-and-set! running runv (conj runv intern-queue))
+        (.start (Thread. (fn []
+                         (let [xs (get-all intern-queue)]
+                           (run! intern-from-queue xs)
+                           (if (seq @intern-queue)
+                             (recur)
+                             (swap! running disj intern-queue))))))
+        (recur)))))
+
+(def index-map
+  (atom #{}))
+
+(defn intern
+  "If obj is a valid :openmind.spec/immutable, then it is stored in S3 with key
+  equal to its :openmind.hash/ref hash. Returns AWS api put object result on
+  success (of the call, you should check the put), or nil on failure. Failure
+  cause is logged, but not returned. "
+  [obj]
+  (if (s/valid? :openmind.spec/immutable obj)
+    (do
+      (dosync
+       (alter intern-queue conj obj))
+      (drain-intern-queue!)
+      {:status  :success
+       :message "queued for permanent storage."})
     (log/error "Invalid data received to intern\n" obj)))
 
-;; TODO: subscription based logic and events tracking changes to the
-;; master-index. We don't want 2 round trips for every lookup.
-(def ^:private index-cache
-  (atom {}))
+(defn create-index
+  "An index is stored durably on S3, but operations on that index are performed
+  and cached locally.
+  In order for this to be consistent there must be a single source of truth,
+  that is to say that each index must have a dedicated transactor which can
+  totally order all operations on that index."
+  [key]
+  (let [index {:bucket key
+               :current-value (atom (lookup key))
+               ;; This doesn't need to be a ref, it just makes draining the
+               ;; queue a little simpler. Is that sufficient reason?
+               :tx-queue (ref (clojure.lang.PersistentQueue/EMPTY))}]
+    (swap! index-map conj index)
+    index))
 
 (defn get-index
   "Cached get for indexed data. Index updates need to invalidate the cache, so
   this doesn't use clojure.core.memoize."
   ;; REVIEW: Though maybe it should...
   [index]
-  (if-let [v (get @index-cache index)]
-    v
-    (let [v (lookup-raw index)]
-      (swap! index-cache assoc index v)
-      v)))
+  (:content @(:current-value index)))
 
-(defn- index-compare-and-set!
-  "Set `index` to new-value iff current value is `old-value`.
+(defn update-index [txs]
+  (fn [v0]
+    (util/immutable
+     (reduce (fn [v tx]
+               (let [v' (apply (first tx) v (rest tx))]
+                 (if (s/valid? (:openmind.spec.indexical/indexical v'))
+                   v'
+                   (do
+                     (log/error "Invalid index value produced by:\n" tx
+                                "\napplied to\n" v "\n\nskipping transaction")
+                     v))))
+             v0 txs))))
 
-  N.B.: This is atomic for a single machine setup, but not currently safe for a
-  cluster."
-  [index old-value new-value]
-  ;; TODO: lock between machines!! Zookeeper, et al..
-  (if (s/valid? :openmind.spec.indexical/indexical (:content new-value))
-    (if (= old-value new-value)
-      (do
-        (log/info "No change to index value. Ignoring.")
-        {:success true
-         :value   old-value})
-      (locking index
-        (let [current (lookup-raw index)]
-          (if (= current old-value)
-            (do
-              ;; TODO: Check for successful write.
-              (write! index new-value)
-              (swap! index-cache assoc index new-value)
-              {:success? true
-               :value    new-value})
-            (do
-              (swap! index-cache assoc index current)
-              {:success? false})))))
-    ;; Return false on fail, nil on error.
-    (log/error "Invalid write to index" index new-value)))
+(defn drain-index-queue [index]
+  (let [runv @running]
+    (when (contains? runv index)
+      (if (compare-and-set! running runv (conj runv index))
+        (.start (Thread. (fn []
+                           (let [txs (get-all (:tx-queue index))]
+                             (swap! (:current-value index)
+                                    (update-index txs))
+                             (write! (:bucket index) @(:current-value index))
+                             (when (seq @(:tx-queue index))
+                               (recur))))))
+        (recur index)))))
 
 (defn assoc-index
   "Set key `k` in (associative) index `index` to `v` using the semantics of
@@ -128,24 +165,23 @@
   (assert
    (= 0 (mod (count kvs) 2))
    "assoc-index requires an whole number of key-value pairs just as assoc")
-  (let [old (get-index index)
-        new (util/immutable (apply assoc (:content old) k v kvs))]
-    (intern new)
-    (let [{:keys [success? value]} (index-compare-and-set! index old new)]
-      (if success?
-        value
-        ;; REVIEW: There's the risk of an infinite loop here. How do we impose a
-        ;; finite number of retries without breaking callers who assume this is
-        ;; like assoc? RTFM isn't exactly an excuse.
-        ;; TransactionCouldNotCompleteException maybe...
-        (apply assoc-index index k v kvs)))))
+  (dosync
+   (alter (:tx-queue index) conj (into [assoc k v] kvs)))
+  (drain-index-queue index)
+  {:status :success
+   :message "Index update queued."})
 
 (defn update-index [index f & args]
-  (let [old (get-index index)
-        new (util/immutable (apply f (:content old) args))]
-    ;; FIXME: Complete duplicate
-    (intern new)
-    (let [{:keys [success? value]} (index-compare-and-set! index old new)]
-      (if success?
-        value
-        (apply update-index index f args)))))
+  (dosync
+   (alter (:tx-queue index) conj (into [update f] args)))
+  (drain-index-queue index)
+  {:status :success
+   :message "Index update queued."})
+
+(defn flush-queues! []
+  (when (seq @intern-queue)
+    (drain-intern-queue intern-queue intern-from-queue []))
+  (run! drain-index-queue @index-map))
+
+(def cleanup-on-shutdown
+  (.addShutdownHook (Runtime/getRuntime) (Thread. #'flush-queues!)))
