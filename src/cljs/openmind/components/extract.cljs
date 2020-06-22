@@ -319,7 +319,8 @@
      [:div.pth.flex.full-width
       [:div
        [hover-link [type-indicator extract] [metadata extract]
-        {:orientation :left}]]
+        {:orientation :left
+         :hover?      true}]]
       [:div.flex.flex-wrap.space-between.full-width
 
        [hover-link "comments"
