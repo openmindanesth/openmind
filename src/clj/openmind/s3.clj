@@ -145,7 +145,7 @@
                      v))))
              v0 txs))))
 
-(defn drain-index-queue [index]
+(defn drain-index-queue! [index]
   (let [runv @running]
     (when (contains? runv index)
       (if (compare-and-set! running runv (conj runv index))
@@ -167,21 +167,21 @@
    "assoc-index requires an whole number of key-value pairs just as assoc")
   (dosync
    (alter (:tx-queue index) conj (into [assoc k v] kvs)))
-  (drain-index-queue index)
+  (drain-index-queue! index)
   {:status :success
    :message "Index update queued."})
 
 (defn update-index [index f & args]
   (dosync
    (alter (:tx-queue index) conj (into [update f] args)))
-  (drain-index-queue index)
+  (drain-index-queue! index)
   {:status :success
    :message "Index update queued."})
 
 (defn flush-queues! []
   (when (seq @intern-queue)
-    (drain-intern-queue intern-queue intern-from-queue []))
-  (run! drain-index-queue @index-map))
+    (drain-intern-queue!))
+  (run! drain-index-queue! @index-map))
 
 (def cleanup-on-shutdown
   (.addShutdownHook (Runtime/getRuntime) (Thread. #'flush-queues!)))
