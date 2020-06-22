@@ -57,10 +57,11 @@
    [comment/comment-page-content id]])
 
 (defn figure-img [figure {:keys [style]}]
-  (let [{:keys [image-data]} @(re-frame/subscribe [:content figure])]
-    (when image-data
-      [:img {:style style
-             :src   image-data}])))
+  (when figure
+    (let [{:keys [image-data]} @(re-frame/subscribe [:content figure])]
+      (when image-data
+        [:img {:style style
+               :src   image-data}]))))
 
 (defn figure-hover [figure]
   (when figure
@@ -331,26 +332,3 @@
 
        [hover-link [source-link source] [source-hover source]
         {:orientation :right}]]]]]])
-
-;;;;; Figure page
-
-(defn figure-page
-  [{{:keys [id] :or {id ::new}} :path-params}]
-  (let [id                (edn/read-string id)
-        {:keys [figure]} @(re-frame/subscribe [:content id])]
-    (if-let [fid figure]
-      (let [{:keys [image-data caption]}
-            @(re-frame/subscribe [:content fid])]
-        [:div
-         [:img.p2 {:style {:max-width "95%"} :src image-data}]
-         [:p.pl1.pb2 caption]])
-      [:span.p2 "This extract doesn't have an associated figure."])))
-
-;;;;; Comments
-
-(def routes
-  [["/:id/figure"
-    {:name :extract/figure
-     :parameters {:path {:id any?}}
-     :component  figure-page
-     :controllers core/extract-controllers}]])

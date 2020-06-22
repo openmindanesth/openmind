@@ -23,7 +23,6 @@
   "Aggregated routing table for the app."
   (concat search/routes
           editor/routes
-          extract/routes
           comment/routes
           window/other-routes))
 
