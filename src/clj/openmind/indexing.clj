@@ -165,7 +165,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn retract-1 [id rel]
-  (println "prev meta" (-> id extract-metadata))
   (let [m' (-> id
                extract-metadata
                (update :relations disj rel)
@@ -183,8 +182,8 @@
 (defn edit-relations [prev-id new-id rels]
   (let [metadata (extract-metadata prev-id)
         old-rels (:relations metadata)
-        add (remove #(contains? old-rels %) rels)
-        retract (remove #(contains? rels %) old-rels)]
+        add      (remove #(contains? old-rels %) rels)
+        retract  (remove #(contains? rels %) old-rels)]
     (run! #(update-indicies :relation (util/immutable %))
           (if new-id
             (map #(assoc % :entity new-id) add)
