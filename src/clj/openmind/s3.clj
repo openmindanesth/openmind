@@ -132,27 +132,28 @@
   [index]
   @(:current-value index))
 
-(defn update-index [txs]
+(defn process-index-txs [txs]
   (fn [v0]
     (util/immutable
      (reduce (fn [v tx]
                (let [v' (apply (first tx) v (rest tx))]
-                 (if (s/valid? (:openmind.spec.indexical/indexical v'))
+                 (if (s/valid? :openmind.spec.indexical/indexical v')
                    v'
                    (do
                      (log/error "Invalid index value produced by:\n" tx
                                 "\napplied to\n" v "\n\nskipping transaction")
                      v))))
-             v0 txs))))
+             (:content v0)
+             txs))))
 
 (defn drain-index-queue! [index]
   (let [runv @running]
-    (when (contains? runv index)
+    (when-not (contains? runv index)
       (if (compare-and-set! running runv (conj runv index))
         (.start (Thread. (fn []
                            (let [txs (get-all (:tx-queue index))]
                              (swap! (:current-value index)
-                                    (update-index txs))
+                                    (process-index-txs txs))
                              (write! (:bucket index) @(:current-value index))
                              (when (seq @(:tx-queue index))
                                (recur))))))
