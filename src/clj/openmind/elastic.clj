@@ -9,8 +9,7 @@
             [taoensso.timbre :as log])
   (:import openmind.hash.ValueRef))
 
-(def index (s3/create-index
-            (env/read :elastic-extract-index)))
+(def index (env/read :elastic-extract-index))
 
 (def mapping
   {:properties {:time/created {:type :date}
@@ -19,7 +18,7 @@
                 :text         {:type :text}
                 :hash         {:type :keyword}
                 :source       {:type       :object
-                               :properties {:publication/date {:type :text}}}
+                               :properties {:publication/date {:type :date}}}
                 :figure       {:type :text}
                 :tags         {:type :keyword}
                 :extract/type {:type :keyword}
@@ -126,7 +125,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def active-es-index
-  "openmind.indexing/elastic-active")
+  (s3/create-index
+   "openmind.indexing/elastic-active"))
 
 (defn add-to-index [id]
   (s3/update-index active-es-index (fn [i]
