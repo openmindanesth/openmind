@@ -203,7 +203,7 @@
   [{[_ imm] :event :as req}]
   ;; TODO: Author check. Validation is already done in several places.
   (when-let [res (intern-and-index imm)]
-    (respond-with-fallback req [:openmind/extract-metadata] res)))
+    (respond-with-fallback req [:openmind/extract-metadata res])))
 
 (defmethod dispatch :openmind/extract-metadata
   [{[ev hash] :event :as req}]
