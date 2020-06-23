@@ -178,28 +178,3 @@
   (search index {:sort {:time/created {:order :asc}}
                  :from 0
                  :size 100}))
-
-(defn all-ids []
-  ;; HACK: Not all
-  (async/go
-    (map :_id (request<! most-recent))))
-
-(defn update-type-req [index id]
-  (async/go
-    (let [body (-> (lookup index id)
-                   send-off!
-                   async/<!
-                   parse-response
-                   :_source
-                   (assoc :extract-type :article))]
-      (update-doc index id body))))
-
-(defn add-extract-to-all []
-  (async/go
-    (let [ids (async/<! (all-ids))]
-      (run! #(async/go
-               (println
-                (:status
-                 (async/<!
-                  (send-off! (async/<! (update-type-req index %)))))))
-            ids))))
