@@ -4,10 +4,10 @@
             [openmind.elastic :as es]
             [openmind.env :as env]
             [openmind.indexing :as index]
+            [openmind.notification :as notify]
             [openmind.pubmed :as pubmed]
             [openmind.s3 :as s3]
             [openmind.tags :as tags]
-            [openmind.util :as util]
             [taoensso.timbre :as log]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -148,6 +148,7 @@
     (when (s3/intern extract)
       (let [res (async/<! (es/index-extract! extract))]
         (es/add-to-index (:hash extract))
+        (notify/extract-created extract)
         res))))
 
 (defmethod dispatch :openmind/index

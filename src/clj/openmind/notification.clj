@@ -7,6 +7,8 @@
 (defn metadata-update [id metadata]
   (async/put! metadata-chan [id metadata]))
 
+(defn extract-created [extract])
+
 (def metadata-pub
   (async/pub metadata-chan first))
 
