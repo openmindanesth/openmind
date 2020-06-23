@@ -80,16 +80,21 @@
 (def running
   (atom #{}))
 
+(defn- intern-loop []
+  (let [xs (get-all intern-queue)]
+    (run! intern-from-queue xs)
+    (when (seq @intern-queue)
+      (recur))))
+
 (defn- drain-intern-queue! []
   (let [runv @running]
     (when-not (contains? runv intern-queue)
       (if (compare-and-set! running runv (conj runv intern-queue))
         (.start (Thread. (fn []
-                         (let [xs (get-all intern-queue)]
-                           (run! intern-from-queue xs)
-                           (if (seq @intern-queue)
-                             (recur)
-                             (swap! running disj intern-queue))))))
+                           (try
+                             (intern-loop)
+                             (finally
+                               (swap! running disj intern-queue))))))
         (recur)))))
 
 (def index-map
@@ -126,9 +131,9 @@
     index))
 
 (defn get-index
-  "Cached get for indexed data. Index updates need to invalidate the cache, so
-  this doesn't use clojure.core.memoize."
-  ;; REVIEW: Though maybe it should...
+  "Indicies cache their own current value. This just hides that fact and makes
+  it appear we're reading from S3 every time (which doesn't work well, but also
+  isn't as bad as you think...)"
   [index]
   @(:current-value index))
 
@@ -136,47 +141,40 @@
   (fn [v0]
     (util/immutable
      (reduce (fn [v tx]
-               (let [v' (apply (first tx) v (rest tx))]
+               (let [v' (tx v)]
                  (if (s/valid? :openmind.spec.indexical/indexical v')
                    v'
                    (do
-                     (log/error "Invalid index value produced by:\n" tx
+                     (log/error "Invalid index value:\n" v'
+                                "\nproduced by:\n" tx
                                 "\napplied to\n" v "\n\nskipping transaction")
                      v))))
              (:content v0)
              txs))))
+
+(defn- inner-loop [index]
+  (let [txs (get-all (:tx-queue index))]
+    (swap! (:current-value index)
+           (process-index-txs txs))
+    (write! (:bucket index) @(:current-value index))
+    (when (seq @(:tx-queue index))
+      (recur index))))
 
 (defn drain-index-queue! [index]
   (let [runv @running]
     (when-not (contains? runv index)
       (if (compare-and-set! running runv (conj runv index))
         (.start (Thread. (fn []
-                           (let [txs (get-all (:tx-queue index))]
-                             (swap! (:current-value index)
-                                    (process-index-txs txs))
-                             (write! (:bucket index) @(:current-value index))
-                             (when (seq @(:tx-queue index))
-                               (recur))))))
+                           (try (inner-loop index)
+                                (finally
+                                  (swap! running disj index))))))
         (recur index)))))
 
-(defn assoc-index
-  "Set key `k` in (associative) index `index` to `v` using the semantics of
-  `swap!`. Applies the change transactionally and retries until success."
-  [index k v & kvs]
-  (assert
-   (= 0 (mod (count kvs) 2))
-   "assoc-index requires an whole number of key-value pairs just as assoc")
+(defn swap-index! [index f]
   (dosync
-   (alter (:tx-queue index) conj (into [assoc k v] kvs)))
+   (alter (:tx-queue index) conj f))
   (drain-index-queue! index)
-  {:status :success
-   :message "Index update queued."})
-
-(defn update-index [index f & args]
-  (dosync
-   (alter (:tx-queue index) conj (into [update f] args)))
-  (drain-index-queue! index)
-  {:status :success
+  {:status  :success
    :message "Index update queued."})
 
 (defn flush-queues! []

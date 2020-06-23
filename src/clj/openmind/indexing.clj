@@ -3,6 +3,7 @@
             [clojure.walk :as walk]
             [openmind.s3 :as s3]
             [openmind.spec :as spec]
+            [openmind.transaction-fns :as txfns]
             [openmind.util :as util]
             [taoensso.timbre :as log]))
 
@@ -32,83 +33,26 @@
   (let [t (first (:content (s/conform ::spec/immutable imm)))]
     (update-indicies t imm)))
 
-(defn intern-and-swap!
-  "Interns immutable document `imm` in the datastore and then attempts to update
-  the global index to point to this new value."
-  [k imm]
-  (when (s3/intern imm)
-    (s3/assoc-index extract-metadata-index k (:hash imm))))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Comments
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn insert-comment
-  [comment-tree {{:keys [reply-to]} :content :as comment}]
-  (let [c* (-> comment
-               :content
-               (dissoc :reply-to)
-               (assoc :hash (:hash comment)
-                      :time/created (:time/created comment)))]
-    (if reply-to
-      (walk/postwalk
-       (fn [node]
-         (if (and (map? node) (= (:hash node) reply-to))
-           (update node :replies conj c*)
-           node))
-       comment-tree)
-      (if comment-tree
-        (conj comment-tree c*)
-        [c*]))))
-
-;; FIXME: I really need to send the extract and all snidbits to the server at
-;; once so that the set of changes can be coordinated.
 (defmethod update-indicies :comment
-  [_ {:keys [hash] {:keys [extract history/previous-version]} :content
-      :as   comment}]
-  (let [old-meta (extract-metadata extract)
-        new-meta (if (nil? old-meta)
-                   {:extract  extract
-                    :comments (insert-comment [] comment)}
-                   (update old-meta
-                           :comments insert-comment comment))
-        res      (intern-and-swap! extract (util/immutable new-meta))]
-    [extract (-> res :content (get extract))]))
-
-;;;; Comment ranking
-
-(defn update-votes [comments {h :hash {:keys [vote author comment]} :content}]
-  (walk/postwalk
-   (fn [node]
-     (if (= (:hash node) comment)
-       (-> node
-           (update :rank (fnil + 0) vote)
-           (update :votes assoc author {:vote vote :hash h}))
-       node))
-   comments))
+  [_ comment]
+  (s3/swap-index! extract-metadata-index
+                  (txfns/add-comment-to-meta comment)))
 
 (defmethod update-indicies :comment-vote
-  [_ {{:keys [extract]} :content :as vote}]
-  (let [new-meta (-> extract
-                     extract-metadata
-                     (update :comments update-votes vote)
-                     util/immutable)
-        res (intern-and-swap! extract new-meta)]
-    ;; TODO: Test for successful write
-    (when res
-      [extract (:hash new-meta)])))
+  [_ vote]
+  (s3/swap-index! extract-metadata-index (txfns/comment-vote vote)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Extracts
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmethod update-indicies :extract
-  [_ {:keys [hash] {:keys [history/previous-version]} :content}]
-  ;; TODO: updates
-  (when-not (extract-metadata hash)
-    (let [blank-meta (util/immutable {:extract hash})]
-      (s3/intern blank-meta)
-      (s3/assoc-index extract-metadata-index hash (:hash blank-meta)))))
+  [_ extract]
+  (s3/swap-index! extract-metadata-index (txfns/new-extract extract)))
 
 ;;;;; Figures
 
@@ -119,89 +63,22 @@
 
 ;;;;; Relations
 
-;; FIXME: I'm still glossing over the difference between names and values.
-
-(defn add-relation [id rel]
-  (let [new (-> id
-                extract-metadata
-                (assoc :extract id)
-                (update :relations
-                        #(if (seq %)
-                           (conj % rel)
-                           #{rel}))
-                util/immutable)]
-    (when (s3/intern new)
-      new)))
-
-(defn metarel [{:keys [hash content time/created] :as rel}]
-  (assoc content
-         :time/created created
-         :hash hash))
-
 (defmethod update-indicies :relation
-  [_ {:keys [hash content time/created] :as rel}]
-  (let [{:keys [entity value]} content
+  [_ rel]
+  (s3/intern rel)
+  (s3/swap-index! extract-metadata-index (txfns/new-relation rel)))
 
-        meta-rel    (metarel rel)
-        entity-meta (add-relation entity meta-rel)
-        value-meta  (add-relation value  meta-rel)]
-    (s3/assoc-index extract-metadata-index
-                    entity (:hash entity-meta)
-                    value (:hash value-meta))))
-
-(defn remove-metadata [eid key metaid]
-  (let [old-meta (extract-metadata eid)]
-    (when old-meta
-      (let [new-meta (util/immutable
-                       (update old-meta
-                               key #(into (empty %)
-                                          (remove (= metaid (:hash %)))
-                                          %)))]
-        (s3/assoc-index extract-metadata-index
-                        eid new-meta)))))
+(defn update-relations [id rels]
+  (s3/swap-index! extract-metadata-index
+                  (txfns/update-relations id rels)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Updating extracts
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn retract-1 [id rel]
-  (let [m' (-> id
-               extract-metadata
-               (update :relations disj rel)
-               util/immutable)]
-    (when (s3/intern m')
-      m')))
-
-(defn retract-relation [{:keys [entity value] :as rel}]
-  (let [emeta (retract-1 entity rel)
-        vmeta (retract-1 value rel)]
-    (s3/assoc-index extract-metadata-index
-                    entity (:hash emeta)
-                    value (:hash vmeta))))
-
 (defn edit-relations [prev-id new-id rels]
-  (let [metadata (extract-metadata prev-id)
-        old-rels (:relations metadata)
-        add      (remove #(contains? old-rels %) rels)
-        retract  (remove #(contains? rels %) old-rels)]
-    (run! #(update-indicies :relation (util/immutable %))
-          (if new-id
-            (map #(assoc % :entity new-id) add)
-            add))
-    (run! #(retract-relation %) retract)))
+  (update-relations (or new-id prev-id) rels))
 
 (defn forward-metadata [prev id author]
-  (let [prev-meta (extract-metadata prev)
-        relations (into #{} (map #(assoc % :entity id)) (:relations prev-meta))
-        new-meta  (-> prev-meta
-                      (assoc :extract id)
-                      (assoc :relations relations)
-                      (update :history #(or % []))
-                      (update :history
-                              conj
-                              {:history/previous-version prev
-                               :time/created             (java.util.Date.)
-                               :author                   author})
-                      util/immutable)]
-    (intern-and-swap! id new-meta)
-    (run! #(s3/intern (util/immutable %)) relations)))
+  (s3/swap-index! extract-metadata-index
+                  (txfns/forward-metadata prev id author)))

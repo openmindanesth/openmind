@@ -129,16 +129,16 @@
    "openmind.indexing/elastic-active"))
 
 (defn add-to-index [id]
-  (s3/update-index active-es-index (fn [i]
-                                     (if (empty? i)
-                                       #{id}
-                                       (conj i id)))))
+  (s3/swap-index! active-es-index (fn [i]
+                                    (if (empty? i)
+                                      #{id}
+                                      (conj i id)))))
 
 (defn replace-in-index [old new]
-  (s3/update-index active-es-index (fn [i]
-                                     (-> i
-                                         (disj old)
-                                         (conj new)))))
+  (s3/swap-index! active-es-index (fn [i]
+                                    (-> i
+                                        (disj old)
+                                        (conj new)))))
 
 (defn index-extract!
   "Given an immutable, index the contained extract in es."
