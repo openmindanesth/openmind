@@ -10,6 +10,13 @@
   (:import com.amazonaws.auth.BasicAWSCredentials
            [com.amazonaws.services.s3 AmazonS3Client AmazonS3ClientBuilder]))
 
+(def recently-added
+  "This cache creates read what you've written behaviour for a fundamentally
+  fire and forget datastore. This will break down if we move this out to a
+  separate process. We'll need to replace it with reddis, or maybe some sort of
+  log processing."
+  (atom {}))
+
 (def ^String bucket
   (env/read :s3-data-bucket))
 
@@ -45,7 +52,7 @@
   ;; created by some side channel?
   (try
     (lookup* k)
-    (catch Exception e nil)))
+    (catch Exception e (get @recently-added k))))
 
 (defn exists?
   "Returns `true` if key exists in datastore."
@@ -62,7 +69,7 @@
 
 (defn- get-all [q]
   (dosync
-   (let [xs @q]
+   (let [xs (seq @q)]
      (ref-set q (clojure.lang.PersistentQueue/EMPTY))
      xs)))
 
@@ -75,7 +82,8 @@
                     "which already exists. Doing nothing."))
         (do
           (log/trace "Interning object\n" obj)
-          (write! key obj)))))
+          (write! key obj)
+          (swap! recently-added dissoc key)))))
 
 (def running
   (atom #{}))
@@ -108,6 +116,7 @@
   [obj]
   (if (s/valid? :openmind.spec/immutable obj)
     (do
+      (swap! recently-added assoc (:hash obj) obj)
       (dosync
        (alter intern-queue conj obj))
       (drain-intern-queue!)
@@ -142,6 +151,7 @@
     (util/immutable
      (reduce (fn [v tx]
                (let [v' (tx v)]
+                 (log/trace "applying\n" tx)
                  (if (s/valid? :openmind.spec.indexical/indexical v')
                    v'
                    (do
