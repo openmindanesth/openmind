@@ -29,7 +29,7 @@
     (edn/read-string content)))
 
 (def ^:private lookup*
-  (memo/lru lookup-raw :lru/threshold 2))
+  (memo/lru lookup-raw :lru/threshold 128))
 
 (defn lookup
   "Returns full doc from S3 associated with key `k`."
