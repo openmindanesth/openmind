@@ -122,8 +122,11 @@
         issue         (content (filter-by-tag :Issue journal-issue))
         doi           (content (filter-by-attr :EIdType "doi" article))
         author-list   (filter-by-tag :Author article)
-        abstract      (extract-text (first (filter-by-tag :AbstractText article)))]
-    {:publication/date (pubdate journal-issue)
+        abstract      (extract-text (first (filter-by-tag :AbstractText article)))
+        pdate         (try (pubdate journal-issue)
+                           (catch Exception _
+                             (pubdate (content (filter-by-tag :PubmedArticle xml)))))]
+    {:publication/date pdate
      :title            title
      :abstract         abstract
      :journal          journal-name
