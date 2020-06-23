@@ -1,8 +1,8 @@
 {:deps  {compojure                     {:mvn/version "1.6.1"}
          com.amazonaws/aws-java-sdk-s3 {:mvn/version "1.11.736"}
-         com.taoensso/sente            {:mvn/version "1.14.0-RC2"}
+         com.taoensso/sente            {:mvn/version "1.15.0"}
          com.taoensso/timbre           {:mvn/version "4.10.0"}
-         http-kit                      {:mvn/version "2.4.0-alpha2"}
+         http-kit                      {:mvn/version "2.4.0-alpha6"}
          org.clojure/data.xml          {:mvn/version "0.2.0-alpha6"}
          io.replikativ/hasch           {:mvn/version "0.3.6"}
          org.clojure/core.async        {:mvn/version "0.4.490"}
