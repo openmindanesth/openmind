@@ -37,6 +37,13 @@
 ;; So far we're going with the latter. This way we keep provenance, and all we
 ;; really want for the UI is the metadata, so it seems to work out.
 
+(defn set-extract [comment-tree id]
+  (walk/prewalk (fn [node]
+                  (if (and (map? node) (contains? node :extract))
+                    (assoc node :extract id)
+                    node))
+                comment-tree))
+
 (defn forward-metadata [prev id author]
   (fn [index]
     (let [prev-meta (metadata index prev)
@@ -44,6 +51,7 @@
           new-meta  (-> prev-meta
                         (assoc :extract id)
                         (assoc :relations relations)
+                        (update :comments set-extract id)
                         (update :history #(or % []))
                         (update :history
                                 conj
