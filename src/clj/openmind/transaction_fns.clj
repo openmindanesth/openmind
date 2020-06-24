@@ -1,8 +1,13 @@
 (ns openmind.transaction-fns
+  "Transaction functions operating on the metadata index. The reason these are
+  in a separate namespace is to make sure that I never refer to the index
+  itself, thus accidentally reaching out of the transaction. That was getting to
+  be a problem when everything was in the same ns."
   (:require [clojure.walk :as walk]
             [openmind.notification :as notify]
             [openmind.s3 :as s3]
-            [openmind.util :as util]))
+            [openmind.util :as util]
+            [taoensso.timbre :as log]))
 
 (defn metadata [index hash]
   (-> index
@@ -10,21 +15,22 @@
       s3/lookup
       :content))
 
-;; TODO: All of these could be massively simplified by creating a macro that
-;; takes a function from the old metadata to the new metadata. Almost none of
-;; these need anything more complicated and ~70% of the code below is
-;; boilerplate. Boilerplate which if incorrect or missing will break everything.
-
 (defn set-meta [index id metadata]
-  (let [imm (util/immutable metadata)]
-    (s3/intern imm)
-    (notify/metadata-update id imm)
-    (assoc index id (:hash imm))))
+  (if-let [imm (util/immutable metadata)]
+    (do
+      (s3/intern imm)
+      (notify/metadata-update id imm)
+      (assoc index id (:hash imm)))
+    (do
+      (log/info "invalid metadata:\n" metadata)
+      index)))
 
 (defn alter-meta
   "Set the metadata of `id` to `(f (metadata id))`."
   [id f]
   (fn [index]
+    (log/trace "old metadata\n" (metadata index id))
+    (log/trace "new metadata\n" (f (metadata index id)))
     (set-meta index id (f (metadata index id)))))
 
 ;;;;; Extract Creation
@@ -110,10 +116,9 @@
                                     (conj % rel)
                                     #{rel})))))
 
-(defn add-relation [{:keys [hash content time/created] :as rel}]
-  (let [{:keys [entity value]} content
-        update-entity          (add-1 entity content)
-        update-value           (add-1 value  content)]
+(defn add-relation [{{:keys [entity value]} :content :as content}]
+  (let [update-entity (add-1 entity content)
+        update-value  (add-1 value  content)]
     (comp update-entity update-value)))
 
 (defn- retract-1 [id rel]
@@ -122,21 +127,32 @@
 (defn retract-relation [{:keys [entity value] :as rel}]
   (let [entity (retract-1 entity rel)
         value (retract-1 value rel)]
+    (println "retracting " rel)
     (comp entity value)))
+
+(defn update-relations-meta [rels m]
+  (let [old-rels (:relations metadata)
+        add      (map util/immutable (remove #(contains? old-rels %) rels))
+        retract  (remove #(contains? rels %) old-rels)]
+    (println "+" (count add))
+    (println "-" (count retract))
+    (apply comp (concat (map add-relation add)
+                        (map retract-relation retract)))))
 
 (defn update-relations [id rels]
   "Given an id and a set of rels, start a transaction in which you figure out
   which rels must be added and which removed from the existing metadata to bring
   it inline with the new set."
+  (println "update relations")
   (fn [index]
+    (println "acting on index")
+    (let [m (metadata index id)]
+      ((update-relations-meta rels m) index)))
+  #_(fn [index]
     (let [metadata (metadata index id)
           old-rels (:relations metadata)
           add      (map util/immutable (remove #(contains? old-rels %) rels))
           retract  (remove #(contains? rels %) old-rels)]
-      (println "hash" id)
-      (println "meta" metadata)
-      (println "+" add)
-      (println "-" retract)
       (as-> index %
         (reduce (fn [index rel] ((new-relation rel) index)) % add)
         (reduce (fn [index rel] ((retract-relation rel) index)) % retract)))))

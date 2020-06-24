@@ -1,8 +1,9 @@
 (ns openmind.s3
   (:refer-clojure :exclude [intern])
   (:require [clojure.core.memoize :as memo]
-            [openmind.edn :as edn]
             [clojure.spec.alpha :as s]
+            [clojure.stacktrace :as st]
+            [openmind.edn :as edn]
             [openmind.env :as env]
             [openmind.spec :as spec]
             [openmind.util :as util]
@@ -52,6 +53,7 @@
   ;; created by some side channel?
   (try
     (lookup* k)
+    ;; FIXME: This is very confusing
     (catch Exception e (get @recently-added k))))
 
 (defn exists?
@@ -175,12 +177,18 @@
     (when-not (contains? runv index)
       (if (compare-and-set! running runv (conj runv index))
         (.start (Thread. (fn []
-                           (try (inner-loop index)
-                                (finally
-                                  (swap! running disj index))))))
+                           (try
+                             (inner-loop index)
+                             (catch Exception e
+                               (log/error "error processing" (:bucket index)
+                                          ":\n" (with-out-str
+                                                  (st/print-stack-trace e))))
+                             (finally
+                               (swap! running disj index))))))
         (recur index)))))
 
 (defn swap-index! [index f]
+  (log/trace "queueing tx on:" (:bucket index) "\n" f)
   (dosync
    (alter (:tx-queue index) conj f))
   (drain-index-queue! index)

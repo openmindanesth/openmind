@@ -1,10 +1,8 @@
 (ns openmind.indexing
   (:require [clojure.spec.alpha :as s]
-            [clojure.walk :as walk]
             [openmind.s3 :as s3]
             [openmind.spec :as spec]
             [openmind.transaction-fns :as txfns]
-            [openmind.util :as util]
             [taoensso.timbre :as log]))
 
 (def extract-metadata-index
@@ -37,8 +35,8 @@
   {:comment      txfns/add-comment-to-meta
    :comment-vote txfns/comment-vote
    :extract      txfns/new-extract
-   :figure       nil
-   :relation     txfns/update-relations})
+   :relation     txfns/add-relation
+   :figure       nil})
 
 (defn index [imm]
   (let [t (first (:content (s/conform ::spec/immutable imm)))]
