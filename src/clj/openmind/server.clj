@@ -3,6 +3,7 @@
             [compojure.core :as c]
             [compojure.route :as route]
             [openmind.env :as env]
+            [openmind.notification :as notify]
             [openmind.oauth2 :as oauth2]
             [openmind.routes :as routes]
             [org.httpkit.server :as http]
@@ -110,6 +111,10 @@
 
 (defn start-router! []
   (stop-router!)
+  (notify/init-notification-system! (fn [message]
+                                      (let [f (:send-fn socket)]
+                                        (run! #(f % message)
+                                              (:any @(:connected-uids socket))))))
   (reset! router
           (sente/start-server-chsk-router! (:ch-recv socket) #'dispatch-msg)))
 

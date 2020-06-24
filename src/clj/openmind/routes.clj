@@ -180,7 +180,8 @@
         (index/forward-metadata prev id author)
         (async/<! (es/retract-extract! prev))
         (async/<! (es/index-extract! imm))
-        (es/replace-in-index prev (:hash imm))))))
+        (es/replace-in-index prev (:hash imm))
+        (notify/extract-edited prev id)))))
 
 (defmethod dispatch :openmind/update
   [{:keys [client-id send-fn ?reply-fn uid tokens]

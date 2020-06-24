@@ -269,9 +269,19 @@
 
 (defmethod broadcast-dispatch :default
   [e]
-  (log/error "Received broadcast message from server"
-                e
-                "Broadcast support is not currently implemented."))
+  (log/error "Received unrecognised broadcast message from server\n" e))
+
+
+(re-frame/reg-event-db
+ ::server-metadata-update
+ (fn [db [_ id {:keys [hash] :as meta}]]
+   (-> db
+       (update :openmind.components.extract.core/metadata assoc id hash)
+       (update ::table assoc hash (assoc meta :fetched (js/Date.))))))
+
+(defmethod broadcast-dispatch :openmind/updated-metadata
+  [[_ {:keys [extract metadata]}]]
+  (re-frame/dispatch [::server-metadata-update extract metadata]))
 
 (defmethod broadcast-dispatch :chsk/ws-ping
   [_]
