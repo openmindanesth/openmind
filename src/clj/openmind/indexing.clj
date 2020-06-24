@@ -27,56 +27,38 @@
       s3/lookup
       :content))
 
-(defmulti update-indicies (fn [t d] t))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;; Indexing of internable objects
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def index-methods
+  "Indexing dispatch table. I know this should be a multi method, but openness
+  isn't really an issue here and the rest is all just boilerplate."
+  {:comment      txfns/add-comment-to-meta
+   :comment-vote txfns/comment-vote
+   :extract      txfns/new-extract
+   :figure       nil
+   :relation     txfns/update-relations})
 
 (defn index [imm]
   (let [t (first (:content (s/conform ::spec/immutable imm)))]
-    (update-indicies t imm)))
+    (if-let [f (get index-methods t)]
+     (s3/swap-index! extract-metadata-index (f imm))
+     ;; allow no-ops without triggering warnings.
+     (when-not (contains? index-methods t)
+       (log/warn "Attempt to index unconformable data:\n" imm)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;; Comments
+;;;;; Miscelanea
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defmethod update-indicies :comment
-  [_ comment]
-  (s3/swap-index! extract-metadata-index
-                  (txfns/add-comment-to-meta comment)))
-
-(defmethod update-indicies :comment-vote
-  [_ vote]
-  (s3/swap-index! extract-metadata-index (txfns/comment-vote vote)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;; Extracts
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defmethod update-indicies :extract
-  [_ extract]
-  (s3/swap-index! extract-metadata-index (txfns/new-extract extract)))
-
-;;;;; Figures
-
-(defmethod update-indicies :figure
-  [_ _]
-  ;; No op. We don't index figures, just store them.
-  true)
-
-;;;;; Relations
-
-(defmethod update-indicies :relation
-  [_ rel]
-  (s3/intern rel)
-  (s3/swap-index! extract-metadata-index (txfns/new-relation rel)))
 
 (defn update-relations [id rels]
   (s3/swap-index! extract-metadata-index
                   (txfns/update-relations id rels)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;; Updating extracts
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 (defn edit-relations [prev-id new-id rels]
+  (println "er"  new-id prev-id)
+
   (update-relations (or new-id prev-id) rels))
 
 (defn forward-metadata [prev id author]

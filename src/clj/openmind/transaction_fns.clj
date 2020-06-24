@@ -15,16 +15,22 @@
 ;; these need anything more complicated and ~70% of the code below is
 ;; boilerplate. Boilerplate which if incorrect or missing will break everything.
 
+(defn set-meta [index id metadata]
+  (let [imm (util/immutable metadata)]
+    (s3/intern imm)
+    (notify/metadata-update id imm)
+    (assoc index id (:hash imm))))
+
+(defn alter-meta
+  "Set the metadata of `id` to `(f (metadata id))`."
+  [id f]
+  (fn [index]
+    (set-meta index id (f (metadata index id)))))
+
 ;;;;; Extract Creation
 
-(defn new-extract [{:keys [hash] {:keys [history/previous-version]} :content}]
-  (fn [index]
-    (when-not (contains? index hash)
-    (let [blank-meta (util/immutable {:extract hash})]
-      (s3/intern blank-meta)
-      (notify/metadata-update hash blank-meta)
-      (assoc index hash (:hash blank-meta))))))
-
+(defn new-extract [{:keys [hash]}]
+  (alter-meta hash (fn [_] {:extract hash})))
 
 ;;;;; Update Extract
 ;;
@@ -57,12 +63,8 @@
                                 conj
                                 {:history/previous-version prev
                                  :time/created             (java.util.Date.)
-                                 :author                   author})
-                        util/immutable)]
-      (s3/intern new-meta)
-      (run! #(s3/intern (util/immutable %)) relations)
-      (notify/metadata-update id new-meta)
-      (assoc index id (:hash new-meta)))))
+                                 :author                   author}))]
+      (set-meta index id new-meta))))
 
 ;;;;; Comments
 
@@ -84,20 +86,8 @@
         (conj comment-tree c*)
         [c*]))))
 
-(defn add-comment-to-meta [{:keys [hash] {:keys [extract]} :content :as comment}]
-  (fn [index]
-    (println "this comment" hash)
-    (println "ext" extract)
-    (println "mid" (get index extract))
-    (println (s3/lookup (get index extract)))
-    (let [old-meta (metadata index extract)
-          _ (println "old comment meta" old-meta)
-          new-meta (update old-meta
-                           :comments insert-comment comment)
-          imm      (util/immutable new-meta)]
-      (s3/intern imm)
-      (notify/metadata-update extract imm)
-      (assoc index extract (:hash imm)))))
+(defn add-comment-to-meta [{{:keys [extract]} :content :as comment}]
+  (alter-meta extract (fn [m] (update m :comments insert-comment comment))))
 
 (defn update-votes [comments {h :hash {:keys [vote author comment]} :content}]
   (walk/postwalk
@@ -110,52 +100,29 @@
    comments))
 
 (defn comment-vote [{{:keys [extract]} :content :as vote}]
-  (fn [index]
-    (let [new-meta (-> (metadata index extract)
-                     (update :comments update-votes vote)
-                     util/immutable)]
-      (s3/intern new-meta)
-      (notify/metadata-update extract new-meta)
-      (assoc index extract (:hash new-meta)))))
+  (alter-meta extract (fn [m] (update m :comments update-votes vote))))
 
 ;;;;; Relations
 
-(defn add-relation [index id rel]
-  (let [new (-> (metadata index id)
-                (update :relations
-                        #(if (seq %)
-                           (conj % rel)
-                           #{rel}))
-                util/immutable)]
-    (s3/intern new)
-    (notify/metadata-update id new)
-    new))
+(defn add-1 [id rel]
+  (alter-meta id (fn [m] (update m :relations
+                                 #(if (seq %)
+                                    (conj % rel)
+                                    #{rel})))))
 
-(defn new-relation [{:keys [hash content time/created] :as rel}]
-  (fn [index]
-    (let [{:keys [entity value]} content
-          entity-meta            (add-relation index entity content)
-          value-meta             (add-relation index value  content)]
-      (assoc index
-             entity (:hash entity-meta)
-             value (:hash value-meta)))))
+(defn add-relation [{:keys [hash content time/created] :as rel}]
+  (let [{:keys [entity value]} content
+        update-entity          (add-1 entity content)
+        update-value           (add-1 value  content)]
+    (comp update-entity update-value)))
 
-(defn- retract-1 [index id rel]
-  (println "preret" (metadata index id))
-  (let [m' (-> (metadata index id)
-               (update :relations disj rel)
-               util/immutable)]
-    (s3/intern m')
-    (notify/metadata-update id m')
-    m'))
+(defn- retract-1 [id rel]
+  (alter-meta id (fn [m] (update m :relations disj rel))))
 
 (defn retract-relation [{:keys [entity value] :as rel}]
-  (fn [index]
-    (let [emeta (retract-1 index entity rel)
-          vmeta (retract-1 index value rel)]
-      (assoc index
-             entity (:hash emeta)
-             value (:hash vmeta)))))
+  (let [entity (retract-1 entity rel)
+        value (retract-1 value rel)]
+    (comp entity value)))
 
 (defn update-relations [id rels]
   "Given an id and a set of rels, start a transaction in which you figure out
@@ -166,6 +133,10 @@
           old-rels (:relations metadata)
           add      (map util/immutable (remove #(contains? old-rels %) rels))
           retract  (remove #(contains? rels %) old-rels)]
-      (as-> index index
-        (reduce (fn [index rel] ((new-relation rel) index)) index add)
-        (reduce (fn [index rel] ((retract-relation rel) index)) index retract)))))
+      (println "hash" id)
+      (println "meta" metadata)
+      (println "+" add)
+      (println "-" retract)
+      (as-> index %
+        (reduce (fn [index rel] ((new-relation rel) index)) % add)
+        (reduce (fn [index rel] ((retract-relation rel) index)) % retract)))))
