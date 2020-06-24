@@ -93,12 +93,8 @@
 (re-frame/reg-event-fx
  ::editing-copy
  (fn [{:keys [db]} [_ id]]
-   (let [content (:content (events/table-lookup db id))
-         hacked (if (and (seq (:figures content))
-                         (nil? (:figure content)))
-                  (assoc content :figure (first (:figures content)))
-                  content)]
-     {:db (update db ::extracts assoc id {:content hacked})})))
+   (let [content (:content (events/table-lookup db id))]
+     {:db (update db ::extracts assoc id {:content content})})))
 
 (re-frame/reg-event-db
  ::reconcile-metadata
@@ -716,12 +712,13 @@
                        c]]))))
           [:related :confirmed :contrast])))
 
-(defn relation [{:keys [attribute value entity author] :as rel}]
-  (let [extract @(re-frame/subscribe [:content value])
+(defn relation [data-key {:keys [attribute value entity author] :as rel}]
+  (let [other (if (= data-key entity) value entity)
+        extract @(re-frame/subscribe [:content other])
         login @(re-frame/subscribe [:openmind.subs/login-info])]
     [:span
      (when (= login author)
-       [cancel-button #(re-frame/dispatch [::remove-relation entity rel])])
+       [cancel-button #(re-frame/dispatch [::remove-relation data-key rel])])
      [extract/summary extract
       {:controls (extract/relation-meta attribute)
        :edit-link?   false}]]))
@@ -733,15 +730,16 @@
            :overflow-y      :auto
            :overflow-x      :visible}})
 
-(defn related-extracts [{:keys [content]}]
+(defn related-extracts [{:keys [content data-key]}]
   (into [:div.flex.flex-column scrollbox-style]
-        (map relation)
+        (map (partial relation data-key))
         content))
 
 (defn search-results [key data-key]
   (let [results @(re-frame/subscribe [key])
         selected (into {}
-                       (map (fn [rel] [(:value rel) rel]))
+                       (map (fn [{:keys [entity value] :as rel}]
+                              [(if (= entity data-key) value entity) rel]))
                        (:relations @(re-frame/subscribe [::content data-key])))]
     (into [:div.flex.flex-column scrollbox-style]
           (concat
@@ -758,7 +756,7 @@
                  (comp
                   (map #(get selected %))
                   (remove nil?)
-                  (map relation))
+                  (map (partial relation data-key)))
                  results)))))
 
 (defn similar-extracts [{:keys [data-key] :as opts}]
