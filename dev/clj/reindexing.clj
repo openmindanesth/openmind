@@ -120,10 +120,11 @@
 
 (defn update-source [eid]
   (let [current (:content (s3/lookup eid))]
-    (let [source (refetch (:source current))]
+    (let [source (refetch* (:source current))]
       (-> current
           (assoc :source source)
           (select-keys valid-keys)
+          (#(do (println (-> % :source :authors)) %))
           util/immutable))))
 
 (defn reimport-pubmed []
