@@ -38,7 +38,8 @@
 ;;;;; Extract Creation
 
 (defn new-extract [{:keys [hash]}]
-  (alter-meta hash (fn [_] {:extract hash})))
+  (fn [index]
+    (set-meta index hash {:extract hash})))
 
 ;;;;; Update Extract
 ;;
