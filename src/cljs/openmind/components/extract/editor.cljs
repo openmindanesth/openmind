@@ -247,6 +247,16 @@
         (some? fig)
         (not= rels (:relations base)))))
 
+(defn update-relations [oldid newid relations]
+  (if newid
+    (into #{}
+          (map (fn [{:keys [entity value] :as rel}]
+                 (if (= entity oldid)
+                   (assoc rel :entity newid)
+                   (assoc rel :value newid))))
+          relations)
+    relations))
+
 (re-frame/reg-event-fx
  ::update-extract
  (fn [{:keys [db]} [_ id]]
@@ -269,7 +279,9 @@
                                      :editor      (get db :login-info)
                                      :previous-id (:hash original)
                                      :figure      fig
-                                     :relations   (:relations base)}]]}
+                                     :relations   (update-relations
+                                                   id (:hash imm)
+                                                   (:relations base))}]]}
              ;; no change, just go back to search
              {:dispatch-n [[:notify {:status  :warn
                                      :message "no changes to save"}]
@@ -292,9 +304,9 @@
 
 (re-frame/reg-event-fx
  :openmind/update-response
- (fn [cofx [_ {:keys [status message]}]]
+ (fn [cofx [_ {:keys [status message id]}]]
    (if (= :success status)
-     {:dispatch-n [[::clear nil]
+     {:dispatch-n [[::clear id]
                    [:notify {:status  :success
                              :message (str "changes submitted successfully\n"
                                            "it may take a moment for the changes"

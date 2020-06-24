@@ -22,16 +22,18 @@
       (notify/metadata-update id imm)
       (assoc index id (:hash imm)))
     (do
-      (log/info "invalid metadata:\n" metadata)
+      (log/warn "invalid metadata:\n" metadata)
       index)))
 
 (defn alter-meta
   "Set the metadata of `id` to `(f (metadata id))`."
   [id f]
   (fn [index]
-    (log/trace "old metadata\n" (metadata index id))
-    (log/trace "new metadata\n" (f (metadata index id)))
-    (set-meta index id (f (metadata index id)))))
+    (if-let [m (metadata index id)]
+      (set-meta index id (f m))
+      (do
+        (log/error "extract" id "has no metadata!")
+        index))))
 
 ;;;;; Extract Creation
 
@@ -59,7 +61,12 @@
 (defn forward-metadata [prev id author]
   (fn [index]
     (let [prev-meta (metadata index prev)
-          relations (into #{} (map #(assoc % :entity id)) (:relations prev-meta))
+          relations (into #{}
+                          (map (fn [{:keys [entity value] :as rel}]
+                                 (if (= entity prev)
+                                   (assoc rel :entity id)
+                                   (assoc rel :value id))))
+                          (:relations prev-meta))
           new-meta  (-> prev-meta
                         (assoc :extract id)
                         (assoc :relations relations)
@@ -116,7 +123,7 @@
                                     (conj % rel)
                                     #{rel})))))
 
-(defn add-relation [{{:keys [entity value]} :content :as content}]
+(defn add-relation [{{:keys [entity value] :as content} :content}]
   (let [update-entity (add-1 entity content)
         update-value  (add-1 value  content)]
     (comp update-entity update-value)))
@@ -127,15 +134,12 @@
 (defn retract-relation [{:keys [entity value] :as rel}]
   (let [entity (retract-1 entity rel)
         value (retract-1 value rel)]
-    (println "retracting " rel)
     (comp entity value)))
 
 (defn update-relations-meta [rels m]
-  (let [old-rels (:relations metadata)
+  (let [old-rels (:relations m)
         add      (map util/immutable (remove #(contains? old-rels %) rels))
         retract  (remove #(contains? rels %) old-rels)]
-    (println "+" (count add))
-    (println "-" (count retract))
     (apply comp (concat (map add-relation add)
                         (map retract-relation retract)))))
 
@@ -143,16 +147,6 @@
   "Given an id and a set of rels, start a transaction in which you figure out
   which rels must be added and which removed from the existing metadata to bring
   it inline with the new set."
-  (println "update relations")
   (fn [index]
-    (println "acting on index")
     (let [m (metadata index id)]
-      ((update-relations-meta rels m) index)))
-  #_(fn [index]
-    (let [metadata (metadata index id)
-          old-rels (:relations metadata)
-          add      (map util/immutable (remove #(contains? old-rels %) rels))
-          retract  (remove #(contains? rels %) old-rels)]
-      (as-> index %
-        (reduce (fn [index rel] ((new-relation rel) index)) % add)
-        (reduce (fn [index rel] ((retract-relation rel) index)) % retract)))))
+      ((update-relations-meta rels m) index))))

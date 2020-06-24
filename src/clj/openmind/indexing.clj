@@ -55,8 +55,6 @@
                   (txfns/update-relations id rels)))
 
 (defn edit-relations [prev-id new-id rels]
-  (println "er"  new-id prev-id)
-
   (update-relations (or new-id prev-id) rels))
 
 (defn forward-metadata [prev id author]
