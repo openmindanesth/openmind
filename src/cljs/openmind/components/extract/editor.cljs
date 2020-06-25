@@ -145,6 +145,15 @@
     :errors  (get errors k)}))
 
 (re-frame/reg-sub
+ ::nested-form-data
+ (fn [[_ dk k] _]
+   [(re-frame/subscribe [::content dk])
+    (re-frame/subscribe [::extract-form-errors dk])])
+ (fn [[content errors] [_ dk k]]
+   {:content (get-in content k)
+    :errors  (get-in errors k)}))
+
+(re-frame/reg-sub
  ::similar
  (fn [db]
    (::similar db)))
@@ -348,13 +357,14 @@
       (merge @(re-frame/subscribe [::form-input-data id key]))))
 
 (defn text
-  [{:keys [label key placeholder errors content data-key on-change on-blur]}]
+  [{:keys [label key placeholder errors content data-key on-change on-blur]
+    :as   opts}]
   (let [ks (if (vector? key) key [key])]
     [:div.full-width
      [:input.full-width-textarea
       (merge {:id        (apply str ks)
               :type      :text
-              :on-blur   #(when on-blur (on-blur %))
+              :on-blur   #(when on-blur (on-blur opts))
               :on-change (juxt (pass-edit data-key ks)
                                #(when on-change
                                   (on-change (-> % .-target .-value)))
@@ -567,6 +577,7 @@
   (if content
     [figure-preview opts]
     [image-drop opts]))
+
 (defn source-preview [{:keys [data-key] :as opts}]
   (let [{:keys [source extract/type]} @(re-frame/subscribe [::content data-key])]
     (when (and (= type :article) (:abstract source))
@@ -585,21 +596,7 @@
      (when (and (= url current) (seq source))
        {:db (update-in db [::extracts res-id :content :source] merge source)}))))
 
-(defn source-article [{:keys [content data-key] :as opts}]
-  [text (assoc opts
-               :content (:url content)
-               :on-blur #(re-frame/dispatch
-                          [::pubmed-lookup data-key (:url content)])
-               :key [:source :url])])
-
-(defn source-labnote [opts]
-  [:div "work in progress"])
-
 (defn source-selector [{:keys [key content data-key errors] :as opts}]
-  ;; For lab notes we want to get the PI, institution (corp), and date of
-  ;; observation.
-  ;; For article extracts, we can autofill from pubmed, but if that doesn't
-  ;; work, we want the title, author list, publication, and date.
   [:div.flex.flex-column
    [:div.flex.flex-start
     (when (and errors (not content))
@@ -622,26 +619,7 @@
                       [::form-edit data-key [key] :labnote])
                      (when errors
                        (re-frame/dispatch [::revalidate data-key])))}
-     "lab note"]]
-   (when errors
-     [common/error errors])
-   (when content
-     [:div.mth.mb1.flex
-      [:div.flex.vcenter
-       [:label.pr1.pl1 {:for (name key)
-                    :style {:width "9rem"}}
-        [:b (if (= content :article)
-              "link to article"
-              "reference")
-         [:span.text-red.super.small " *"]]]]
-      (let [placeholder (if (= content :article)
-                          "www.ncbi.nlm.nih.gov/pubmed/..."
-                          "investigator, lab, institution, date of observation")
-            opts        (assoc opts
-                               :key :source
-                               :placeholder placeholder)]
-        [(if (= :article content) source-article source-labnote )
-         (add-form-data data-key opts)])])])
+     "lab note"]]])
 
 (defn responsive-two-column [l r]
   [:div.vcenter.mb1h.mbr2
@@ -674,6 +652,39 @@
         [responsive-two-column
          label-span
          [component field]]))))
+
+(def labnote-details-inputs
+  ;; For lab notes we want to get the PI, institution (corp), and date of
+  ;; observation.
+  [{:component (fn [_] [:div "Not implemented"])
+    :label "labnote details"}])
+
+(def source-details-inputs
+  ;; For article extracts, we can autofill from pubmed, but if that doesn't
+  ;; work, we want the title, author list, publication, and date.
+  [{:component   text
+    :label       "link to article"
+    :key         [:source :url]
+    :placeholder "www.ncbi.nlm.nih.gov/pubmed/..."
+    :on-blur     (fn [{:keys [content data-key]}]
+                   (re-frame/dispatch
+                    [::pubmed-lookup data-key content]))
+    :required?   true}
+   ])
+
+(defn source-details [{:keys [data-key content] :as opts}]
+  (let [type (:extract/type @(re-frame/subscribe [::content data-key]))]
+    (into [:div.flex.flex-column]
+          (comp
+           (map (fn [{:keys [key] :as opts}]
+                  (merge opts
+                         {:data-key data-key}
+                         @(re-frame/subscribe
+                           [::nested-form-data data-key key]))))
+           (map input-row))
+          (if (= :article type)
+            source-details-inputs
+            labnote-details-inputs))))
 
 (defn comment-widget [{:keys [data-key] :as opts}]
   (if (= data-key ::new)
@@ -830,8 +841,10 @@
    {:component source-selector
     :label     "source"
     :key       :extract/type
-    :required? true
-    :feedback  source-preview}
+    :required? true}
+   {:component   source-details
+    :key         :source
+    :full-width? true}
    {:component   shared-source
     :key         :same-article
     :full-width? true}
