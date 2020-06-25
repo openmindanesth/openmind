@@ -21,12 +21,8 @@
 (s/def ::figure
   ::u/hash)
 
-(s/def ::url
-  ;; TODO: Validate url
-  string?)
-
 (s/def ::source-material
-  ::url)
+  ::u/url)
 
 (s/def :extract/type
   (s/and some? keyword?))
@@ -45,13 +41,13 @@
    :link    ::just-url))
 
 (s/def ::just-url
-  (s/keys :req-un [::url]))
+  (s/keys :req-un [::u/url]))
 
 (s/def ::pubmed-reference
   ;; TODO: Store the pubmed id separately from the URL.
   (s/keys :req [:publication/date]
           :opt-un [::volume ::issue]
-          :req-un [::authors ::doi ::title ::abstract ::journal ::url]))
+          :req-un [::authors ::doi ::title ::abstract ::journal ::u/url]))
 
 (s/def :publication/date
   ;; As per scraping in general, these dates aren't generally well formatted, so
