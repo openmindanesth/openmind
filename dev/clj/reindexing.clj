@@ -2,6 +2,7 @@
   (:require [clojure.core.async :as async]
             [openmind.elastic :as es]
             [openmind.indexing :as index]
+            [openmind.transaction-fns :as txfns]
             [openmind.pubmed :as pubmed]
             [openmind.s3 :as s3]
             [tag-migration :as tags]
@@ -42,7 +43,7 @@
           util/immutable))))
 
 (defn indexify [cs]
-  (reduce index/insert-comment [] cs))
+  (reduce txfns/insert-comment [] cs))
 
 (defn flatten-comment-tree [eid ql comments reply-to]
   (mapcat (fn [{:keys [replies] :as com}]
@@ -119,10 +120,11 @@
 
 (defn update-source [eid]
   (let [current (:content (s3/lookup eid))]
-    (let [source (refetch (:source current))]
+    (let [source (refetch* (:source current))]
       (-> current
           (assoc :source source)
           (select-keys valid-keys)
+          (#(do (println (-> % :source :authors)) %))
           util/immutable))))
 
 (defn reimport-pubmed []
