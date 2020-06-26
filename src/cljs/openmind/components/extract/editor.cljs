@@ -588,17 +588,25 @@
 (re-frame/reg-event-fx
  ::pubmed-lookup
  (fn [cofx [_ id url]]
-   {:dispatch-n [[:->server [:openmind/pubmed-lookup {:res-id id :url url}]]
-                 [:openmind.components.window/spin]]}))
+   (let [last-searched (-> cofx :db ::extracts (get id) :content :source :url)]
+     (when-not (= url last-searched)
+       {:dispatch-n [[:->server [:openmind/pubmed-lookup {:res-id id :url url}]]
+                     [:openmind.components.window/spin]]}))))
 
 (re-frame/reg-event-fx
  :openmind/pubmed-article
  (fn [{:keys [db]} [_ {:keys [res-id url source]}]]
    (let [current (get-in db [::extracts res-id :content :article-search])]
-     (when (and (= url current) (seq source))
+     (if (and (= url current) (seq source))
        {:db         (update-in db [::extracts res-id :content :source] merge source)
         :dispatch-n [[:openmind.components.window/unspin]
-                     [:notify {:status :success :message "article found"}]]}))))
+                     [:notify {:status :success :message "article found"}]]}
+       {:db         (update-in db [::extracts res-id :content] dissoc :source)
+        :dispatch-n [[:openmind.components.window/unspin]
+                     [:notify {:status :error
+                               :message
+                               (str "we couldn't find that article\n"
+                                    "please enter its details below")}]]}))))
 
 (defn source-selector [{:keys [key content data-key errors] :as opts}]
   [:div.flex.flex-column
@@ -651,6 +659,9 @@
                        (re-frame/dispatch [::revalidate data-key])))}
      "preprint"]]])
 
+(defn date [{:keys [content]}]
+  (when content
+    [:div (str content)]))
 
 (defn responsive-two-column [l r]
   [:div.vcenter.mb1h.mbr2
@@ -687,8 +698,25 @@
 (def labnote-details-inputs
   ;; For lab notes we want to get the PI, institution (corp), and date of
   ;; observation.
-  [{:component (fn [_] [:div "Not implemented"])
-    :label "labnote details"}])
+  [{:component text
+    :label "institution"
+    :placeholder "university, company, etc."
+    :key [:source :institution]
+    :required? true}
+   {:component text
+    :label "lab"
+    :placeholder "lab name"
+    :key [:source :lab]
+    :required? true}
+   {:component text
+    :label "investigator"
+    :placeholder "principle investigator"
+    :key [:source :principle-investigator]
+    :required? true}
+   {:component date
+    :label "date of observation"
+    :required? true
+    :key [:source :observation/date]}])
 
 (defn article-search [{:keys [data-key key content] :as opts}]
   (let [waiting? @(re-frame/subscribe [:openmind.components.window/spinner])]
@@ -705,7 +733,9 @@
   [{:key         [:article-search]
     :component   article-search
     :label       "find paper"
-    :placeholder "article doi or url to pubmed/bioarxiv"}
+    :placeholder "www.ncbi.nlm.nih.gov/pubmed/..."
+    ;; This is the goal#_"article doi or url to pubmed/bioarxiv"
+    }
    {:component   text
     :label       "link to article"
     :key         [:source :url]
@@ -729,10 +759,22 @@
     :key       [:source :authors]
     :sub-key   :full-name
     :required? true}
+   {:component date
+    :label     "publication date"
+    :key       [:source :publication/date]
+    :required? true}
    {:component textarea
     :label     "abstract"
     :key       [:source :abstract]}
-   ])
+   {:component text
+    :label     "journal"
+    :key       [:source :journal]}
+   {:component text
+    :label     "volume"
+    :key       [:source :volume]}
+   {:component text
+    :label     "issue"
+    :key       [:source :issue]}])
 
 (defn source-details [{:keys [data-key content] :as opts}]
   (let [extract @(re-frame/subscribe [::content data-key])
@@ -745,9 +787,10 @@
                          @(re-frame/subscribe
                            [::nested-form-data data-key key]))))
            (map input-row))
-          (if (= :article type)
-            source-details-inputs
-            labnote-details-inputs))))
+          (case type
+            :article source-details-inputs
+            :labnote labnote-details-inputs
+            []))))
 
 (defn comment-widget [{:keys [data-key] :as opts}]
   (if (= data-key ::new)

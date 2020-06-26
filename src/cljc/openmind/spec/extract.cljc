@@ -36,9 +36,14 @@
 
 (s/def ::source
   (s/or
+   :article ::article-details
    :pubmed  ::pubmed-reference
    :labnote ::labnote-source
    :link    ::just-url))
+
+(s/def ::article-details
+  ;; Not implemented error
+  (constantly false))
 
 (s/def ::just-url
   (s/keys :req-un [::u/url]))

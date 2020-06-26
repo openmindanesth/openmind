@@ -190,7 +190,7 @@
               :z-index 2000
               :transition "opacity 2s ease"}}
      [:div.pt1.pb1.pl1.border-round.m1
-      {:style {:min-height "6rem"
+      {:style {:min-height "5rem"
 
                :margin "0.2rem"}
        :class (if (= status :success)

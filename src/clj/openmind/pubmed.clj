@@ -133,13 +133,14 @@
      :journal          journal-name
      :issue            issue
      :volume           volume
+     :peer-reviewed?   true
      :doi              doi
      :authors          (mapv parse-author author-list)}))
 
 (defn article-info [url]
   (async/go
-    (-> url
-        grab-article
-        async/<!
-        parse-xml-string
-        extract-article-info)))
+    (when-let [article (async/<! (grab-article url))]
+      (-> article
+          parse-xml-string
+          extract-article-info
+          (assoc :url url)))))
