@@ -50,14 +50,11 @@
           :req-un [::authors ::doi ::title ::abstract ::journal ::u/url]))
 
 (s/def :publication/date
-  ;; As per scraping in general, these dates aren't generally well formatted, so
-  ;; strings are the best I can do at present.
-  ;; TODO: With the API this is no longer true.
   inst?)
 
 (s/def ::author-details
-  (s/keys :req-un [::full-name ::short-name]
-          :opt-un [::u/orcid-id]))
+  (s/keys :req-un [::full-name]
+          :opt-un [::u/orcid-id  ::short-name]))
 
 (s/def ::full-name
   string?)
