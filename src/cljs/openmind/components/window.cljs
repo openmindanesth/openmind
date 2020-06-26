@@ -177,26 +177,50 @@
  :notify
  (fn [{:keys [db]} [_ msg]]
    (let [id (keyword (gensym "notification"))]
-     {:db (assoc db ::status-message (assoc msg :id id))
-      :dispatch-later [{:ms 3000 :dispatch [::dismiss-notify id]}]})))
+     {:db             (assoc db ::status-message (assoc msg :id id))
+      :dispatch-later [{:ms 4000 :dispatch [::dismiss-notify id]}]})))
 
 (defn status-message-bar [{:keys [status message closing? id] :as notif}]
   (when notif
-    [:div.vspacer
-     {:style {:opacity (if closing? 0.0 0.8)
+    [:div.fixed
+     {:style {:opacity (if closing? 0.0 0.95)
+              :top 0
+              :left 0
+              :width "100%"
+              :z-index 2000
               :transition "opacity 2s ease"}}
-     [:div.pt1.pb1.pl1.border-round
-      {:class (if (= status :success)
+     [:div.pt1.pb1.pl1.border-round.m1
+      {:style {:min-height "6rem"
+
+               :margin "0.2rem"}
+       :class (if (= status :success)
                 "bg-green"
                 "bg-red")}
       [:a.right.pr2.underline
        {:on-click #(re-frame/dispatch [::dismiss-notify id])} "dismiss"]
-      (into [:div]
+      (into [:div.pt1.pl3.pr3.ctext]
             (map #(do [:p %]) (string/split-lines message)))]]))
 
+(re-frame/reg-sub
+ ::spinner
+ (fn [db _]
+   (::spinner db)))
+
+(re-frame/reg-event-db
+ ::spin
+ (fn [db _]
+   (assoc db ::spinner true)))
+
+(re-frame/reg-event-db
+ ::unspin
+ (fn [db _]
+   (dissoc db ::spinner)))
+
 (defn main [content]
-  (let [status-message @(re-frame/subscribe [::status-message])]
+  (let [status-message @(re-frame/subscribe [::status-message])
+        spinning?      @(re-frame/subscribe [::spinner])]
     [:div.ph
+     (when spinning? {:style {:cursor :wait}})
      [title-bar]
      [status-message-bar status-message]
      [:div.vspacer]

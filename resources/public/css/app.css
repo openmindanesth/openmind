@@ -398,12 +398,20 @@ f-align-start {
 		padding-left: 2rem;
 }
 
+.pl3 {
+		padding-left: 3rem;
+}
+
 .pr1 {
 		padding-right: 1rem;
 }
 
 .pr2 {
 		padding-right: 2rem;
+}
+
+.pr3 {
+		padding-right: 3rem;
 }
 
 input {
