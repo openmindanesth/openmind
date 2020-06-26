@@ -55,7 +55,8 @@
                  (map (fn [s]
                         (if (string? s)
                           s
-                          (get sup-map (first (:content s)))))
+                          (let [c (first (:content s))]
+                            (get sup-map c c))))
                       content))))
 
 (defn content [x]
@@ -114,7 +115,7 @@
 
 (defn extract-article-info [xml]
   (let [article       (first (filter-by-tag :Article xml))
-        title         (content (filter-by-tag :ArticleTitle article))
+        title         (extract-text (first (filter-by-tag :ArticleTitle article)))
         journal-item  (first (filter-by-tag :Journal article))
         journal-name  (content (filter-by-tag :ISOAbbreviation journal-item))
         journal-issue (first (filter-by-tag :JournalIssue journal-item))
