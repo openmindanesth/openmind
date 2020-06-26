@@ -347,9 +347,11 @@
 
 ;;;; Components
 
-(defn pass-edit [id ks]
+(defn pass-edit [id ks & [sub-key]]
   (fn [ev]
-    (re-frame/dispatch [::form-edit id ks (-> ev .-target .-value)])))
+    (let [v (-> ev .-target .-value)
+          v' (if sub-key {sub-key v} v)]
+      (re-frame/dispatch [::form-edit id ks v']))))
 
 (defn add-form-data [id {:keys [key] :as elem}]
   (-> elem
@@ -383,7 +385,7 @@
   [{:keys [label key required? placeholder spec errors content data-key on-change]}]
   [:div
    [:textarea.full-width-textarea
-    (merge {:id        (name key)
+    (merge {:id        (str key)
             :rows      2
             :style     {:resize :vertical}
             :type      :text
@@ -402,7 +404,7 @@
      [common/error errors])])
 
 (defn text-input-list
-  [{:keys [key placeholder spec errors content data-key]}]
+  [{:keys [key placeholder spec errors content data-key sub-key]}]
   (conj
    (into [:div.flex.flex-wrap]
          (map-indexed
@@ -411,11 +413,11 @@
               [:div
                [:input.full-width-textarea
                 (merge {:type      :text
-                        :on-change (pass-edit data-key [key i])}
+                        :on-change (pass-edit data-key [key i] sub-key)}
                        (when err
                          {:class "form-error"})
                        (if (seq c)
-                         {:value c}
+                         {:value (if sub-key (get c sub-key) c)}
                          {:value       nil
                           :placeholder placeholder}))]
                (when err
@@ -586,15 +588,17 @@
 (re-frame/reg-event-fx
  ::pubmed-lookup
  (fn [cofx [_ id url]]
-   (when (.includes url "ncbi.nlm.nih.gov")
-     {:dispatch [:->server [:openmind/pubmed-lookup {:res-id id :url url}]]})))
+   {:dispatch-n [[:->server [:openmind/pubmed-lookup {:res-id id :url url}]]
+                 [:openmind.components.window/spin]]}))
 
 (re-frame/reg-event-fx
  :openmind/pubmed-article
  (fn [{:keys [db]} [_ {:keys [res-id url source]}]]
-   (let [current (get-in db [::extracts res-id :content :source :url])]
+   (let [current (get-in db [::extracts res-id :content :article-search])]
      (when (and (= url current) (seq source))
-       {:db (update-in db [::extracts res-id :content :source] merge source)}))))
+       {:db         (update-in db [::extracts res-id :content :source] merge source)
+        :dispatch-n [[:openmind.components.window/unspin]
+                     [:notify {:status :success :message "article found"}]]}))))
 
 (defn source-selector [{:keys [key content data-key errors] :as opts}]
   [:div.flex.flex-column
@@ -620,6 +624,33 @@
                      (when errors
                        (re-frame/dispatch [::revalidate data-key])))}
      "lab note"]]])
+
+;; FIXME: cut and paste!!
+(defn peer-review-widget [{:keys [key content data-key errors] :as opts}]
+  [:div.flex.flex-column
+   [:div.flex.flex-start
+    (when (and errors (not content))
+      {:class "form-error border-round border-solid ph"
+       :style {:width "max-content"}})
+    [:button.p1.text-white.border-round
+     {:class    (if (true? content)
+                  "bg-dark-blue"
+                  "bg-blue")
+      :on-click #(do (re-frame/dispatch
+                       [::form-edit data-key key true])
+                     (when errors
+                       (re-frame/dispatch [::revalidate data-key])))}
+     "peer reviewed article"]
+    [:button.p1.ml1.text-white.border-round
+     {:class    (if (false? content)
+                  "bg-dark-blue"
+                  "bg-blue")
+      :on-click #(do (re-frame/dispatch
+                      [::form-edit data-key key false])
+                     (when errors
+                       (re-frame/dispatch [::revalidate data-key])))}
+     "preprint"]]])
+
 
 (defn responsive-two-column [l r]
   [:div.vcenter.mb1h.mbr2
@@ -659,21 +690,53 @@
   [{:component (fn [_] [:div "Not implemented"])
     :label "labnote details"}])
 
+(defn article-search [{:keys [data-key key content] :as opts}]
+  (let [waiting? @(re-frame/subscribe [:openmind.components.window/spinner])]
+    [:div.flex
+     [text opts]
+     [:button.bg-blue.ph.mlh.text-white.border-round
+      {:style (when waiting? {:cursor :wait})
+       :on-click #(re-frame/dispatch [::pubmed-lookup data-key content])}
+      "search"]]))
+
 (def source-details-inputs
   ;; For article extracts, we can autofill from pubmed, but if that doesn't
   ;; work, we want the title, author list, publication, and date.
-  [{:component   text
+  [{:key         [:article-search]
+    :component   article-search
+    :label       "find paper"
+    :placeholder "article doi or url to pubmed/bioarxiv"}
+   {:component   text
     :label       "link to article"
     :key         [:source :url]
     :placeholder "www.ncbi.nlm.nih.gov/pubmed/..."
-    :on-blur     (fn [{:keys [content data-key]}]
-                   (re-frame/dispatch
-                    [::pubmed-lookup data-key content]))
     :required?   true}
+   {:component peer-review-widget
+    :label     "status"
+    :title     "is this article peer reviewed, or a preprint?"
+    :key       [:source :peer-reviewed?]
+    :required? true}
+   {:component text
+    :label     "doi"
+    :key       [:source :doi]
+    :required? true}
+   {:component textarea
+    :label     "title"
+    :key       [:source :title]
+    :required? true}
+   {:component text-input-list
+    :label     "authors"
+    :key       [:source :authors]
+    :sub-key   :full-name
+    :required? true}
+   {:component textarea
+    :label     "abstract"
+    :key       [:source :abstract]}
    ])
 
 (defn source-details [{:keys [data-key content] :as opts}]
-  (let [type (:extract/type @(re-frame/subscribe [::content data-key]))]
+  (let [extract @(re-frame/subscribe [::content data-key])
+        type    (:extract/type extract)]
     (into [:div.flex.flex-column]
           (comp
            (map (fn [{:keys [key] :as opts}]
