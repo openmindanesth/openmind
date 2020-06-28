@@ -13,7 +13,6 @@
                      "#openmind.hash/ref \"ad5f984737860c4602f4331efeb17463\"")
    ::tag-tree       ::uninitialised
    :tag-lookup      ::uninitialised
-   ::status-message ""
 
    :openmind.components.tags/search {:search/selection []}
    :openmind.router/route           nil})

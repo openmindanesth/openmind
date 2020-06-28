@@ -29,6 +29,7 @@
   (case k
     :extract/type     (keyword v)
     :publication/date (.parse dateformat v)
+    :observation/date (.parse dateformat v)
     :time/created     (.parse dateformat v)
     v))
 

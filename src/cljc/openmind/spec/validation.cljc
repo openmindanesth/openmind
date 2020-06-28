@@ -8,7 +8,10 @@
 
     (and  (= pred '(cljs.core/fn [%] (cljs.core/< (cljs.core/count %) 500)))
           (= path [:text]))
-    "extracts should be concise, less than 500 characters. use the comments if you need to make additional points."))
+    "extracts should be concise, less than 500 characters. use the comments if you need to make additional points."
+
+    (and (= (first pred) 'cljs.core/<=) (= path [:authors]))
+    "there must be at least one author"))
 
 (defn required? [{:keys [pred path]}]
   (and (= path [])

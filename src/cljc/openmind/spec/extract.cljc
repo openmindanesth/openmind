@@ -27,10 +27,6 @@
 (s/def :extract/type
   (s/and some? keyword?))
 
-;; TODO: What makes a valid Orcid ID? Is this the right place to validate it?
-(s/def ::orcid-id
-  (s/and string? not-empty))
-
 (s/def :extract/tags
   (s/coll-of ::u/hash :kind set?))
 
@@ -38,16 +34,12 @@
   (s/or
    :article ::article-details
    :pubmed  ::pubmed-reference
-   :labnote ::labnote-source
-   :link    ::just-url))
+   :labnote ::labnote-source))
 
 (s/def ::article-details
   (s/keys :req [:publication/date]
           :req-un [::u/url ::authors ::peer-reviewed? ::doi ::title]
           :opt-un [::abstract ::journal ::volume ::issue]))
-
-(s/def ::just-url
-  (s/keys :req-un [::u/url]))
 
 (s/def ::pubmed-reference
   ;; TODO: Store the pubmed id separately from the URL.
@@ -58,27 +50,35 @@
 (s/def :publication/date
   inst?)
 
+(s/def ::authors
+  (s/coll-of ::author-details :kind vector? :min-count 1))
+
 (s/def ::author-details
   (s/keys :req-un [::full-name]
           :opt-un [::u/orcid-id  ::short-name]))
 
+(s/def ::string
+  (s/and
+   string?
+   not-empty))
+
 (s/def ::full-name
-  string?)
+  ::string)
 
 (s/def ::short-name
-  string?)
+  ::string)
 
 (s/def ::doi
-  string?)
+  ::string)
 
 (s/def ::title
-  string?)
+  ::string)
 
 (s/def ::abstract
-  string?)
+  ::string)
 
 (s/def ::journal
-  string?)
+  ::string)
 
 (s/def ::labnote-source
   (s/keys :req-un [:labnote/lab :labnote/investigator :labnote/institution]
@@ -88,13 +88,13 @@
   inst?)
 
 (s/def :labnote/lab
-  string?)
+  ::string)
 
 (s/def :labnote/investigator
-  string?)
+  ::string)
 
 (s/def :labnote/institution
-  string?)
+  ::string)
 
 (s/def :lab/name
-  string?)
+  ::string)

@@ -94,11 +94,19 @@
                  :month  "long"
                  :day    "numeric"})))
 
-(defn source-link [{:keys [authors url publication/date]}]
-  (let [text (if (seq authors)
-               (citation authors (.getFullYear date))
-               url)]
+(defn article-source-link [{:keys [authors url publication/date]}]
+  (let [text (when (seq authors)
+               (citation authors (.getFullYear date)))]
     text))
+
+(defn labnote-source-link [{:keys [investigator observation/date]}]
+   (str investigator " (" (.getFullYear date) ")"))
+
+(defn source-link [type source]
+  (case type
+    :article [article-source-link source]
+    :labnote [labnote-source-link source]
+    nil))
 
 (defn source-content [{:keys [authors publication/date journal url
                             abstract doi title volume issue]}]
@@ -170,7 +178,7 @@
   (let [open?      (reagent/atom false)
         float-size (reagent/atom nil)
         link-size  (reagent/atom false)]
-    (fn [text float-content {:keys [orientation style force?]}]
+    (fn [text float-content {:keys [orientation style]}]
       (let [wrapper (size-reflector float-content float-size)
             link    (size-reflector [:div.link-blue text] link-size)]
         [:div.plh.prh
@@ -223,20 +231,24 @@
    (:relations meta)))
 
 (def type-chars
-  {:labnote    {:char  "⃤"
+  {:labnote    {:char  [:span {:style {:padding-left "0.8rem"
+                                       :padding-right "0.45rem"}} "⃤"]
                 :title "lab note"}
    :unreviewed {:char  "◯"
                 :title "extract from unreviewed article"}
-   :article    {:char  "⬤"
+   :reviewed    {:char  "⬤"
                 :title "extract from peer reviewed article"}})
 
 (defn type-hack
   "We're jumping through hoops for historical reasons here. This will need to be
   cleaned up."
   [{:keys [extract/type source]}]
-  (get type-chars (if (false? (:peer-reviewed? source))
-                    :unreviewed
-                    type)))
+  (let [k (if (= type :labnote)
+            :labnote
+            (if (:peer-reviewed? source)
+              :reviewed
+              :unreviewed))]
+    (get type-chars k)))
 
 (defn type-indicator [extract]
   (let [{:keys [char]} (type-hack extract)]
@@ -345,5 +357,6 @@
         {:orientation :right}]
        [hover-link "tags" [tag-hover tags] ]
 
-       [hover-link [source-link source] [source-hover source]
+       [hover-link [source-link (:extract/type extract) source]
+        [source-hover source]
         {:orientation :right}]]]]]])

@@ -16,14 +16,26 @@
             [reagent.core :as r]
             [taoensso.timbre :as log]))
 
+(defn validate-source [{:keys [extract/type source] :as extract}]
+  (let [spec (if (= type :article)
+               ::exs/article-details
+               ::exs/labnote-source)
+        err (s/explain-data spec (or source {}))]
+    (cljs.pprint/pprint err)
+    (when err
+      (log/trace "invalid source\n" err)
+      (validation/interpret-explanation err))))
+
 (defn validate-extract
   "Checks form data for extract creation/update against the spec."
   [extract]
   (if (s/valid? ::exs/extract extract)
     {:valid extract}
-    (let [err (s/explain-data ::exs/extract extract)]
-      (log/trace "Bad extract" err)
-      {:errors (validation/interpret-explanation err)})))
+    (let [err (s/explain-data ::exs/extract extract)
+          source-err (validate-source extract)]
+      (log/trace "Bad extract\n" err)
+      {:errors (assoc (validation/interpret-explanation err)
+                      :source source-err)})))
 
 (def extract-keys
   [:text
@@ -35,12 +47,40 @@
    :source-material
    :history/previous-version])
 
+;; TODO: Pull these out of the specs.
+(def article-keys
+  [:publication/date
+   :url
+   :title
+   :authors
+   :peer-reviewed?
+   :doi
+   :abstract
+   :journal
+   :volume
+   :issue])
+
+(def labnote-keys
+  [:lab
+   :investigator
+   :institution
+   :observation/date])
+
 (defn prepare-extract
-  [author extract]
-  (let [ex (select-keys extract extract-keys)]
-    (if (empty? (:author ex))
-      (assoc ex :author author)
-      ex)))
+  [author {:keys [extract/type] :as extract}]
+  (cond-> (select-keys extract extract-keys)
+
+    (empty? (:author extract)) (assoc :author author)
+
+    (= :article type)
+    (update-in [:source :authors]
+               #(into [] (remove (comp empty? :full-name)) %))
+
+    ;; We have to do this in case someone fills in data for both a labnote and
+    ;; an article. We don't select-keys, because there may be other stuff not in
+    ;; the spec we want to keep around.
+    (= :article type) (update :source dissoc labnote-keys)
+    (= :labnote type) (update :source dissoc article-keys)))
 
 (defn sub-new [id]
   (fn [{:keys [entity] :as rel}]
@@ -73,9 +113,10 @@
 
 (def extract-template
   {:selection []
-   :content   {:tags          #{}
-               :comments      [""]
-               :relations     #{}}
+   :content   {:tags      #{}
+               :comments  [""]
+               :source    {:authors [{:full-name ""}]}
+               :relations #{}}
    :errors    nil})
 
 (re-frame/reg-event-fx
@@ -216,6 +257,12 @@
  (fn [db [_ id k v]]
    (assoc-in db (concat [::extracts id :content] k) v)))
 
+(re-frame/reg-event-db
+ ::clear-form-element
+ (fn [db [_ id k]]
+   (update-in db (concat [::extracts id :content] (butlast k))
+              dissoc (last k))))
+
 (re-frame/reg-event-fx
  ::add-figure
  (fn [{:keys [db]} [_ id data-url]]
@@ -325,11 +372,6 @@
      {:dispatch [:notify {:status :error :message "failed to save changes"}]})))
 
 (re-frame/reg-event-db
- ::clear-status-message
- (fn [db]
-   (dissoc db :status-message)))
-
-(re-frame/reg-event-db
  ::add-relation
  (fn [db [_ id object-id type]]
    (let [author (:login-info db)
@@ -358,6 +400,44 @@
   (-> elem
       (assoc :data-key id)
       (merge @(re-frame/subscribe [::form-input-data id key]))))
+
+(defn date-string
+  "Given a javascript Date, return a string which [:input {:type :date}] will
+  understand.
+  This is seriously messed up. Who the hell counts months starting at zero? Days
+  are counted from one...
+  "
+  [d]
+  (if (inst? d)
+    (let [month (inc (.getMonth d))
+          day (.getDate d)]
+      (str (.getFullYear d) "-"
+           (when (< month 10) "0")
+           month
+           "-"
+           (when (< day 10) "0")
+           day))
+    ""))
+
+(defn update-date [data-key key]
+  (fn [ev]
+    (let [s (-> ev .-target .-value)]
+      ;; When the widget is cleared, the browser sends an empty string.
+      (if (seq s)
+        (let [date (js/Date. (str s " 00:00"))]
+          (re-frame/dispatch [::form-edit data-key key date]))
+        (re-frame/dispatch [::clear-form-element data-key key])))))
+
+(defn date [{:keys [content errors key data-key]}]
+  [:div.full-width
+   [:input {:type :date
+            :class (when errors "form-error")
+            :on-change (juxt (update-date data-key key)
+                             #(when errors
+                                (re-frame/dispatch [::revalidate data-key])))
+            :value (date-string content)}]
+   (when errors
+       [common/error errors])])
 
 (defn text
   [{:keys [label key placeholder errors content data-key on-change on-blur]
@@ -406,34 +486,34 @@
 
 (defn text-input-list
   [{:keys [key placeholder spec errors content data-key sub-key]}]
-  (conj
-   (into [:div.flex.flex-wrap]
-         (map-indexed
-          (fn [i c]
-            (let [err (get errors i)]
-              [:div
-               {:style {:padding-right "0.2rem"}}
-               [:input.full-width-textarea
-                (merge {:type      :text
-                        :on-change (pass-edit data-key (conj key i) sub-key)}
-                       (when err
-                         {:class "form-error"})
-                       (if (seq c)
-                         {:value (if sub-key (get c sub-key) c)}
-                         {:value       nil
-                          :placeholder placeholder}))]
-               (when err
-                 [:div.mbh
-                  [common/error err]])])))
-         content)
-   [:a.plh.ptp {:on-click (fn [_]
-                            (if (nil? content)
-                              (re-frame/dispatch
-                               [::form-edit data-key key [""]])
-                              (re-frame/dispatch
-                               [::form-edit data-key
-                                (conj key (count content)) ""])))}
-    "[+]"]))
+  [:div
+   [:div.flex
+    (into [:div.flex.flex-wrap
+           {:class (when errors "form-error")}]
+          (map-indexed
+           (fn [i c]
+             (let [err (get errors i)]
+               [:div
+                {:style {:padding-right "0.2rem"}}
+                [:input.full-width-textarea
+                 (merge {:type      :text
+                         :on-change (pass-edit data-key (conj key i) sub-key)}
+                        (if (seq c)
+                          {:value (if sub-key (get c sub-key) c)}
+                          {:value       nil
+                           :placeholder placeholder}))]
+                ])))
+          content)
+    [:a.plh.ptp {:on-click (fn [_]
+                             (if (nil? content)
+                               (re-frame/dispatch
+                                [::form-edit data-key key [""]])
+                               (re-frame/dispatch
+                                [::form-edit data-key
+                                 (conj key (count content)) ""])))}
+     "[+]"]]
+   (when errors
+     [common/error errors])])
 
 (defn textarea-list
   [{:keys [key placeholder spec errors content data-key] :as e}]
@@ -665,27 +745,6 @@
                        (re-frame/dispatch [::revalidate data-key])))}
      "preprint"]]])
 
-(defn date-string [d]
-  (if (inst? d)
-    (let [month (inc (.getMonth d))
-          day (.getDate d)]
-      (str (.getFullYear d) "-"
-           (when (< month 10) "0")
-           month
-           "-"
-           (when (< day 10) "0")
-           day))
-    ""))
-
-(defn date [{:keys [content key data-key]}]
-  [:input {:type :date
-           :on-change #(re-frame/dispatch
-                        [::form-edit data-key key
-                         (js/Date. (str
-                                    (-> % .-target .-value)
-                                    " 00:00"))])
-           :value (date-string content)}])
-
 (defn responsive-two-column [l r]
   [:div.vcenter.mb1h.mbr2
    [:div.left-col l]
@@ -737,7 +796,7 @@
     :key [:source :investigator]
     :required? true}
    {:component date
-    :label "date of observation"
+    :label "observation date"
     :required? true
     :key [:source :observation/date]}])
 
