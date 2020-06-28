@@ -623,7 +623,7 @@
                        [::form-edit data-key [key] :article])
                      (when errors
                        (re-frame/dispatch [::revalidate data-key])))}
-     "published article"]
+     "article"]
     [:button.p1.ml1.text-white.border-round
      {:class    (if (= content :labnote)
                   "bg-dark-blue"
