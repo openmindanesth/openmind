@@ -37,9 +37,10 @@
 
 (defn prepare-extract
   [author extract]
-  (-> extract
-      (assoc :author author)
-      (select-keys extract-keys)))
+  (let [ex (select-keys extract extract-keys)]
+    (if (empty? (:author ex))
+      (assoc ex :author author)
+      ex)))
 
 (defn sub-new [id]
   (fn [{:keys [entity] :as rel}]
