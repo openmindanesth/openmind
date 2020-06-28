@@ -79,7 +79,7 @@
                                 conj
                                 {:history/previous-version prev
                                  :time/created             (java.util.Date.)
-                                 :author                   author}))]
+                                 :author                   editor}))]
       (set-meta index id new-meta))))
 
 ;;;;; Comments

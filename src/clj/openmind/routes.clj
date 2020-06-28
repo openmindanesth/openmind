@@ -173,15 +173,23 @@
      req [:openmind/index-result {:status :success}])))
 
 (defn update-extract!
-  [{id :hash {prev :history/previous-version author :author} :content :as imm}]
+  [{id :hash {prev :history/previous-version author :author} :content :as imm}
+   editor]
   (async/go
     (when-not (= id prev)
       (when (s3/intern imm)
-        (index/forward-metadata prev id author)
+        (index/forward-metadata prev id editor)
         (async/<! (es/retract-extract! prev))
         (async/<! (es/index-extract! imm))
         (es/replace-in-index prev (:hash imm))
         (notify/extract-edited prev id)))))
+
+(defn valid-edit?
+  "Checks that the edit is legitimate. Currently that only means that the author
+  hasn't been changed."
+  [prev-id new-extract]
+  (or (empty new-extract)
+      (= (:author new-extract) (-> prev-id s3/lookup :content :author))))
 
 (defmethod dispatch :openmind/update
   [{:keys [client-id send-fn ?reply-fn uid tokens]
@@ -189,14 +197,16 @@
   (when (or (not= uid :taoensso.sente/nil-uid) env/dev-mode?)
     (async/go
       (when (check-author (select-keys (:orcid tokens) [:name :orcid-id]) editor)
-        (when new-extract
-          (when (valid? new-extract)
-            (async/<! (update-extract! new-extract))
-            (when figure
-              (s3/intern figure))))
+        (when (valid-edit? previous-id new-extract)
+          (notify/notify-on-creation uid (:hash new-extract))
+          (when new-extract
+            (when (valid? new-extract)
+              (async/<! (update-extract! new-extract editor))
+              (when figure
+                (s3/intern figure))))
 
-        (index/edit-relations previous-id (:hash new-extract) relations)))
-          ;; TODO: how to detect errors?
+          (index/edit-relations previous-id (:hash new-extract) relations))))
+    ;; FIXME: No feedback if something goes wrong.
     (respond-with-fallback
      req [:openmind/update-response {:status :success
                                      :id     previous-id}])))

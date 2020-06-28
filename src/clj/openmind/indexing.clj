@@ -57,6 +57,6 @@
 (defn edit-relations [prev-id new-id rels]
   (update-relations (or new-id prev-id) rels))
 
-(defn forward-metadata [prev id author]
+(defn forward-metadata [prev id editor]
   (s3/swap-index! extract-metadata-index
-                  (txfns/forward-metadata prev id author)))
+                  (txfns/forward-metadata prev id editor)))
