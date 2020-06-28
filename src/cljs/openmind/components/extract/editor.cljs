@@ -665,9 +665,26 @@
                        (re-frame/dispatch [::revalidate data-key])))}
      "preprint"]]])
 
-(defn date [{:keys [content]}]
-  (when content
-    [:div (str content)]))
+(defn date-string [d]
+  (if (inst? d)
+    (let [month (inc (.getMonth d))
+          day (.getDate d)]
+      (str (.getFullYear d) "-"
+           (when (< month 10) "0")
+           month
+           "-"
+           (when (< day 10) "0")
+           day))
+    ""))
+
+(defn date [{:keys [content key data-key]}]
+  [:input {:type :date
+           :on-change #(re-frame/dispatch
+                        [::form-edit data-key key
+                         (js/Date. (str
+                                    (-> % .-target .-value)
+                                    " 00:00"))])
+           :value (date-string content)}])
 
 (defn responsive-two-column [l r]
   [:div.vcenter.mb1h.mbr2
