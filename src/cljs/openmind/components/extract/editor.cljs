@@ -412,9 +412,10 @@
           (fn [i c]
             (let [err (get errors i)]
               [:div
+               {:style {:padding-right "0.2rem"}}
                [:input.full-width-textarea
                 (merge {:type      :text
-                        :on-change (pass-edit data-key [key i] sub-key)}
+                        :on-change (pass-edit data-key (conj key i) sub-key)}
                        (when err
                          {:class "form-error"})
                        (if (seq c)
@@ -426,8 +427,12 @@
                   [common/error err]])])))
          content)
    [:a.plh.ptp {:on-click (fn [_]
-                            (re-frame/dispatch
-                             [::form-edit data-key [key (count content)] ""]))}
+                            (if (nil? content)
+                              (re-frame/dispatch
+                               [::form-edit data-key key [""]])
+                              (re-frame/dispatch
+                               [::form-edit data-key
+                                (conj key (count content)) ""])))}
     "[+]"]))
 
 (defn textarea-list
