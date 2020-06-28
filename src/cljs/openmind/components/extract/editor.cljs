@@ -59,7 +59,7 @@
                        (map (fn [t]
                               (util/immutable
                                {:author author :text t :extract id}))
-                            comments))}))
+                            (remove empty? comments)))}))
 
 (re-frame/reg-event-fx
  ::revalidate
