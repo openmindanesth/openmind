@@ -53,13 +53,15 @@
 ;; really want for the UI is the metadata, so it seems to work out.
 
 (defn set-extract [comment-tree id]
-  (walk/prewalk (fn [node]
-                  (if (and (map? node) (contains? node :extract))
-                    (assoc node :extract id)
-                    node))
-                comment-tree))
+  (if comment-tree
+    (walk/prewalk (fn [node]
+                    (if (and (map? node) (contains? node :extract))
+                      (assoc node :extract id)
+                      node))
+                  comment-tree)
+    []))
 
-(defn forward-metadata [prev id author]
+(defn forward-metadata [prev id editor]
   (fn [index]
     (let [prev-meta (metadata index prev)
           relations (into #{}
