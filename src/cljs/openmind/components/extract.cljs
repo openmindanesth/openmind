@@ -230,8 +230,16 @@
    :article    {:char  "⬤"
                 :title "extract from peer reviewed article"}})
 
-(defn type-indicator [{:keys [extract/type]}]
-  (let [{:keys [char]} (get type-chars type)]
+(defn type-hack
+  "We're jumping through hoops for historical reasons here. This will need to be
+  cleaned up."
+  [{:keys [extract/type source]}]
+  (get type-chars (if (false? (:peer-reviewed? source))
+                    :unreviewed
+                    type)))
+
+(defn type-indicator [extract]
+  (let [{:keys [char]} (type-hack extract)]
     [:span.blue char]))
 
 (defn metadata [{:keys [time/created author extract/type] :as extract}]
@@ -244,7 +252,7 @@
     [:span "no voting yet"]]
    [:div
     [type-indicator extract]
-    [:span.plh.blue (:title (get type-chars type))]]])
+    [:span.plh.blue (:title (type-hack extract))]]])
 
 (declare summary)
 
