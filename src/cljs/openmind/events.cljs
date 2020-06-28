@@ -283,6 +283,15 @@
   [[_ {:keys [extract metadata]}]]
   (re-frame/dispatch [::server-metadata-update extract metadata]))
 
+(re-frame/reg-event-fx
+ ::delay
+ (fn [_ [_ delay event]]
+   {:dispatch-later [{:ms delay :dispatch event}]}))
+
+(defmethod broadcast-dispatch :openmind/extract-created
+  [_]
+  (re-frame/dispatch [::delay 300 [:openmind.components.search/refresh-search]]))
+
 (defmethod broadcast-dispatch :chsk/ws-ping
   [_]
   nil)

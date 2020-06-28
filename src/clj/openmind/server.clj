@@ -40,11 +40,7 @@
 (defonce socket
   (sente/make-channel-socket-server!
    (sente-http-kit/get-sch-adapter)
-   {:user-id-fn (fn [req]
-                  (-> req
-                      :oauth2/access-tokens
-                      :orcid
-                      :orcid-id))}))
+   {:user-id-fn :client-id}))
 
 ;;;;; Routes
 
@@ -111,10 +107,8 @@
 
 (defn start-router! []
   (stop-router!)
-  (notify/init-notification-system! (fn [message]
-                                      (let [f (:send-fn socket)]
-                                        (run! #(f % message)
-                                              (:any @(:connected-uids socket))))))
+  (notify/init-notification-system! (:send-fn socket)
+                                    (fn [] (:any @(:connected-uids socket))))
   (reset! router
           (sente/start-server-chsk-router! (:ch-recv socket) #'dispatch-msg)))
 

@@ -148,19 +148,17 @@
     (when (s3/intern extract)
       (let [res (async/<! (es/index-extract! extract))]
         (es/add-to-index (:hash extract))
-        (notify/extract-created extract)
+        (notify/extract-created (:hash extract))
         res))))
 
 (defmethod dispatch :openmind/index
-  [{:keys                        [client-id send-fn ?reply-fn uid tokens]
-    [_ {:keys [extract extras]}] :event
-    :as                          req}]
-  ;; TODO: This should just be another subbranch on :openmind/intern
+  [{:keys [uid tokens] [_ {:keys [extract extras]}] :event :as req}]
   (when (or (not= uid :taoensso.sente/nil-uid) env/dev-mode?)
     (async/go
       (when (check-author (select-keys (:orcid tokens) [:name :orcid-id])
                           (:author (:content extract)))
         (when (valid? extract)
+          (notify/notify-on-creation uid (:hash extract))
           (when-let [res (write-extract! extract)]
             (let [res (async/<! res)]
               (if (and (:status res) (<= 200 (:status res) 299))

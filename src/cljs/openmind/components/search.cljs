@@ -113,6 +113,12 @@
                                           :search-id id)]]})))
 
 (re-frame/reg-event-fx
+ ::refresh-search
+ (fn [{:keys [db]} _]
+   (let [query (-> db :openmind.router/route :query-params)]
+     {:dispatch [::search-request query ::results]})))
+
+(re-frame/reg-event-fx
  :openmind/search-response
  (fn [{:keys [db]} [_ {:keys [::results ::nonce ::meta-ids ::search-id] :as e}]]
    ;; This is for slow connections: when typing, a new search is requested at
