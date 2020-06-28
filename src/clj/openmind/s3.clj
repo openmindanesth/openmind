@@ -64,7 +64,9 @@
     (catch Exception e nil)))
 
 (defn- write! [k obj]
-  (.putObject client bucket (str k) (str obj)))
+  (if (nil? obj)
+    (log/error "attempting to store nil under" k)
+    (.putObject client bucket (str k) (str obj))))
 
 (def ^:private intern-queue
   (ref (clojure.lang.PersistentQueue/EMPTY)))
