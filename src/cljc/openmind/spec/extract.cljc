@@ -42,8 +42,9 @@
    :link    ::just-url))
 
 (s/def ::article-details
-  ;; Not implemented error
-  (constantly false))
+  (s/keys :req [:publication/date]
+          :req-un [::u/url ::authors ::peer-reviewed? ::doi ::title]
+          :opt-un [::abstract ::journal ::volume ::issue]))
 
 (s/def ::just-url
   (s/keys :req-un [::u/url]))
@@ -80,7 +81,20 @@
   string?)
 
 (s/def ::labnote-source
-  (s/keys :req-un [:lab/name]))
+  (s/keys :req-un [:labnote/lab :labnote/investigator :labnote/institution]
+          :req [:observation/date]))
+
+(s/def :observation/date
+  inst?)
+
+(s/def :labnote/lab
+  string?)
+
+(s/def :labnote/investigator
+  string?)
+
+(s/def :labnote/institution
+  string?)
 
 (s/def :lab/name
   string?)

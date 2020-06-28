@@ -712,7 +712,7 @@
    {:component text
     :label "investigator"
     :placeholder "principle investigator"
-    :key [:source :principle-investigator]
+    :key [:source :investigator]
     :required? true}
    {:component date
     :label "date of observation"
