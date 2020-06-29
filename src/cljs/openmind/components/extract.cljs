@@ -245,9 +245,9 @@
   [{:keys [extract/type source]}]
   (let [k (if (= type :labnote)
             :labnote
-            (if (:peer-reviewed? source)
-              :reviewed
-              :unreviewed))]
+            (if (false? (:peer-reviewed? source))
+              :unreviewed
+              :reviewed))]
     (get type-chars k)))
 
 (defn type-indicator [extract]
