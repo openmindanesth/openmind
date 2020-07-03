@@ -684,10 +684,14 @@
  (fn [{:keys [db]} [_ {:keys [res-id url source]}]]
    (let [current (get-in db [::extracts res-id :content :article-search])]
      (if (and (= url current) (seq source))
-       {:db         (update-in db [::extracts res-id :content :source] merge source)
+       {:db         (-> db
+                        (update-in [::extracts res-id :content :source] merge source)
+                        (assoc-in [::extracts res-id ::found-article?] true))
         :dispatch-n [[:openmind.components.window/unspin]
                      [:notify {:status :success :message "article found"}]]}
-       {:db         (update-in db [::extracts res-id :content] dissoc :source)
+       {:db         (-> db
+                        (update-in [::extracts res-id :content] dissoc :source)
+                        (update-in [::extracts res-id] dissoc ::found-article?))
         :dispatch-n [[:openmind.components.window/unspin]
                      [:notify {:status :error
                                :message
@@ -858,21 +862,37 @@
     :label     "issue"
     :key       [:source :issue]}])
 
+(re-frame/reg-sub
+ ::found-article?
+ (fn [db [_ id]]
+   (get-in db [::extracts id ::found-article?])))
+
 (defn source-details [{:keys [data-key content] :as opts}]
   (let [extract @(re-frame/subscribe [::content data-key])
         type    (:extract/type extract)]
-    (into [:div.flex.flex-column]
-          (comp
-           (map (fn [{:keys [key] :as opts}]
-                  (merge opts
+    (if (and (= type :article)
+             @(re-frame/subscribe [::found-article? data-key]))
+      ;; FIXME: This is really kludgy
+      [:div.flex.flex-column
+       (input-row (merge (first source-details-inputs)
                          {:data-key data-key}
                          @(re-frame/subscribe
-                           [::nested-form-data data-key key]))))
-           (map input-row))
-          (case type
-            :article source-details-inputs
-            :labnote labnote-details-inputs
-            []))))
+                           [::nested-form-data data-key [:article-search]])))
+       [responsive-two-column
+        [:span [:b "article details"]]
+        [extract/source-content content]]]
+      (into [:div.flex.flex-column]
+            (comp
+             (map (fn [{:keys [key] :as opts}]
+                    (merge opts
+                           {:data-key data-key}
+                           @(re-frame/subscribe
+                             [::nested-form-data data-key key]))))
+             (map input-row))
+            (case type
+              :article source-details-inputs
+              :labnote labnote-details-inputs
+              [])))))
 
 (defn comment-widget [{:keys [data-key] :as opts}]
   (if (= data-key ::new)
