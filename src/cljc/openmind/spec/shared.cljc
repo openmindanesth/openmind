@@ -1,6 +1,7 @@
 (ns openmind.spec.shared
   (:require [clojure.string :as string]
             [openmind.hash :as h]
+            [openmind.url :as url]
             #?(:clj  [clojure.spec.alpha :as s]
                :cljs [cljs.spec.alpha :as s])))
 
@@ -27,19 +28,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; URLs
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(def url-regex
-  (re-pattern "^(([^:/?#]+)://)?(([^/?#]*))([^?#]*)?(\\?([^#]*))?(#(.*))?"))
-
-(defn parse-url [url]
-  (let [[_ _ prot _ domain path _ query _ hash] (re-matches url-regex url)]
-    (into {}
-          (remove (comp nil? val))
-          {:protocol prot
-           :domain   domain
-           :path     path
-           :query    query
-           :hash     hash})))
 
 (s/def ::url-record
   (s/keys :opt-un [:url/protocol :url/path :url/query :url/hash]
@@ -70,4 +58,4 @@
    string?
    ;; REVIEW: This works, but breaks explain, conform, etc. Spec includes regex
    ;; operators, would the right way be to use those directly on the string?
-   #(s/valid? ::url-record (parse-url %))))
+   #(s/valid? ::url-record (url/parse %))))
