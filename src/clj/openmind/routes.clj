@@ -1,6 +1,7 @@
 (ns openmind.routes
   (:require [clojure.core.async :as async]
             [clojure.spec.alpha :as s]
+            [clojure.string :as string]
             [openmind.elastic :as es]
             [openmind.env :as env]
             [openmind.indexing :as index]
@@ -132,14 +133,14 @@
       (log/warn "Invalid extract received from client:" doc))))
 
 (defmethod dispatch :openmind/pubmed-lookup
-  [{[_ {:keys [url res-id] :as ev}] :event :as req}]
+  [{[_ {:keys [term res-id] :as ev}] :event :as req}]
   (async/go
     (respond-with-fallback
      req
      ;; TODO: this should be cached. That data is already in our store, we just
      ;; need an index.
      [:openmind/pubmed-article
-      (assoc ev :source (async/<! (pubmed/article-info url)))])))
+      (assoc ev :source (async/<! (pubmed/find-article (string/trim term))))])))
 
 (defn write-extract!
   "Saves extract to S3 and indexes it in elastic."

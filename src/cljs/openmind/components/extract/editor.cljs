@@ -676,14 +676,14 @@
  (fn [cofx [_ id url]]
    (let [last-searched (-> cofx :db ::extracts (get id) :content :source :url)]
      (when-not (= url last-searched)
-       {:dispatch-n [[:->server [:openmind/pubmed-lookup {:res-id id :url url}]]
+       {:dispatch-n [[:->server [:openmind/pubmed-lookup {:res-id id :term url}]]
                      [:openmind.components.window/spin]]}))))
 
 (re-frame/reg-event-fx
  :openmind/pubmed-article
- (fn [{:keys [db]} [_ {:keys [res-id url source]}]]
+ (fn [{:keys [db]} [_ {:keys [res-id term source]}]]
    (let [current (get-in db [::extracts res-id :content :article-search])]
-     (if (and (= url current) (seq source))
+     (if (and (= term current) (seq source))
        {:db         (-> db
                         (update-in [::extracts res-id :content :source] merge source)
                         (assoc-in [::extracts res-id ::found-article?] true))
