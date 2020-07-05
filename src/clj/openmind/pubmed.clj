@@ -133,47 +133,8 @@
     out))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;; ID conversion
-;;
-;; Pubmed central provides a very handy service to translate between pubmed IDs,
-;; PMC IDs, DOIs, and Manuscript IDs (which I don't expect we'll be terribly
-;; concerned with).
-;;
-;; This would be awesome, except that it doesn't work. I've found dozens of
-;; articles on pubmed that are there if you search for them, but for which this
-;; api returns ID errors for the DOI. Sometimes it seems this API expects the
-;; DOI in a different format (it works if you remove some suffix of the DOI),
-;; but for others I can't find any pattern to the failure.
-;;
-;; TODO: investigate further. This would be a much better way to resolve things.
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(def id-converter-base
-  "https://www.ncbi.nlm.nih.gov/pmc/utils/idconv/v1.0/")
-
-(defn id-query-uri [id]
-  (str id-converter-base "?ids="
-       (java.net.URLEncoder/encode id)
-       (when (doi? id) "&idtype=doi")
-       "&format=json"))
-
-(defn id-conversion [id]
-  (async/go
-    (-> id
-        id-query-uri
-        fetch
-        async/<!
-        (json/read-str :key-fn keyword)
-        :records
-        first)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Web logic
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(def test-pm-short "https://pubmed.ncbi.nlm.nih.gov/22945293/")
-(def test-url "https://www.ncbi.nlm.nih.gov/pubmed/31544820/")
-(def test-pmc "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6075724/")
 
 (defn pm-url
   "Returns pubmed url for the given pmid."
