@@ -819,9 +819,7 @@
   [{:key         [:article-search]
     :component   article-search
     :label       "find paper"
-    :placeholder "www.ncbi.nlm.nih.gov/pubmed/..."
-    ;; This is the goal#_"article doi or url to pubmed/bioarxiv"
-    }
+    :placeholder "article url or DOI"}
    {:component   text
     :label       "link to article"
     :key         [:source :url]
