@@ -28,6 +28,9 @@
       (async/<! (init-cluster!))
       (run! elastic/index-extract! extracts))))
 
+(defn -main [& args]
+  (async/<!! (load-es-from-s3!)))
+
 (defn dump-elastic!
   "Dump last 100 extracts from elastic to edn file.
   This isn't the recommended way to save/restore elastic. For that use the s3

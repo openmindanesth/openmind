@@ -14,18 +14,17 @@ bigger idea.
 
 Steps:
 
-1. Start Elasticsearch. Either use the script `dev/setup.sh`, or start your own.
-2. Copy `example.conf.edn` to `conf.edn` in the root dir. Edit the config
+1. Copy `example.conf.edn` to `conf.edn` in the root dir. Edit the config
    variables to point to your Elasticsearch cluster, your S3 bucket (the default
    one is publicly readable, so feel free to leave it if you're just working on
    the front end), and your AWS credentials if you're using your own S3 bucket.
+2. Start Elasticsearch. The script `dev/setup.sh` will start an Elasticsearch
+   instance in a docker container and populate it from S3 if `s3-data-bucket` is
+   configured in `conf.edn`.
 3. Start the clj/cljs repls in your favourite editor. In emacs that's just a
    matter of `cider-jack-in-clj&cljs`.
 4. In the clj repl, load the `openmind.server` namespace and run `(init!)` to
    start the server.
-5. To load the elastic search cluster with the extracts in s3, use the dev code
-   in `dev/clj/setup.clj`. The function `(setup/load-es-from-s3!)` is all you
-   need.
 6. Navigate to http://localhost:3003 in your browser (if you didn't change the
    `:port` config in `conf.edn`.
 7. Have at it.
