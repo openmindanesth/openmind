@@ -219,3 +219,11 @@
 (defmethod dispatch :openmind/extract-metadata
   [{[ev hash] :event :as req}]
   (respond-with-fallback req [ev hash (index/extract-meta-ref hash)]))
+
+(defn- delete-extract!
+  "Soft delete of extracts. Removes them from the search index and removes
+  relations to them from other extracts, but the extract is never removed from
+  the store, nor is its metadata, so we can restore it at any time if need be."
+  [id]
+  (es/remove-from-index id)
+  (index/retract-extract! id))

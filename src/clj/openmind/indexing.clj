@@ -60,3 +60,9 @@
 (defn forward-metadata [prev id editor]
   (s3/swap-index! extract-metadata-index
                   (txfns/forward-metadata prev id editor)))
+
+
+(defn retract-extract! [id]
+  (log/warn "Retracting:" id)
+  (s3/swap-index! extract-metadata-index
+                  (txfns/remove-other-relations id)))
