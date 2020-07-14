@@ -95,7 +95,7 @@
 
 (defn dispatch-fn [msg]
   (try
-    (routes/dispatch msg)
+    (#'routes/dispatch msg)
     (catch Exception e (log/error "Dispatch error:" e
                                   (mapv str (.getStackTrace e))))))
 
