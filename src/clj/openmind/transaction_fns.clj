@@ -164,8 +164,9 @@
   (fn [index]
     (let [m (metadata index id)
           rels (:relations m)]
-      (apply comp (map (fn [{:keys [entity value] :as rel}]
-                         (if (= entity id)
-                           (retract-1 value rel)
-                           (retract-1 entity rel)))
-                       rels)))))
+      ((apply comp (map (fn [{:keys [entity value] :as rel}]
+                          (if (= entity id)
+                            (retract-1 value rel)
+                            (retract-1 entity rel)))
+                        rels))
+       index))))
