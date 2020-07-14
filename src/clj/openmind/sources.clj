@@ -25,7 +25,6 @@
   (if (doi? s)
     ::doi
     (let [{:keys [^String domain]} (url/parse s)]
-      (println s domain (.contains domain "biorxiv.org"))
       (cond
         (.contains domain "ncbi.nlm.nih.gov") ::pubmed
         (.contains domain "biorxiv.org")      ::biorxiv
@@ -37,7 +36,7 @@
 (defmethod article-details ::unknown
   [s]
   (async/go
-    #_(log/warn "attempt to lookup unknown article:" s)))
+    (log/warn "attempt to lookup unknown article:" s)))
 
 (defmethod article-details ::doi
   [s]
@@ -55,7 +54,6 @@
 (defn lookup [s]
   (async/go
     (try
-      (println "starting:" s)
       (let [ch (article-details s)]
         (let [[val port] (async/alts! [ch (async/timeout 45000)])]
           (when (= port ch)
