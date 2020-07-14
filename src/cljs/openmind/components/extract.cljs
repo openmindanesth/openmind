@@ -274,12 +274,12 @@
    (:relations meta)))
 
 (def type-chars
-  {:labnote    {:char  [:span {:style {:padding-left "0.8rem"
+  {:labnote    {:char  [:span {:style {:padding-left  "0.8rem"
                                        :padding-right "0.45rem"}} "⃤"]
                 :title "lab note"}
    :unreviewed {:char  "◯"
                 :title "extract from unreviewed article"}
-   :reviewed    {:char  "⬤"
+   :reviewed   {:char  "⬤"
                 :title "extract from peer reviewed article"}})
 
 (defn type-hack
