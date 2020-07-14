@@ -180,7 +180,10 @@
         link-size  (reagent/atom false)]
     (fn [text float-content {:keys [orientation style]}]
       (let [wrapper (size-reflector float-content float-size)
-            link    (size-reflector [:div.link-blue text] link-size)]
+            link    (size-reflector [:div.link-blue
+                                     {:style {:height "100%"}}
+                                     text]
+                                    link-size)]
         [:div.plh.prh
          (merge
           {:on-mouse-leave #(reset! open? false)}
@@ -213,11 +216,14 @@
 
 (defn thumbnail [eid figure]
   [hover-link
-   [figure-img figure {:style {:height        "100%"
-                               :width         "100%"
-                               :margin-left   "-0.6em"
-                               :margin-bottom "-0.6em"
-                               :margin-top    "-0.1em"}}]
+   [:div
+    {:style {:width  "10rem"
+             :height "100%"
+             :margin "0.2rem"}}
+    [figure-img figure {:style {:max-width  "10rem"
+                                :max-height "10rem"
+                                :display    :block
+                                :margin     :auto}}]]
    [figure-hover figure]
    {:orientation :left
     :hover?      true
@@ -325,22 +331,19 @@
 (defn summary [{:keys [text author source figure tags hash] :as extract}
                & [{:keys [edit-link? controls pb0? c i] :as opts
                    :or   {edit-link? true}}]]
-  [:div.search-result.ph.flex
+  [:div.search-result.flex
    {:style (merge {:height :min-content}
                   (when pb0?
                     {:margin-bottom "1px"})
                   (when (and i c (= i c))
                     {:margin-bottom 0}))}
-   [:div {:style {:width      "10rem"
-                  :max-height "8rem"
-                  :overflow   :hidden}}
-    [thumbnail hash figure]]
+   [thumbnail hash figure]
    [:div {:style {:flex 1}}
     (when edit-link?
       [edit-link hash])
     (when controls
       [controls extract])
-    [:div.flex.flex-column.space-between
+    [:div.flex.flex-column.space-between.ph
      [:div.break-wrap.ph text]
      [:div.pth.flex.full-width
       [:div
