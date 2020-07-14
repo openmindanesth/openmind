@@ -166,25 +166,6 @@
             extract-article-info)
         (catch Exception _ ::failed)))))
 
-(defn doi?
-  "Tests whether a string is a DOI."
-  [s]
-  ;; FIXME: Not a great test...
-  (or
-   (string/starts-with? s "10.")
-   (string/starts-with? s "https://doi.org/10.")))
-
-(defn doi
-  [s]
-  (if (string/starts-with? s "10.")
-    s
-    (string/replace-first s #"^https?://doi.org/" "")))
-
-(defn find-id [s]
-  (if (doi? s)
-    (doi s)
-    (pmid s)))
-
 (defn find-article [id]
   (async/go
     (let [pmid        (async/<! (resolve-id id))

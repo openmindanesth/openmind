@@ -8,19 +8,26 @@
 (defn biorxiv-api-url [doi]
   (str "https://api.biorxiv.org/details/biorxiv/" doi))
 
-(defn format-source [{:keys []}]
-  {})
-
-(defn find-article [url]
-  (async/go
-    (-> url
+(defn biorxiv [url]
+  (-> url
         url/parse
         :path
         (string/replace-first #"/content/" "")
         (string/split #"v")
         first
         biorxiv-api-url
-        common/fetch
-        async/<!
-        (json/read-str :key-fn keyword)
-        format-source)))
+        common/fetch))
+
+(defn format-source [{:keys []}]
+  {})
+
+(defn find-article [url]
+  (async/go
+    (try
+      (let [res (biorxiv url)]
+        (-> res
+            async/<!
+           (json/read-str :key-fn keyword)
+           format-source))
+      (catch Exception _
+        nil))))

@@ -210,7 +210,7 @@
 (re-frame/reg-fx
  ::send!
  (fn [{:keys [send-fn ev]}]
-   (send-fn ev 10000 re-frame/dispatch)))
+   (send-fn ev 30000 re-frame/dispatch)))
 
 (re-frame/reg-event-fx
  ::server-connection

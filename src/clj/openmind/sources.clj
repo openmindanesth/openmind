@@ -21,7 +21,6 @@
     (string/replace-first s #"^https?://doi.org/" "")))
 
 (defn find-id [s]
-  (println "finding" s)
   (if (doi? s)
     ::doi
     (let [{:keys [^String domain]} (url/parse s)]
@@ -55,7 +54,7 @@
   (async/go
     (try
       (let [ch (article-details s)]
-        (let [[val port] (async/alts! [ch (async/timeout 45000)])]
+        (let [[val port] (async/alts! [ch (async/timeout 10000)])]
           (when (= port ch)
             val)))
       (catch Exception e
