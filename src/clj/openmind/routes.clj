@@ -187,12 +187,13 @@
   "Checks that the edit is legitimate. Currently that only means that the author
   hasn't been changed."
   [prev-id new-extract]
-  (or (empty new-extract)
+  (or (empty? new-extract)
       (= (:author new-extract) (-> prev-id s3/lookup :content :author))))
 
 (defmethod dispatch :openmind/update
   [{:keys [client-id send-fn ?reply-fn uid tokens]
-    [_ {:keys [previous-id new-extract figure relations editor]}] :event :as req}]
+    [_ {:keys [previous-id new-extract figure relations editor]}] :event
+    :as req}]
   (when (or (not= uid :taoensso.sente/nil-uid) env/dev-mode?)
     (async/go
       (when (check-author (select-keys (:orcid tokens) [:name :orcid-id]) editor)
