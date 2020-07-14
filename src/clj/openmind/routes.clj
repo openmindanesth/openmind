@@ -6,8 +6,8 @@
             [openmind.env :as env]
             [openmind.indexing :as index]
             [openmind.notification :as notify]
-            [openmind.pubmed :as pubmed]
             [openmind.s3 :as s3]
+            [openmind.sources :as sources]
             [openmind.tags :as tags]
             [taoensso.timbre :as log]))
 
@@ -132,15 +132,15 @@
       true
       (log/warn "Invalid extract received from client:" doc))))
 
-(defmethod dispatch :openmind/pubmed-lookup
+(defmethod dispatch :openmind/article-lookup
   [{[_ {:keys [term res-id] :as ev}] :event :as req}]
   (async/go
     (respond-with-fallback
      req
      ;; TODO: this should be cached. That data is already in our store, we just
      ;; need an index.
-     [:openmind/pubmed-article
-      (assoc ev :source (async/<! (pubmed/find-article (string/trim term))))])))
+     [:openmind/article-details
+      (assoc ev :source (async/<! (sources/lookup (string/trim term))))])))
 
 (defn write-extract!
   "Saves extract to S3 and indexes it in elastic."

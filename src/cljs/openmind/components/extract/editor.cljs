@@ -672,15 +672,15 @@
       [extract/source-content source])))
 
 (re-frame/reg-event-fx
- ::pubmed-lookup
+ ::article-lookup
  (fn [cofx [_ id url]]
    (let [last-searched (-> cofx :db ::extracts (get id) :content :source :url)]
      (when-not (= url last-searched)
-       {:dispatch-n [[:->server [:openmind/pubmed-lookup {:res-id id :term url}]]
+       {:dispatch-n [[:->server [:openmind/article-lookup {:res-id id :term url}]]
                      [:openmind.components.window/spin]]}))))
 
 (re-frame/reg-event-fx
- :openmind/pubmed-article
+ :openmind/article-details
  (fn [{:keys [db]} [_ {:keys [res-id term source]}]]
    (let [current (get-in db [::extracts res-id :content :article-search])]
      (if (and (= term current) (seq source))
@@ -810,7 +810,7 @@
      [text opts]
      [:button.bg-blue.ph.mlh.text-white.border-round
       {:style (when waiting? {:cursor :wait})
-       :on-click #(re-frame/dispatch [::pubmed-lookup data-key content])}
+       :on-click #(re-frame/dispatch [::article-lookup data-key content])}
       "search"]]))
 
 (def source-details-inputs

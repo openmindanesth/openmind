@@ -1,10 +1,10 @@
-(ns openmind.pubmed
+(ns openmind.sources.pubmed
   (:require [clojure.core.async :as async]
             [clojure.data.json :as json]
             [clojure.data.xml :as xml]
             [clojure.string :as string]
+            [openmind.sources.common :refer [fetch]]
             [openmind.url :as url]
-            [org.httpkit.client :as http]
             [taoensso.timbre :as log]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -119,19 +119,6 @@
      :doi              doi
      :authors          (mapv parse-author author-list)}))
 
-(defn- fetch
-  "Sends a GET request for `url` and returns a channel which will eventually
-  yield the body of the response if the status is 200. The channel will close
-  without emitting anything if the request fails."
-  [url]
-  (let [out (async/promise-chan)]
-    (http/request {:method :get :url url}
-                  (fn [res]
-                    (if (= 200 (:status res))
-                      (async/put! out (:body res))
-                      (async/close! out))))
-    out))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Web logic
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -198,10 +185,9 @@
     (doi s)
     (pmid s)))
 
-(defn find-article [search-term]
+(defn find-article [id]
   (async/go
-    (let [id          (find-id search-term)
-          pmid        (async/<! (resolve-id id))
+    (let [pmid        (async/<! (resolve-id id))
           source-info (async/<! (article-info pmid))]
       (when-not (= ::failed source-info)
         (assoc source-info
