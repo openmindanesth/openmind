@@ -87,9 +87,16 @@
       "edit"]]))
 
 (defn citation [authors date]
-  (let [full (apply str (interpose ", " (map :full-name authors)))]
+  (let [full (->> authors
+                  (map (fn [{:keys [short-name full-name]}]
+                         (or full-name short-name)))
+                  (interpose ", ")
+                  (apply str))]
     (str
-     (if (< (count full) 25) full (str (:short-name (first authors)) ", et al."))
+     (if (< (count full) 25)
+       full
+       (let [{:keys [short-name full-name]} (first authors)]
+         (str (or short-name full-name) ", et al.")))
      " (" date ")")))
 
 (def dateformat
@@ -122,12 +129,28 @@
      (when volume
        (str " " volume "(" issue ")"))]
     [:span.plh " doi: " doi]
-    [:em.small.pl1 (apply str (interpose ", " (map :full-name authors)))]]
+    [:em.small.pl1 (->> authors
+                        (map (fn [{:keys [full-name short-name]}]
+                               (or full-name short-name)))
+                        (interpose ", ")
+                        (apply str))]]
    [:p abstract]])
 
-(defn source-hover [source]
+(defn labnote-source-content [{:keys [lab investigator institution
+                                      publication/date]}]
+  [:div
+   [:span.pb1
+    [:span.smaller (str "(" (.format dateformat date) ")")]
+    [:em.small.plh investigator]
+    [:span.plh.small [:b institution]]
+    [:span.plh.small lab]]])
+
+(defn source-hover [type source]
   [:div.flex.flex-column.p1
-   [source-content source]])
+   (case type
+     :article [source-content source]
+     :labnote [labnote-source-content source]
+     nil)])
 
 (defn ilink [text route]
   [:a {:on-click #(re-frame/dispatch [:navigate route])}
@@ -398,5 +421,5 @@
        [hover-link "tags" [tag-hover tags] ]
 
        [hover-link [source-link (:extract/type extract) source]
-        [source-hover source]
+        [source-hover (:extract/type extract) source]
         {:orientation :right}]]]]]])

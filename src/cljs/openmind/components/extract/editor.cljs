@@ -21,7 +21,6 @@
                ::exs/article-details
                ::exs/labnote-source)
         err (s/explain-data spec (or source {}))]
-    (cljs.pprint/pprint err)
     (when err
       (log/trace "invalid source\n" err)
       (validation/interpret-explanation err))))
@@ -74,7 +73,10 @@
 
     (= :article type)
     (update-in [:source :authors]
-               #(into [] (remove (comp empty? :full-name)) %))
+               #(into [] (remove (fn [{:keys [short-name full-name]}]
+                                   (and (empty? full-name)
+                                        (empty? short-name))))
+                      %))
 
     ;; We have to do this in case someone fills in data for both a labnote and
     ;; an article. We don't select-keys, because there may be other stuff not in
