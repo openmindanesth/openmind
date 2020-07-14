@@ -18,9 +18,9 @@
       (get hash)))
 
 (defn extract-metadata
-  "Returns metadata of doc with hash `h`."
-  [h]
-  (-> h
+  "Returns metadata of doc with hash `hash`."
+  [hash]
+  (-> hash
       extract-meta-ref
       s3/lookup
       :content))
