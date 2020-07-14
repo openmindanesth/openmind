@@ -53,9 +53,10 @@
 (s/def ::authors
   (s/coll-of ::author-details :kind vector? :min-count 1))
 
+
 (s/def ::author-details
-  (s/keys :req-un [::full-name]
-          :opt-un [::u/orcid-id  ::short-name]))
+  (s/keys :req-un []
+          :opt-un [::u/orcid-id  ::short-name ::full-name]))
 
 (s/def ::string
   (s/and

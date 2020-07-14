@@ -18,8 +18,22 @@
         biorxiv-api-url
         common/fetch))
 
-(defn format-source [{:keys []}]
-  {})
+(defn parse-authors [s]
+  (mapv (fn [x]
+          {:short-name (string/trim x)})
+       (string/split s #";")))
+
+(def ^java.text.SimpleDateFormat formatter
+  (java.text.SimpleDateFormat. "yyyy-MM-dd"))
+
+(defn date-from [s]
+  (.parse formatter s))
+
+(defn format-source [{[{:keys [published date authors] :as res}] :collection}]
+  (merge (select-keys res [:title :abstract :doi])
+         {:peer-reviewed? (not= published "NA")
+          :authors (parse-authors authors)
+          :publication/date (date-from date)}))
 
 (defn find-article [url]
   (async/go
@@ -28,6 +42,7 @@
         (-> res
             async/<!
            (json/read-str :key-fn keyword)
-           format-source))
+           format-source
+           (assoc :url url)))
       (catch Exception _
         nil))))
