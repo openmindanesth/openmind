@@ -137,13 +137,13 @@
    [:p abstract]])
 
 (defn labnote-source-content [{:keys [lab investigator institution
-                                      publication/date]}]
-  [:div
-   [:span.pb1
-    [:span.smaller (str "(" (.format dateformat date) ")")]
-    [:em.small.plh investigator]
-    [:span.plh.small [:b institution]]
-    [:span.plh.small lab]]])
+                                      observation/date]}]
+  [:div.pbh
+   [:div.small.pbh
+    [:span (str "(" (.format dateformat date) ")")]
+    [:span.plh lab]
+    [:b.plh institution]]
+   [:div.small "principle investigator: " [:em investigator]]])
 
 (defn source-hover [type source]
   [:div.flex.flex-column.p1
