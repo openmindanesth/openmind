@@ -16,15 +16,12 @@
     (edn/read-string (slurp "conf.edn"))
     (catch Exception e nil)))
 
-(def ^:private config
-  (read-config))
-
 (defn read
   "Read key from environment. key must be defined either in conf.edn in the
   project root or as an env var. Env var wins if both are defined."
   [key]
   (or (System/getenv (var-name key))
-      (get config key)))
+      (get (read-config) key)))
 
 (defn port
   "Special case: port needs to be a number."
