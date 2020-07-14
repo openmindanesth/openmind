@@ -66,3 +66,10 @@
   (log/warn "Retracting:" id)
   (s3/swap-index! extract-metadata-index
                   (txfns/remove-other-relations id)))
+
+(comment "IDs being messed with"
+         { #openmind.hash/ref "eaa5d665f6526e48908bdedb814b7d94"
+          #openmind.hash/ref "0a4b81f16835574a1b5211f64502b9c7"
+
+          #openmind.hash/ref "eff3bdcea1b1bea37803df2b05055852"
+          #openmind.hash/ref "5067d42ef40a34d380f09b232c14c751"})
