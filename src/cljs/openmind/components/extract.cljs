@@ -56,12 +56,16 @@
   [:div.flex.flex-column.p1
    [comment/comment-page-content id]])
 
-(defn figure-img [figure {:keys [style]}]
+(defn figure-img [figure {:keys [style on-load id]}]
   (when figure
     (let [{:keys [image-data]} @(re-frame/subscribe [:content figure])]
       (when image-data
-        [:img {:style style
-               :src   image-data}]))))
+        [:img (merge {:style style
+                      :src   image-data}
+                     (when id
+                       {:id id})
+                     (when on-load
+                       {:on-load on-load}))]))))
 
 (defn figure-hover [figure]
   (when figure
@@ -213,21 +217,54 @@
                                  :overflow-y      :auto}})
                  [wrapper]]])))]))))
 
+(defn sizes [id]
+  (let [node (.getElementById js/document id)
+        parent (.-parentNode node)]
+    [(.-clientHeight node) (.-clientHeight parent)]))
+
+(re-frame/reg-event-fx
+ ::recentre
+ (fn [{:keys [db]} [_ id]]
+   (let [[h ph] (sizes id)
+         offset (quot (- ph h) 2)]
+     (when (pos? offset)
+
+       {:db (assoc-in db [::thumbnail-offsets id] offset)}))))
+
+(re-frame/reg-sub
+ ::offsets
+ (fn [db _]
+   (::thumbnail-offsets db)))
+
+(re-frame/reg-sub
+ ::offset
+ :<- [::offsets]
+ (fn [offsets [_ id]]
+   (get offsets id)))
 
 (defn thumbnail [eid figure]
-  [hover-link
-   [:div
-    {:style {:width  "10rem"
-             :height "100%"
-             :margin "0.2rem"}}
-    [figure-img figure {:style {:max-width  "10rem"
-                                :max-height "10rem"
-                                :display    :block
-                                :margin     :auto}}]]
-   [figure-hover figure]
-   {:orientation :left
-    :hover?      true
-    :route       {:route :extract/figure :path {:id eid}}}])
+  (let [id (name (gensym "thumbnail"))]
+    (fn [eid figure]
+      (let [offset     @(re-frame/subscribe [::offset id])
+            ]
+        [hover-link
+         [:div
+          {:style {:width  "10rem"
+                   :height "100%"}}
+          [figure-img figure {:id      id
+                              :on-load #(re-frame/dispatch [::recentre id])
+                              :style   (merge {:max-width  "10rem"
+                                               :max-height "10rem"
+                                               :display    :block
+                                               :margin     :auto}
+                                              (when offset
+                                                {:transform (str "translateY("
+                                                                 offset
+                                                                 "px)")}))}]]
+         [figure-hover figure]
+         {:orientation :left
+          :hover?      true
+          :route       {:route :extract/figure :path {:id eid}}}]))))
 
 (re-frame/reg-sub
  ::relations
@@ -331,7 +368,7 @@
 (defn summary [{:keys [text author source figure tags hash] :as extract}
                & [{:keys [edit-link? controls pb0? c i] :as opts
                    :or   {edit-link? true}}]]
-  [:div.search-result.flex
+  [:div.search-result.flex.ph
    {:style (merge {:height :min-content}
                   (when pb0?
                     {:margin-bottom "1px"})
@@ -343,7 +380,7 @@
       [edit-link hash])
     (when controls
       [controls extract])
-    [:div.flex.flex-column.space-between.ph
+    [:div.flex.flex-column.space-between
      [:div.break-wrap.ph text]
      [:div.pth.flex.full-width
       [:div
