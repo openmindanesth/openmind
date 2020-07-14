@@ -153,3 +153,19 @@
   (fn [index]
     (let [m (metadata index id)]
       ((update-relations-meta rels m) index))))
+
+(defn remove-other-relations
+  "Intended soley for the exceptional deletion of extracts.
+
+  Removes all relations pointing to id in the metadata of other extracts. Does
+  not alter the metadata of id, since it will be needed to restore this extract
+  later if we want to."
+  [id]
+  (fn [index]
+    (let [m (metadata index id)
+          rels (:relations m)]
+      (apply comp (map (fn [{:keys [entity value] :as rel}]
+                         (if (= entity id)
+                           (retract-1 value rel)
+                           (retract-1 entity rel)))
+                       rels)))))

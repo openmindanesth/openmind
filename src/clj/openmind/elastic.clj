@@ -140,6 +140,11 @@
                                         (disj old)
                                         (conj new)))))
 
+(defn remove-from-index [id]
+  (log/warn "Removing from elastic:" id)
+  (s3/swap-index! active-es-index (fn [i] (disj i id)))
+  (send-off! (delete-req index (.-hash-string ^ValueRef id))))
+
 (defn index-extract!
   "Given an immutable, index the contained extract in es."
   [imm]
