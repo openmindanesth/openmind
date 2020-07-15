@@ -25,6 +25,12 @@
       (log/trace "invalid source\n" err)
       (validation/interpret-explanation err))))
 
+(defn validate-resources [{:keys [resources]}]
+  (mapv (fn [r]
+          (validation/interpret-explanation
+           (s/explain-data ::exs/resource r)))
+        resources))
+
 (defn validate-extract
   "Checks form data for extract creation/update against the spec."
   [extract]
@@ -34,7 +40,9 @@
           source-err (validate-source extract)]
       (log/trace "Bad extract\n" err)
       {:errors (assoc (validation/interpret-explanation err)
-                      :source source-err)})))
+                      :source source-err
+                      :resources (validate-resources extract))})))
+
 
 (def extract-keys
   [:text
@@ -43,7 +51,7 @@
    :source
    :extract/type
    :figure
-   :source-material
+   :resources
    :history/previous-version])
 
 ;; TODO: Pull these out of the specs.
@@ -78,11 +86,16 @@
                                         (empty? short-name))))
                       %))
 
+    true (update :resources (fn [r]
+                              (into []
+                                    (remove #(every? empty? (vals %)))
+                                    r)))
+
     ;; We have to do this in case someone fills in data for both a labnote and
     ;; an article. We don't select-keys, because there may be other stuff not in
     ;; the spec we want to keep around.
-    (= :article type) (update :source dissoc labnote-keys)
-    (= :labnote type) (update :source dissoc article-keys)))
+    (= :article type) (update :source #(apply dissoc % labnote-keys))
+    (= :labnote type) (update :source #(apply dissoc % article-keys))))
 
 (defn sub-new [id]
   (fn [{:keys [entity] :as rel}]
@@ -118,6 +131,7 @@
    :content   {:tags      #{}
                :comments  [""]
                :source    {:authors [{:full-name ""}]}
+               :resources [{:label "" :link ""}]
                :relations #{}}
    :errors    nil})
 
@@ -503,8 +517,7 @@
                         (if (seq c)
                           {:value (if sub-key (get c sub-key) c)}
                           {:value       nil
-                           :placeholder placeholder}))]
-                ])))
+                           :placeholder placeholder}))]])))
           content)
     [:a.plh.ptp {:on-click (fn [_]
                              (if (nil? content)
@@ -885,7 +898,6 @@
          [:div (when @open? {:style {:transform "rotate(90deg)"}}) "➤"]]
         [:span [:b "article details"]]]
        [:div.right-col
-
         [:div {:style {:margin-top 0}}
          (if @open?
            [:div
@@ -1059,6 +1071,35 @@
 (defn extract-search-results [{:keys [data-key]}]
   [search-results ::related-search-results data-key])
 
+(defn resources-widget [{:keys [data-key content errors key] :as opts}]
+  [:div.flex
+   (into [:div]
+         (map-indexed
+          (fn [i c]
+            (let [err (get errors i)]
+              [:div.flex
+               [:span.pr1
+                [text {:content  (:label c)
+                       :key      [key i :label]
+                       :placeholder "type, e.g. data, code, toolkit"
+                       :data-key data-key
+                       :errors   (:label err)}]]
+               [:span
+                [text {:content (:link c)
+                       :key [key i :link]
+                       :placeholder "link to resource"
+                       :data-key data-key
+                       :errors (:link err)}]]]))
+          content))
+   [:a.plh.ptp.bottom-right {:on-click
+                     (fn [_]
+                       (if (nil? content)
+                         (re-frame/dispatch [::form-edit data-key [key] [{}]])
+                         (re-frame/dispatch
+                          [::form-edit data-key
+                           [key (count content)] {}])))}
+    "[+]"]])
+
 (def extract-creation-form
   [{:component   textarea
     :label       "extract"
@@ -1086,10 +1127,10 @@
     :label       "figure"
     :key         :figure
     :placeholder [:span [:b "choose a file"] " or drag it here"]}
-   {:component   text
-    :label       "source materials"
+   {:component   resources-widget
+    :label       "resources"
     :placeholder "link to any code / data that you'd like to share"
-    :key         :source-material}
+    :key         :resources}
    {:component   comment-widget
     :label       "comments"
     :key         :comments

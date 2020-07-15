@@ -11,7 +11,12 @@
     "extracts should be concise, less than 500 characters. use the comments if you need to make additional points."
 
     (and (= (first pred) 'cljs.core/<=) (= path [:authors]))
-    "there must be at least one author"))
+    "there must be at least one author"
+
+    (let [[f s & _] (nth pred 2)]
+      (and (= f 'cljs.spec.alpha/valid?)
+           (= s :openmind.spec.shared/url-record)))
+    "invalid url"))
 
 (defn required? [{:keys [pred path]}]
   (and (= path [])
@@ -29,10 +34,11 @@
     (butlast in)))
 
 (defn interpret-explanation [{:keys [cljs.spec.alpha/problems]}]
-  (let [missing (->> problems
-                     (filter required?)
-                     (map missing-required)
-                     (into {}))]
-    (reduce (fn [acc {:keys [path in pred] :as problem}]
-              (assoc-in acc (mk path in) (describe-problem problem)))
-            missing (remove required? problems))))
+  (when problems
+    (let [missing (->> problems
+                       (filter required?)
+                       (map missing-required)
+                       (into {}))]
+      (reduce (fn [acc {:keys [path in pred] :as problem}]
+                (assoc-in acc (mk path in) (describe-problem problem)))
+              missing (remove required? problems)))))

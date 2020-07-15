@@ -16,12 +16,23 @@
                    ::source]
           :req [:extract/type]
           :opt [:history/previous-version]
-          :opt-un [::figure ::source-material]))
+          :opt-un [::figure ::resources]))
 
 (s/def ::figure
   ::u/hash)
 
-(s/def ::source-material
+(s/def ::resources
+  (s/coll-of ::resource :kind vector?))
+
+(s/def ::resource
+  (s/keys :req-un [::label ::link]))
+
+(s/def ::label
+  (s/and
+   string?
+   not-empty))
+
+(s/def ::link
   ::u/url)
 
 (s/def :extract/type
