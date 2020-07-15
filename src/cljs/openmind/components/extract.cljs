@@ -268,8 +268,7 @@
 (defn thumbnail [eid figure]
   (let [id (name (gensym "thumbnail"))]
     (fn [eid figure]
-      (let [offset     @(re-frame/subscribe [::offset id])
-            ]
+      (let [offset @(re-frame/subscribe [::offset id])]
         [hover-link
          [:div
           {:style {:width  "10rem"
@@ -406,7 +405,10 @@
       [controls extract])
     [:div.flex.flex-column.space-between
      {:style {:height "100%"}}
-     [:div.break-wrap.ph text]
+     [:div.break-wrap.ph
+      {:style {:margin :auto
+               :margin-left 0}}
+      text]
      [:div.pth.flex.full-width
       [:div
        [hover-link [type-indicator extract] [metadata extract]
