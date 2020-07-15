@@ -86,7 +86,7 @@
                                           :path  {:id hash}}])}
       "edit"]]))
 
-(defn citation [authors date]
+(defn citation [{:keys [authors publication/date]}]
   (let [full (->> authors
                   (map (fn [{:keys [short-name full-name]}]
                          (or full-name short-name)))
@@ -97,7 +97,7 @@
        full
        (let [{:keys [short-name full-name]} (first authors)]
          (str (or short-name full-name) ", et al.")))
-     " (" date ")")))
+     " (" (.getFullYear date) ")")))
 
 (def dateformat
   (new (.-DateTimeFormat js/Intl) "en-GB"
@@ -105,9 +105,9 @@
                  :month  "long"
                  :day    "numeric"})))
 
-(defn article-source-link [{:keys [authors url publication/date]}]
+(defn article-source-link [{:keys [authors] :as source}]
   (let [text (when (seq authors)
-               (citation authors (.getFullYear date)))]
+               (citation source))]
     text))
 
 (defn labnote-source-link [{:keys [investigator observation/date]}]
@@ -122,7 +122,7 @@
 (defn source-content [{:keys [authors publication/date journal url
                             abstract doi title volume issue]}]
   [:div
-   [:h2 [:a.link-blue {:href url} title]]
+   [:h2 {:style {:margin-top 0}} [:a.link-blue {:href url} title]]
    [:span.smaller.pb1
     [:span (str "(" (.format dateformat date) ")")]
     [:span.plh  journal
