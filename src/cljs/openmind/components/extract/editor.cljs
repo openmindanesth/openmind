@@ -867,6 +867,30 @@
  (fn [db [_ id]]
    (get-in db [::extracts id ::found-article?])))
 
+(re-frame/reg-event-db
+ ::force-edit
+ (fn [db [_ id]]
+   (assoc-in db [::extracts id ::found-article?] false)))
+
+(defn compact-source-preview [opts]
+  (let [open? (r/atom false)]
+    (fn [{:keys [data-key content]}]
+      [responsive-two-column
+       [:span [:b "article details"]]
+       [:div
+        [:a.super.left.mr1.mb1
+         {:on-click (fn [_] (swap! open? not))
+          :title (if @open? "collapse" "expand")}
+         [:div (when @open? {:style {:transform "rotate(90deg)"}}) "➤"]]
+        [:div {:style {:margin-top 0}}
+         (if @open?
+           [:div
+            [:button.right.p1.text-white.border-round.bg-blue
+             {:on-click #(re-frame/dispatch [::force-edit data-key])}
+             "edit"]
+            [extract/source-content content]]
+           [extract/citation content])]]])))
+
 (defn source-details [{:keys [data-key content] :as opts}]
   (let [extract @(re-frame/subscribe [::content data-key])
         type    (:extract/type extract)]
@@ -878,9 +902,7 @@
                          {:data-key data-key}
                          @(re-frame/subscribe
                            [::nested-form-data data-key [:article-search]])))
-       [responsive-two-column
-        [:span [:b "article details"]]
-        [extract/source-content content]]]
+       [compact-source-preview opts]]
       (into [:div.flex.flex-column]
             (comp
              (map (fn [{:keys [key] :as opts}]
