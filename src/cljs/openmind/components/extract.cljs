@@ -415,10 +415,10 @@
                   :min-height "100%"}}
     (when edit-link?
       [edit-link hash])
-    (when controls
-      [controls extract])
     [:div.flex.flex-column.space-between
      {:style {:height "100%"}}
+     (when controls
+      [controls extract])
      [:div.break-wrap.ph
       {:style {:margin      :auto
                :margin-left 0}}
