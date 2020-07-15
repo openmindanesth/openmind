@@ -872,16 +872,20 @@
  (fn [db [_ id]]
    (assoc-in db [::extracts id ::found-article?] false)))
 
+;; TODO: Abstract this collapsible thing wrapper. There are now three copies of
+;; the same logic in this file.
 (defn compact-source-preview [opts]
   (let [open? (r/atom false)]
     (fn [{:keys [data-key content]}]
-      [responsive-two-column
-       [:span [:b "article details"]]
-       [:div
-        [:a.super.left.mr1.mb1
+      [:div
+       [:div.left-col
+        [:a.super.right.plh.prh
          {:on-click (fn [_] (swap! open? not))
           :title (if @open? "collapse" "expand")}
          [:div (when @open? {:style {:transform "rotate(90deg)"}}) "➤"]]
+        [:span [:b "article details"]]]
+       [:div.right-col
+
         [:div {:style {:margin-top 0}}
          (if @open?
            [:div
