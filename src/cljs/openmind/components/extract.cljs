@@ -52,6 +52,20 @@
              (get (tree-group branches) tag-root))])))
 
 
+(defn resource-hover [resources]
+  (when (seq resources)
+    (into
+     [:div.flex.flex-column.p1]
+     (map (fn [{:keys [label link]}]
+            (let [abslink (if (string/starts-with? link "http")
+                         link
+                         (str "http://" link))]
+              [:h3
+               [:a.link-blue {:href abslink}
+                label ":"
+                [:span.plh "(" link ")"]]])))
+     resources)))
+
 (defn comments-hover [id]
   [:div.flex.flex-column.p1
    [comment/comment-page-content id]])
@@ -387,7 +401,7 @@
                    {:key (str "previous-" (.-hash-string previous-version))}))))
             (reverse history)))))
 
-(defn summary [{:keys [text author source figure tags hash] :as extract}
+(defn summary [{:keys [text author source figure tags hash resources] :as extract}
                & [{:keys [edit-link? controls pb0? c i] :as opts
                    :or   {edit-link? true}}]]
   [:div.search-result.flex.ph
@@ -397,7 +411,7 @@
                   (when (and i c (= i c))
                     {:margin-bottom 0}))}
    [thumbnail hash figure]
-   [:div {:style {:flex 1
+   [:div {:style {:flex       1
                   :min-height "100%"}}
     (when edit-link?
       [edit-link hash])
@@ -406,7 +420,7 @@
     [:div.flex.flex-column.space-between
      {:style {:height "100%"}}
      [:div.break-wrap.ph
-      {:style {:margin :auto
+      {:style {:margin      :auto
                :margin-left 0}}
       text]
      [:div.pth.flex.full-width
@@ -420,10 +434,9 @@
         [comments-hover hash]
         {:orientation :left}]
        [hover-link "history" [edit-history hash]]
-       [hover-link "related" [related-extracts hash]
-        {:orientation :right}]
-       [hover-link "tags" [tag-hover tags] ]
-
+       [hover-link "related" [related-extracts hash]]
+       [hover-link "resources" [resource-hover resources]]
+       [hover-link "tags" [tag-hover tags]]
        [hover-link [source-link (:extract/type extract) source]
         [source-hover (:extract/type extract) source]
         {:orientation :right}]]]]]])
