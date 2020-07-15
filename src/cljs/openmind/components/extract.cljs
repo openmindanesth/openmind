@@ -398,12 +398,14 @@
                   (when (and i c (= i c))
                     {:margin-bottom 0}))}
    [thumbnail hash figure]
-   [:div {:style {:flex 1}}
+   [:div {:style {:flex 1
+                  :min-height "100%"}}
     (when edit-link?
       [edit-link hash])
     (when controls
       [controls extract])
     [:div.flex.flex-column.space-between
+     {:style {:height "100%"}}
      [:div.break-wrap.ph text]
      [:div.pth.flex.full-width
       [:div
