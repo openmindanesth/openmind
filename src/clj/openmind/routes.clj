@@ -50,10 +50,15 @@
 
 ;;;;; Search
 
+(def sort-map
+  {:publication-date      [{:source.publication/date :desc}
+                           {:source.observation/date :desc}]
+   :extract-creation-date {:time/created {:order :desc}}})
+
 ;;FIXME: This is a rather crummy search. We want to at least split on tokens in
 ;;the query and match all of them...
 (defn search->elastic [{:keys [term filters sort-by type]}]
-  {:sort  {:time/created {:order :desc}}
+  {:sort  (get sort-map (or sort-by :extract-created-date))
    :from  0
    :size  20
    :query {:bool (merge {:filter (tags/tags-filter-query
