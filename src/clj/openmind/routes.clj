@@ -51,9 +51,8 @@
 ;;;;; Search
 
 (def sort-map
-  {:publication-date      [{:source.publication/date :desc}
-                           {:source.observation/date :desc}]
-   :extract-creation-date {:time/created {:order :desc}}})
+  {:publication-date      {:es/pub-date :desc}
+   :extract-creation-date {:time/created :desc}})
 
 ;;FIXME: This is a rather crummy search. We want to at least split on tokens in
 ;;the query and match all of them...
@@ -62,7 +61,6 @@
    :from  0
    :size  20
    ;; TODO: Pagination and infinite scroll
-   ;; TODO: fix the publication/date observation/date split
    ;; TODO: search author and tag names (and doi)
    ;; TODO: Advanced search
    :query {:bool (merge {:filter (tags/tags-filter-query

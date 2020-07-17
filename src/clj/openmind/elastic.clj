@@ -14,6 +14,8 @@
 
 (def mapping
   {:properties {:time/created             {:type :date}
+                ;; hack to combine labnotes and extracts
+                :es/pub-date              {:type :date}
                 :history/previous-version {:type  :keyword
                                            :index false}
                 :extract/type             {:type :keyword}
@@ -26,8 +28,10 @@
                 :resources {:type  :object
                             :index false}
                 :source    {:type       :object
-                            :properties {:publication/date {:type :date}
-                                         :observation/date {:type :date}
+                            :properties {:publication/date {:type  :date
+                                                            :index false}
+                                         :observation/date {:type  :date
+                                                            :index false}
                                          :doi              {:type :keyword}
                                          :abstract         {:type  :text
                                                             :index false}
@@ -178,13 +182,16 @@
 
 (defn index-extract!
   "Given an immutable, index the contained extract in es."
-  [{{:keys [tags]} :content :as imm}]
+  [{{:keys [tags source]} :content :as imm}]
   (async/go
     (if (s/valid? :openmind.spec.extract/extract (:content imm))
       ;; TODO: Index the nested object instead of flattening it.
       (let [tag-names (map #(:name (get tags/tag-tree %)) tags)
+            date      (or (:publication/date source)
+                          (:observation/date source))
             ext       (assoc (:content imm)
                              :tag-names tag-names
+                             :es/pub-date date
                              :hash (:hash imm)
                              :time/created (:time/created imm))
             key       (.-hash-string ^ValueRef (:hash imm))
