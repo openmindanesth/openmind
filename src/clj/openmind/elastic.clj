@@ -5,6 +5,7 @@
             [openmind.env :as env]
             [openmind.json :as json]
             [openmind.s3 :as s3]
+            [openmind.tags :as tags]
             [org.httpkit.client :as http]
             [taoensso.timbre :as log])
   (:import openmind.hash.ValueRef))
@@ -12,18 +13,48 @@
 (def index (env/read :elastic-extract-index))
 
 (def mapping
-  {:properties {:time/created {:type :date}
-                ;; FIXME: Going back to 7.1 means no search_as_you_type
-                ;; that could be something of a problem.
-                :text         {:type :text}
-                :hash         {:type :keyword}
-                :source       {:type       :object
-                               :properties {:publication/date {:type :date}}}
-                :figure       {:type :text}
-                :tags         {:type :keyword}
-                :extract/type {:type :keyword}
+  {:properties {:time/created             {:type :date}
+                :history/previous-version {:type  :keyword
+                                           :index false}
+                :extract/type             {:type :keyword}
 
-                :author {:type :object}}})
+                :text      {:type :search_as_you_type}
+                :hash      {:type  :keyword
+                            :index false}
+                :figure    {:type  :text
+                            :index false}
+                :resources {:type  :object
+                            :index false}
+                :source    {:type       :object
+                            :properties {:publication/date {:type :date}
+                                         :observation/date {:type :date}
+                                         :doi              {:type :keyword}
+                                         :abstract         {:type  :text
+                                                            :index false}
+                                         :title            {:type  :text
+                                                            :index false}
+                                         :url              {:type  :text
+                                                            :index false}
+                                         :journal          {:type  :text
+                                                            :index false}
+                                         :volume           {:type  :text
+                                                            :index false}
+                                         :issue            {:type  :text
+                                                            :index false}
+                                         :authors          {:type  :object
+                                                            :index false}
+                                         :lab              {:type  :text
+                                                            :index false}
+                                         :institution      {:type  :text
+                                                            :index false}
+                                         :investigator     {:type  :text
+                                                            :index false}}}
+                :tags      {:type :keyword}
+                :tag-names {:type :text}
+                :author    {:type       :object
+                            :properties {:full-name  {:type :text}
+                                         :short-name {:type :text}
+                                         :orcid-id   {:type :keyword}}}}})
 
 ;;;;; REST API wrapping
 
@@ -147,16 +178,18 @@
 
 (defn index-extract!
   "Given an immutable, index the contained extract in es."
-  [imm]
+  [{{:keys [tags]} :content :as imm}]
   (async/go
     (if (s/valid? :openmind.spec.extract/extract (:content imm))
       ;; TODO: Index the nested object instead of flattening it.
-      (let [ext (assoc (:content imm)
-                       :hash (:hash imm)
-                       :time/created (:time/created imm))
-            key (.-hash-string ^ValueRef (:hash imm))
-            res (async/<! (send-off!
-                           (index-req index ext key)))]
+      (let [tag-names (map #(:name (get tags/tag-tree %)) tags)
+            ext       (assoc (:content imm)
+                             :tag-names tag-names
+                             :hash (:hash imm)
+                             :time/created (:time/created imm))
+            key       (.-hash-string ^ValueRef (:hash imm))
+            res       (async/<! (send-off!
+                                 (index-req index ext key)))]
         (log/trace "Indexed" (:hash imm) res)
         res)
       (log/error "Trying to index invalid extract:" imm))))
