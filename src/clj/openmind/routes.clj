@@ -61,6 +61,10 @@
   {:sort  (get sort-map (or sort-by :extract-created-date))
    :from  0
    :size  20
+   ;; TODO: Pagination and infinite scroll
+   ;; TODO: fix the publication/date observation/date split
+   ;; TODO: search author and tag names (and doi)
+   ;; TODO: Advanced search
    :query {:bool (merge {:filter (tags/tags-filter-query
                                   ;; FIXME: Hardcoded anaesthesia
                                   "anaesthesia" filters)}
