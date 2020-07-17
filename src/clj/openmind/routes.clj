@@ -62,6 +62,7 @@
    :size  20
    ;; TODO: Pagination and infinite scroll
    ;; TODO: search author and tag names (and doi)
+   ;; TODO: extract votes in mapping
    ;; TODO: Advanced search
    :query {:bool (merge {:filter (tags/tags-filter-query
                                   ;; FIXME: Hardcoded anaesthesia
