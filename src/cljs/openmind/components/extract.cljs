@@ -255,18 +255,17 @@
                  [wrapper]]])))]))))
 
 (defn sizes [id]
-  (let [node (.getElementById js/document id)
-        parent (.-parentNode node)]
-    [(.-clientHeight node) (.-clientHeight parent)]))
+  (when-let [node (.getElementById js/document id)]
+    (when-let [parent (.-parentNode node)]
+      [(.-clientHeight node) (.-clientHeight parent)])))
 
 (re-frame/reg-event-fx
  ::recentre
  (fn [{:keys [db]} [_ id]]
-   (let [[h ph] (sizes id)
-         offset (quot (- ph h) 2)]
-     (when (pos? offset)
-
-       {:db (assoc-in db [::thumbnail-offsets id] offset)}))))
+   (when-let [[h ph] (sizes id)]
+     (let [offset (quot (- ph h) 2)]
+       (when (pos? offset)
+         {:db (assoc-in db [::thumbnail-offsets id] offset)})))))
 
 (re-frame/reg-sub
  ::offsets
