@@ -60,10 +60,10 @@
             (let [abslink (if (string/starts-with? link "http")
                          link
                          (str "http://" link))]
-              [:h3
+              [:h4
                [:a.link-blue {:href abslink}
-                label ":"
-                [:span.plh "(" link ")"]]])))
+                [:b.text-black label ":"]
+                [:span.plh link]]])))
      resources)))
 
 (defn comments-hover [id]
