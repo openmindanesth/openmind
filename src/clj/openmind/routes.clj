@@ -50,30 +50,9 @@
 
 ;;;;; Search
 
-(def sort-map
-  {:publication-date      {:es/pub-date :desc}
-   :extract-creation-date {:time/created :desc}})
-
 ;;FIXME: This is a rather crummy search. We want to at least split on tokens in
 ;;the query and match all of them...
-(defn search->elastic [{:keys [term filters sort-by type]}]
-  {:sort  (get sort-map (or sort-by :extract-created-date))
-   :from  0
-   :size  20
-   ;; TODO: Pagination and infinite scroll
-   ;; TODO: search author and tag names (and doi)
-   ;; TODO: extract votes in mapping
-   ;; TODO: Advanced search
-   :query {:bool (merge {:filter (tags/tags-filter-query
-                                  ;; FIXME: Hardcoded anaesthesia
-                                  "anaesthesia" filters)}
-                        {:must_not {:term {:deleted? true}}
-                         :must (into []
-                                     (remove nil?)
-                                     [(when (seq term)
-                                        {:match_phrase_prefix {:text term}})
-                                      (when (and type (not= type :all))
-                                        {:term {:extract/type type}})])})}})
+
 ;; TODO: Better prefix search:
 ;; https://www.elastic.co/guide/en/elasticsearch/guide/master/_index_time_search_as_you_type.html
 ;; or
@@ -81,10 +60,7 @@
 ;; or
 ;; https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-edgengram-tokenizer.html
 
-(defn search-req [query]
-  (es/search es/index query))
-
-(defn parse-search-response [res]
+(defn format-search-response [res]
   (mapv (fn [e]
           (-> e
               :_source
@@ -94,10 +70,9 @@
 (defmethod dispatch :openmind/search
   [{[_ query] :event :as req}]
   (async/go
-    (let [res   (-> (search->elastic query)
-                    search-req
+    (let [res   (-> (es/search-q query)
                     es/request<!
-                    parse-search-response)
+                    format-search-response)
           event [:openmind/search-response
                  #:openmind.components.search
                  {:results   res

@@ -114,6 +114,34 @@
          :url (str base-url "/" index)
          :method :put))
 
+;;;;; Searching
+
+(def sorter-map
+  {:publication-date      {:es/pub-date :desc}
+   :extract-creation-date {:time/created :desc}})
+
+(defn elasticise [{:keys [term filters sort-by type]}]
+  {:sort  (get sorter-map (or sort-by :extract-created-date))
+   :from  0
+   :size  20
+   ;; TODO: Pagination and infinite scroll
+   ;; TODO: search author and tag names (and doi)
+   ;; TODO: extract votes in mapping
+   ;; TODO: Advanced search
+   :query {:bool (merge {:filter (tags/tags-filter-query
+                                  ;; FIXME: Hardcoded anaesthesia
+                                  "anaesthesia" filters)}
+                        {:must_not {:term {:deleted? true}}
+                         :must (into []
+                                     (remove nil?)
+                                     [(when (seq term)
+                                        {:match_phrase_prefix {:text term}})
+                                      (when (and type (not= type :all))
+                                        {:term {:extract/type type}})])})}})
+
+(defn search-q [q]
+  (search index (elasticise q)))
+
 ;;;;; Wheel #6371
 
 (defn parse-response
