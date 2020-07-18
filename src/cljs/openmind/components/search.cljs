@@ -105,7 +105,8 @@
 (re-frame/reg-event-fx
  ::search-request
  (fn [cofx [_ query id]]
-   ;;TODO: Time is currently ignored, but we do want time travelling search.
+   ;; TODO: Time is currently ignored, but we do want time travelling search.
+   ;; TODO: infinite scroll
    (let [nonce (-> cofx :db ::nonce inc)]
      {:db       (assoc (:db cofx) ::nonce nonce)
       :dispatch [:->server

@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [intern])
   (:require [clojure.core.async :as async]
             [clojure.spec.alpha :as s]
+            [clojure.string :as string]
             [openmind.env :as env]
             [openmind.json :as json]
             [openmind.s3 :as s3]
@@ -12,6 +13,25 @@
 
 (def index (env/read :elastic-extract-index))
 
+(def en-analyser
+  {"settings"
+   {"analysis"
+    {"filter"
+     {"english_stop"               {"type"      "stop"
+                                    "stopwords" "_english_"}
+      "english_stemmer"            {"type"     "stemmer"
+                                    "language" "english"}
+      "english_possessive_stemmer" {"type"     "stemmer"
+                                    "language" "possessive_english"}}
+
+     "analyzer"
+     {"rebuilt_english" {"tokenizer" "standard"
+                         "filter"    ["english_possessive_stemmer"
+                                      "lowercase"
+                                      "english_stop"
+                                      "english_keywords"
+                                      "english_stemmer"]}}}}})
+
 (def mapping
   {:properties {:time/created             {:type :date}
                 ;; hack to combine labnotes and extracts
@@ -20,7 +40,8 @@
                                            :index false}
                 :extract/type             {:type :keyword}
 
-                :text      {:type :search_as_you_type}
+                :text      {:type     :text
+                            :analyzer :english}
                 :hash      {:type  :keyword
                             :index false}
                 :figure    {:type  :text
@@ -54,7 +75,7 @@
                                          :investigator     {:type  :text
                                                             :index false}}}
                 :tags      {:type :keyword}
-                :tag-names {:type :text}
+                :tag-names {:type :search_as_you_type}
                 :author    {:type       :object
                             :properties {:full-name  {:type :text}
                                          :short-name {:type :text}
@@ -118,26 +139,50 @@
 
 (def sorter-map
   {:publication-date      {:es/pub-date :desc}
+   :relavance nil
    :extract-creation-date {:time/created :desc}})
 
-(defn elasticise [{:keys [term filters sort-by type]}]
-  {:sort  (get sorter-map (or sort-by :extract-created-date))
-   :from  0
-   :size  20
-   ;; TODO: Pagination and infinite scroll
-   ;; TODO: search author and tag names (and doi)
-   ;; TODO: extract votes in mapping
-   ;; TODO: Advanced search
-   :query {:bool (merge {:filter (tags/tags-filter-query
-                                  ;; FIXME: Hardcoded anaesthesia
-                                  "anaesthesia" filters)}
-                        {:must_not {:term {:deleted? true}}
-                         :must (into []
-                                     (remove nil?)
-                                     [(when (seq term)
-                                        {:match_phrase_prefix {:text term}})
-                                      (when (and type (not= type :all))
-                                        {:term {:extract/type type}})])})}})
+(defn search-all [term]
+  (let [tokens (filter #(< 2 (count %)) (string/split term #"\s"))]
+    {:dis_max {:queries (into  [{:match_phrase_prefix {:text term}}
+                                {:match {:text term}}]
+                               cat
+                               (map (fn [t]
+                                      [{:match_phrase_prefix {:tag-names t}}
+                                       {:multi_match
+                                        {:query t
+                                         :fields [:source.doi
+                                                  :author.short-name
+                                                  :author.orcid-id]}}
+                                       {:match_phrase_prefix {:author.full-name t}}
+                                       ;; {:match {:source.doi t}}
+                                       ;; {:match {:author.short-name t}}
+                                       ;; {:match {:author.orcid-id t}}
+                                       ])
+                                    tokens))}}))
+
+(defn elasticise [{:keys [term filters sort-by type limit offset]}]
+  (merge
+   {:from  0
+    :size  20
+    ;; TODO: search author and tag names (and doi)
+    ;; TODO: extract votes in mapping
+    ;; TODO: Advanced search
+    :query {:bool (merge {:filter (tags/tags-filter-query
+                                   ;; FIXME: Hardcoded anaesthesia
+                                   "anaesthesia" filters)}
+                         {:must (into []
+                                      (remove nil?)
+                                      [(when (and type (not= type :all))
+                                         {:term {:extract/type type}})
+                                       (when (seq term)
+                                         (search-all term))])})}}
+   (when sort-by
+     {:sort (get sorter-map (or sort-by :extract-created-date))})
+   (when offset
+     {:from offset})
+   (when limit
+     {:size limit})))
 
 (defn search-q [q]
   (search index (elasticise q)))

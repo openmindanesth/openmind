@@ -23,5 +23,5 @@
          (map (fn [[k v]] (assoc v :tag k)))
          (group-by :parents)
          vals
-         (map #(map :tag %))
-         (map (fn [ts] {:terms {:tags ts}})))))
+         (map #(mapv :tag %))
+         (mapv (fn [ts] {:terms {:tags ts}})))))
