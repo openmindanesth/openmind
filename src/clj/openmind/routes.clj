@@ -188,7 +188,8 @@
   hasn't been changed."
   [prev-id new-extract]
   (or (empty? new-extract)
-      (= (:author new-extract) (-> prev-id s3/lookup :content :author))))
+      (= (:author (:content new-extract))
+         (-> prev-id s3/lookup :content :author))))
 
 (defmethod dispatch :openmind/update
   [{:keys [client-id send-fn ?reply-fn uid tokens]
