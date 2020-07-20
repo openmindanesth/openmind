@@ -88,9 +88,7 @@
   (dotimes [i N]
     (let [ex   (rand-nth extracts)
           tags (:tags (:content ex))
-          hits (result-set {:filter tags})]
-      (println "tag" (first tags))
-      (println hits)
+          hits (result-set {:filters tags})]
       (t/is (contains? hits (:hash ex))))))
 
 (t/deftest search-by-doi
