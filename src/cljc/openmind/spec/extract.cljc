@@ -44,10 +44,11 @@
   #{:article :labnote})
 
 (s/def :extract/tags
-  #?(:cljs
-     (s/coll-of ::u/hash :kind set?)
-     :clj
-     (into #{} (keys tags/tag-tree))))
+  (s/coll-of ::tag :kind set?))
+
+(s/def ::tag
+  #?(:clj (into #{} (keys tags/tag-tree))
+     :cljs ::u/hash))
 
 (s/def ::source
   (s/or
@@ -65,6 +66,9 @@
 
 (s/def ::volume
   string?)
+
+(s/def ::peer-reviewed?
+  boolean?)
 
 (s/def ::pubmed-reference
   ;; TODO: Store the pubmed id separately from the URL.
