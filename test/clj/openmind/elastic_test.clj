@@ -111,3 +111,16 @@
           (t/is (contains? hits (:hash ex))))))))
 
 (t/deftest advanced-search)
+
+(defn test-ns-hook []
+  (populate-elastic)
+  (sort-order)
+  (term-search)
+  (tag-filter)
+  (search-by-doi)
+  (search-by-author))
+
+(defn -main [& args]
+  (let [summary (t/test-ns 'openmind.elastic-test)]
+    (t/do-report summary)
+    summary))
