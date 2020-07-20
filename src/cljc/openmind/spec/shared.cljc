@@ -3,9 +3,19 @@
             [openmind.hash :as h]
             [openmind.url :as url]
             #?(:clj  [clojure.spec.alpha :as s]
-               :cljs [cljs.spec.alpha :as s])))
+               :cljs [cljs.spec.alpha :as s])
+            #?(:clj  [clojure.spec.gen.alpha :as gen]
+               :cljs [cljs.spec.gen.alpha :as gen])))
 
-(s/def :time/created inst?)
+(s/def ::inst
+ (s/and inst?
+        ;; Elasticsearch can't parse dates too far into the future. Dates in the
+        ;; far past aren't relevant either, and spec is weird about them; I've
+        ;; gotten more than one older than the earth which actually overflows
+        ;; and wraps into the far future.
+        #(< 0 (inst-ms %) 33152861806000)) )
+
+(s/def :time/created ::inst)
 
 ;; TODO: What makes a valid Orcid ID? Is this the right place to validate it?
 (s/def ::orcid-id

@@ -77,15 +77,17 @@
           :req-un [::authors ::doi ::title ::abstract ::journal ::u/url]))
 
 (s/def :publication/date
-  inst?)
+  ::u/inst)
 
 (s/def ::authors
   (s/coll-of ::author-details :kind vector? :min-count 1))
 
 
 (s/def ::author-details
-  (s/keys :req-un []
-          :opt-un [::u/orcid-id  ::short-name ::full-name]))
+  (s/and
+   (s/keys :req-un []
+                 :opt-un [::u/orcid-id  ::short-name ::full-name])
+   not-empty))
 
 (s/def ::string
   (s/and
@@ -115,7 +117,7 @@
           :req [:observation/date]))
 
 (s/def :observation/date
-  inst?)
+  ::u/inst)
 
 (s/def :labnote/lab
   ::string)
