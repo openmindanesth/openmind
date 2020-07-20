@@ -1,7 +1,12 @@
 (ns openmind.spec.extract
-  (:require [openmind.spec.shared :as u]
-            #?(:clj  [clojure.spec.alpha :as s]
-               :cljs [cljs.spec.alpha :as s])))
+  #?@
+   (:clj
+    [(:require
+      [clojure.spec.alpha :as s]
+      [openmind.spec.shared :as u]
+      [openmind.tags :as tags])]
+    :cljs
+    [(:require [cljs.spec.alpha :as s] [openmind.spec.shared :as u])]))
 
 ;; Here's an idea of how to use specs to generate form validation:
 ;; https://medium.com/@kirill.ishanov/building-forms-with-re-frame-and-clojure-spec-6cf1df8a114d
@@ -36,10 +41,13 @@
   ::u/url)
 
 (s/def :extract/type
-  (s/and some? keyword?))
+  #{:article :labnote})
 
 (s/def :extract/tags
-  (s/coll-of ::u/hash :kind set?))
+  #?(:cljs
+     (s/coll-of ::u/hash :kind set?)
+     :clj
+     (into #{} (keys tags/tag-tree))))
 
 (s/def ::source
   (s/or
@@ -51,6 +59,12 @@
   (s/keys :req [:publication/date]
           :req-un [::u/url ::authors ::peer-reviewed? ::doi ::title]
           :opt-un [::abstract ::journal ::volume ::issue]))
+
+(s/def ::issue
+  string?)
+
+(s/def ::volume
+  string?)
 
 (s/def ::pubmed-reference
   ;; TODO: Store the pubmed id separately from the URL.

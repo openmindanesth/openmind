@@ -16,8 +16,15 @@
 
 (s/def :author/name string?)
 
+(defn hash-gen []
+  "Very dumb hash generator. Only hashes strings, but we're only going for
+  syntax anyway."
+  (gen/fmap h/hash (s/gen string?)))
+
 (s/def ::hash
-  h/value-ref?)
+  (s/with-gen
+    h/value-ref?
+    hash-gen))
 
 (s/def :history/previous-version
   ::hash)
@@ -54,8 +61,10 @@
          #(string/includes? % ".")))
 
 (s/def ::url
-  (s/and
-   string?
-   ;; REVIEW: This works, but breaks explain, conform, etc. Spec includes regex
-   ;; operators, would the right way be to use those directly on the string?
-   #(s/valid? ::url-record (url/parse %))))
+  (s/with-gen
+    (s/and
+     string?
+     ;; REVIEW: This works, but breaks explain, conform, etc. Spec includes regex
+     ;; operators, would the right way be to use those directly on the string?
+     #(s/valid? ::url-record (url/parse %)))
+     #(s/gen #{"http://www.example.com"})))
