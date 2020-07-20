@@ -2,11 +2,11 @@
   (:require [clojure.core.async :as async]
             [clojure.spec.alpha :as s]
             [clojure.string :as string]
+            [openmind.datastore :as s3]
             [openmind.elastic :as es]
             [openmind.env :as env]
             [openmind.indexing :as index]
             [openmind.notification :as notify]
-            [openmind.s3 :as s3]
             [openmind.sources :as sources]
             [openmind.tags :as tags]
             [taoensso.timbre :as log]))

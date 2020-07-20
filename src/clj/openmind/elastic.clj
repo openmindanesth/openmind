@@ -3,9 +3,9 @@
   (:require [clojure.core.async :as async]
             [clojure.spec.alpha :as s]
             [clojure.string :as string]
+            [openmind.datastore :as s3]
             [openmind.env :as env]
             [openmind.json :as json]
-            [openmind.s3 :as s3]
             [openmind.tags :as tags]
             [org.httpkit.client :as http]
             [taoensso.timbre :as log])

@@ -2,7 +2,7 @@
   "This whole file is an inefficient ball of mud. I'm keeping it for historical
   reasons because the way the data store is designed, this is the only way to
   understand how it was built in the first place."
-  (:require [openmind.s3 :as s3]
+  (:require [openmind.datastore :as s3]
             [openmind.util :as util]))
 
 (def the-domain

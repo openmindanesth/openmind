@@ -2,7 +2,7 @@
   (:require [clojure.core.async :as async]
             [openmind.elastic :as elastic]
             [openmind.indexing :as index]
-            [openmind.s3 :as s3]
+            [openmind.datastore :as s3]
             [openmind.util :as util]))
 
 ;;;;; Elasticsearch setup

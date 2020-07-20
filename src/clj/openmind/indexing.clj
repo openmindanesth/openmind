@@ -1,6 +1,6 @@
 (ns openmind.indexing
   (:require [clojure.spec.alpha :as s]
-            [openmind.s3 :as s3]
+            [openmind.datastore :as s3]
             [openmind.spec :as spec]
             [openmind.transaction-fns :as txfns]
             [taoensso.timbre :as log]))
