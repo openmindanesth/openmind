@@ -13,25 +13,6 @@
 
 (def index (env/read :elastic-extract-index))
 
-(def en-analyser
-  {"settings"
-   {"analysis"
-    {"filter"
-     {"english_stop"               {"type"      "stop"
-                                    "stopwords" "_english_"}
-      "english_stemmer"            {"type"     "stemmer"
-                                    "language" "english"}
-      "english_possessive_stemmer" {"type"     "stemmer"
-                                    "language" "possessive_english"}}
-
-     "analyzer"
-     {"rebuilt_english" {"tokenizer" "standard"
-                         "filter"    ["english_possessive_stemmer"
-                                      "lowercase"
-                                      "english_stop"
-                                      "english_keywords"
-                                      "english_stemmer"]}}}}})
-
 (def mapping
   {:properties {:time/created             {:type :date}
                 ;; hack to combine labnotes and extracts
@@ -154,11 +135,7 @@
                                          :fields [:source.doi
                                                   :author.short-name
                                                   :author.orcid-id]}}
-                                       {:match_phrase_prefix {:author.full-name t}}
-                                       ;; {:match {:source.doi t}}
-                                       ;; {:match {:author.short-name t}}
-                                       ;; {:match {:author.orcid-id t}}
-                                       ])
+                                       {:match_phrase_prefix {:author.full-name t}}])
                                     tokens))}}))
 
 (defn elasticise [{:keys [term filters sort-by type limit offset]}]
