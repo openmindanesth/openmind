@@ -129,7 +129,6 @@
 
 (def sorter-map
   {:publication-date      {:es/pub-date :desc}
-   :relavance nil
    :extract-creation-date {:time/created :desc}})
 
 (defn search-all [term]
@@ -142,9 +141,9 @@
                                        {:multi_match
                                         {:query t
                                          :fields [:source.doi
-                                                  :author.short-name
+                                                  :author.name
                                                   :author.orcid-id]}}
-                                       {:match_phrase_prefix {:author.full-name t}}])
+                                       {:match_phrase_prefix {:author.name t}}])
                                     tokens))}}))
 
 (defn elasticise [{:keys [term filters sort-by type limit offset]}]
@@ -157,14 +156,12 @@
     :query {:bool (merge {:filter (tags/tags-filter-query
                                    ;; FIXME: Hardcoded anaesthesia
                                    "anaesthesia" filters)}
-                         {:must (into []
-                                      (remove nil?)
-                                      [(when (and type (not= type :all))
-                                         {:term {:extract/type type}})
-                                       (when (seq term)
-                                         (search-all term))])})}}
+                         (when (seq term)
+                           {:should (search-all term)})
+                         (when (and type (not= type :all))
+                           {:must [{:term {:extract/type type}}]}))}}
    (when sort-by
-     {:sort (get sorter-map (or sort-by :extract-created-date))})
+     {:sort (get sorter-map (or sort-by :extract-creation-date))})
    (when offset
      {:from offset})
    (when limit
