@@ -29,5 +29,6 @@ jobs:
         id: es-test
         env:
           ELASTIC_URL: "http://localhost:9200/"
+          ELASTIC_EXTRACT_INDEX: "staging"
           S3_DATA_BUCKET: "test-data-17623"
         run: dev/test.sh
