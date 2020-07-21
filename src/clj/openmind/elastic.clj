@@ -133,20 +133,29 @@
   {:publication-date      {:es/pub-date :desc}
    :extract-creation-date {:time/created :desc}})
 
+;; FIXME: This is utterly attrocious. It's basically impossible to get the
+;; nesting of maps and vectors right without running the tests over an over like
+;; a trained monkey.
 (defn search-all [term]
-  (let [tokens (filter #(< 2 (count %)) (string/split term #"\s"))]
-    {:dis_max {:queries (into  [{:match_phrase_prefix {:text term}}
-                                {:match {:text term}}]
-                               cat
-                               (map (fn [t]
-                                      [{:match_phrase_prefix {:tag-names t}}
-                                       {:multi_match
-                                        {:query t
-                                         :fields [:source.doi
-                                                  :author.name
-                                                  :author.orcid-id]}}
-                                       {:match_phrase_prefix {:author.name t}}])
-                                    tokens))}}))
+  (let [tokens (string/split term #"\s")]
+    {:dis_max
+     {:queries
+      (into [{:match {:text term}}]
+            (comp cat (remove nil?))
+            (concat
+             [(when (< 2 (count term))
+                [{:match_phrase_prefix {:text term}}])]
+             (map (fn [t]
+                    (concat
+                     [{:multi_match
+                       {:query  t
+                        :fields [:source.doi
+                                 :author.name
+                                 :author.orcid-id]}}]
+                     (when (< 2 (count t))
+                       [{:match_phrase_prefix {:tag-names t}}
+                        {:match_phrase_prefix {:author.name t}}])))
+                  tokens)))}}))
 
 (defn elasticise [{:keys [term filters sort-by type limit offset]}]
   (merge
@@ -155,13 +164,16 @@
     ;; TODO: search author and tag names (and doi)
     ;; TODO: extract votes in mapping
     ;; TODO: Advanced search
-    :query {:bool (merge {:filter (tags/tags-filter-query
-                                   ;; FIXME: Hardcoded anaesthesia
-                                   "anaesthesia" filters)}
-                         (when (seq term)
-                           {:should (search-all term)})
-                         (when (and type (not= type :all))
-                           {:must [{:term {:extract/type type}}]}))}}
+    :query {:bool {:filter (tags/tags-filter-query
+                            ;; FIXME: Hardcoded anaesthesia
+                            "anaesthesia" filters)
+                   :must (into []
+                               (comp cat (remove nil?))
+                               (concat
+                                [(when (and type (not= type :all))
+                                   [{:term {:extract/type type}}])]
+                                [(when (seq term)
+                                   [(search-all term)])]))}}}
    (when sort-by
      {:sort (get sorter-map (or sort-by :extract-creation-date))})
    (when offset
