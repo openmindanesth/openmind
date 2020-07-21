@@ -121,6 +121,6 @@
   (search-by-author))
 
 (defn -main [& args]
-  (let [summary (t/test-ns 'openmind.elastic-test)]
-    (t/do-report summary)
+  (let [summary (t/run-tests 'openmind.elastic-test)]
+    (println summary)
     summary))

@@ -26,6 +26,6 @@ echo $RESULT | grep "Testing openmind.elastic-test" | grep ':fail 0' | grep ':er
 
 EXIT=$?
 
-echo $RESULT
+echo "$RESULT"
 
 exit $EXIT
