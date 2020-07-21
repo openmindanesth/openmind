@@ -6,17 +6,18 @@ on:
 name: dev tests
 
 jobs:
-  name: Test
-  runs-on: ubuntu-latest
+  build:
+    name: Test
+    runs-on: ubuntu-latest
 
-  steps:
-    - name: Checkout
-      uses: actions/checkout@v2
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
 
-    - name: install Clojure cli
-      id: install-clojure-cli
-      run: curl -O https://download.clojure.org/install/linux-install-1.10.1.462.sh && chmod +x linux-install-1.10.1.462.sh && sudo ./linux-install-1.10.1.462.sh
+      - name: install Clojure cli
+        id: install-clojure-cli
+        run: curl -O https://download.clojure.org/install/linux-install-1.10.1.462.sh && chmod +x linux-install-1.10.1.462.sh && sudo ./linux-install-1.10.1.462.sh
 
-    - name: Elasticsearch integration test
-      id: es-test
-      run: dev/test.sh
+      - name: Elasticsearch integration test
+        id: es-test
+        run: dev/test.sh
