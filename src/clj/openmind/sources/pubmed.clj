@@ -95,9 +95,15 @@
      (when orcid-id
        {:orcid-id orcid-id}))))
 
+(defn remove-nil-vals [m]
+  (into (empty m)
+        (remove (fn [[k v]] (nil? v)))
+        m))
+
 (defn extract-article-info [xml]
   (let [article       (first (filter-by-tag :Article xml))
-        title         (extract-text (first (filter-by-tag :ArticleTitle article)))
+        title         (extract-text
+                       (first (filter-by-tag :ArticleTitle article)))
         journal-item  (first (filter-by-tag :Journal article))
         journal-name  (content (filter-by-tag :ISOAbbreviation journal-item))
         journal-issue (first (filter-by-tag :JournalIssue journal-item))
@@ -105,19 +111,22 @@
         issue         (content (filter-by-tag :Issue journal-issue))
         doi           (content (filter-by-attr :EIdType "doi" article))
         author-list   (filter-by-tag :Author article)
-        abstract      (extract-text (first (filter-by-tag :AbstractText article)))
+        abstract      (extract-text
+                       (first (filter-by-tag :AbstractText article)))
         pdate         (try (pubdate journal-issue)
                            (catch Exception _
-                             (pubdate (content (filter-by-tag :PubmedArticle xml)))))]
-    {:publication/date pdate
-     :title            title
-     :abstract         abstract
-     :journal          journal-name
-     :issue            issue
-     :volume           volume
-     :peer-reviewed?   true
-     :doi              doi
-     :authors          (mapv parse-author author-list)}))
+                             (pubdate
+                              (content (filter-by-tag :PubmedArticle xml)))))]
+    (remove-nil-vals
+     {:publication/date pdate
+      :title            title
+      :abstract         abstract
+      :journal          journal-name
+      :issue            issue
+      :volume           volume
+      :peer-reviewed?   true
+      :doi              doi
+      :authors          (mapv parse-author author-list)})))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Web logic

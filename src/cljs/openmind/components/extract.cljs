@@ -100,6 +100,11 @@
                                           :path  {:id hash}}])}
       "edit"]]))
 
+(defn date-year [d]
+  (if (inst? d)
+    (.getFullYear d)
+    " - "))
+
 (defn citation [{:keys [authors publication/date]}]
   (let [full (->> authors
                   (map (fn [{:keys [short-name full-name]}]
@@ -111,7 +116,7 @@
        full
        (let [{:keys [short-name full-name]} (first authors)]
          (str (or short-name full-name) ", et al.")))
-     " (" (.getFullYear date) ")")))
+     " (" (date-year date) ")")))
 
 (def dateformat
   (new (.-DateTimeFormat js/Intl) "en-GB"
@@ -125,7 +130,7 @@
     text))
 
 (defn labnote-source-link [{:keys [investigator observation/date]}]
-   (str investigator " (" (.getFullYear date) ")"))
+   (str investigator " (" (date-year date) ")"))
 
 (defn source-link [type source]
   (case type

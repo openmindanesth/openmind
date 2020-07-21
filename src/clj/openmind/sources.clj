@@ -1,5 +1,6 @@
 (ns openmind.sources
   (:require [clojure.core.async :as async]
+            [clojure.spec.alpha :as s]
             [clojure.string :as string]
             [openmind.sources.pubmed :as pubmed]
             [openmind.sources.biorxiv :as biorxiv]
@@ -56,7 +57,10 @@
       (let [ch (article-details s)]
         (let [[val port] (async/alts! [ch (async/timeout 10000)])]
           (when (= port ch)
-            val)))
+            (if (s/valid? :openmind.spec.extract/source val)
+              val
+              (log/info "Invalid source retrieved:\n"
+               (s/explain-data :openmind.spec.extract/source val))))))
       (catch Exception e
         (log/error "failure in article lookup\n"
                    e)))))
