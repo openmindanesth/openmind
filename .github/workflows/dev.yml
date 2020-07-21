@@ -18,6 +18,13 @@ jobs:
         id: install-clojure-cli
         run: curl -O https://download.clojure.org/install/linux-install-1.10.1.462.sh && chmod +x linux-install-1.10.1.462.sh && sudo ./linux-install-1.10.1.462.sh
 
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-central-1
+
       - name: Elasticsearch integration test
         id: es-test
         env:
