@@ -13,6 +13,39 @@
 
 (def index (env/read :elastic-extract-index))
 
+(def source-mapping
+  {:type       :object
+   :properties {:publication/date {:type  :date
+                                   :index false}
+                :observation/date {:type  :date
+                                   :index false}
+                :doi              {:type :keyword}
+                :abstract         {:type  :text
+                                   :index false}
+                :title            {:type  :text
+                                   :index false}
+                :url              {:type  :text
+                                   :index false}
+                :journal          {:type  :text
+                                   :index false}
+                :volume           {:type  :text
+                                   :index false}
+                :issue            {:type  :text
+                                   :index false}
+                :lab              {:type  :text
+                                   :index false}
+                :institution      {:type  :text
+                                   :index false}
+                :investigator     {:type  :text
+                                   :index false}
+                :authors          {:type :object
+                                   :properties
+                                   {:short-name {:type  :text
+                                                 :index false}
+                                    :full-name  {:type  :text
+                                                 :index false}
+                                    :orcid-id   {:type  :keyword
+                                                 :index false}}}}})
 (def mapping
   {:properties {:time/created             {:type :date}
                 ;; hack to combine labnotes and extracts
@@ -20,6 +53,8 @@
                 :history/previous-version {:type  :keyword
                                            :index false}
                 :extract/type             {:type :keyword}
+
+                :source source-mapping
 
                 :text      {:type     :text
                             :analyzer :english}
@@ -32,39 +67,6 @@
                                                  :index false}
                                          :link  {:type  :keyword
                                                  :index false}}}
-                :source    {:type       :object
-                            :properties {:publication/date {:type  :date
-                                                            :index false}
-                                         :observation/date {:type  :date
-                                                            :index false}
-
-                                         :doi          {:type :keyword}
-                                         :abstract     {:type  :text
-                                                        :index false}
-                                         :title        {:type  :text
-                                                        :index false}
-                                         :url          {:type  :text
-                                                        :index false}
-                                         :journal      {:type  :text
-                                                        :index false}
-                                         :volume       {:type  :text
-                                                        :index false}
-                                         :issue        {:type  :text
-                                                        :index false}
-                                         :authors      {:type :object
-                                                        :properties
-                                                        {:short-name {:type  :text
-                                                                      :index false}
-                                                         :full-name  {:type  :text
-                                                                      :index false}
-                                                         :orcid-id   {:type  :keyword
-                                                                      :index false}}}
-                                         :lab          {:type  :text
-                                                        :index false}
-                                         :institution  {:type  :text
-                                                        :index false}
-                                         :investigator {:type  :text
-                                                        :index false}}}
                 :tags      {:type :keyword}
                 :tag-names {:type :search_as_you_type}
                 :author    {:type       :object
