@@ -20,4 +20,6 @@ jobs:
 
       - name: Elasticsearch integration test
         id: es-test
+        env:
+          ELASTIC_URL: "http://localhost:9200/"
         run: dev/test.sh

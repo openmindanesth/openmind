@@ -10,11 +10,11 @@ sleep 10
 
 echo "intialising index mapping"
 
-clj -A:dev -e "(do (require 'setup) (setup/init-cluster!))"
+clojure -A:dev -e "(do (require 'setup) (setup/init-cluster!))"
 
 echo "running tests"
 
-RESULT=$(clj -A:test -m openmind.elastic-test)
+RESULT=$(clojure -A:test -m openmind.elastic-test)
 
 echo "killing cluster"
 
