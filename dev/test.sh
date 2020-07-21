@@ -16,6 +16,8 @@ echo "running tests"
 
 RESULT=$(clojure -A:test -m openmind.elastic-test)
 
+echo "$RESULT"
+
 echo "killing cluster"
 
 docker kill $DOCKER_CID
@@ -24,8 +26,3 @@ docker kill $DOCKER_CID
 # to the output format.
 echo $RESULT | grep "Testing openmind.elastic-test" | grep ':fail 0' | grep ':error 0' > /dev/null
 
-EXIT=$?
-
-echo "$RESULT"
-
-exit $EXIT
