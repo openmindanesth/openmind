@@ -652,7 +652,21 @@ resource "aws_iam_group_policy" "access-to-ecs" {
 		"Resource": ["*"],
 		"Effect": "Allow",
 		"Sid": "ECRAccess"
-		}
+		},
+    {
+      "Effect": "Allow",
+      "Action": ["s3:ListBucket"],
+      "Resource": ["${aws_s3_bucket.openmind-test-data.arn}"]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": ["${aws_s3_bucket.openmind-test-data.arn}/*"]
+    }
   ]
 }
 EOF
