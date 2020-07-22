@@ -121,7 +121,7 @@
 (defn test-ns-hook []
   (populate-elastic)
   ;; Give es time to index results.
-  (Thread/sleep 10000)
+  (Thread/sleep 30000)
   (sort-order)
   (term-search)
   (tag-filter)
