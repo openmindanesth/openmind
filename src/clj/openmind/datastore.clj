@@ -2,16 +2,24 @@
   (:refer-clojure :exclude [intern])
   (:require [clojure.spec.alpha :as s]
             [clojure.stacktrace :as st]
-            [openmind.data-caching :refer [recently-added]]
             [openmind.s3 :as s3]
             [openmind.spec :as spec]
             [openmind.util :as util]
             [taoensso.timbre :as log]))
 
+(def recently-added
+  "This cache creates read what you've written behaviour for a fundamentally
+  fire and forget datastore. This will break down if we move this out to a
+  separate process. We'll need to replace it with reddis, or maybe some sort of
+  log processing."
+  (atom {}))
+
 (defn lookup
   "Returns full doc from S3 associated with key `k`."
   [k]
-  (s3/lookup k))
+  (or
+   (s3/lookup k)
+   (get @recently-added k)))
 
 (def ^:private intern-queue
   (ref (clojure.lang.PersistentQueue/EMPTY)))
