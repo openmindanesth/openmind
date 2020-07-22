@@ -131,4 +131,7 @@
 (defn -main [& args]
   (let [summary (t/run-tests 'openmind.elastic-test)]
     (println summary)
-    summary))
+    (if (and (= 0 (:fail summary))
+             (= 0 (:error summary)))
+      (System/exit 0)
+      (System/exit 1))))
