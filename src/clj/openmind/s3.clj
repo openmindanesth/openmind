@@ -24,7 +24,7 @@
                    (env/read :aws-access-key)
                    (env/read :aws-secret-key))))
                 (.region Region/EU_CENTRAL_1)))
-      DefaultS3Client)
+      (DefaultS3Client/create))
     (catch Exception e nil)))
 
 (defn- ^HeadObjectRequest headreq
