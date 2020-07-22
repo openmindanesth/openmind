@@ -94,8 +94,10 @@
   (dotimes [i N]
     (let [ex   (rand-nth extracts)
           tags (:tags (:content ex))
-          hits (result-set {:filters tags})]
-      (t/is (contains? hits (:hash ex))))))
+          hits (result-set {:filters tags})
+          hits-1 (result-set {:filters (take 1 tags)})]
+      (t/is (contains? hits (:hash ex)))
+      (t/is (contains? hits-1 (:hash ex))))))
 
 (t/deftest search-by-doi
   (dotimes [i N]
@@ -120,18 +122,8 @@
 
 (defn test-ns-hook []
   (populate-elastic)
-  ;; Give es time to index results.
-  (Thread/sleep 30000)
   (sort-order)
   (term-search)
   (tag-filter)
   (search-by-doi)
   (search-by-author))
-
-(defn -main [& args]
-  (let [summary (t/run-tests 'openmind.elastic-test)]
-    (println summary)
-    (if (and (= 0 (:fail summary))
-             (= 0 (:error summary)))
-      (System/exit 0)
-      (System/exit 1))))
