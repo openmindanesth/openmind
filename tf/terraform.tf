@@ -443,25 +443,34 @@ resource "aws_ecs_cluster" "openmind" {
   }
 }
 
-resource "aws_ecs_service" "openmind" {
-  name            = "openmind"
-  cluster         = aws_ecs_cluster.openmind.id
-  task_definition = aws_ecs_task_definition.openmind-web.arn
-  desired_count   = 1
-  launch_type     = "FARGATE"
+################################################################################
+# The ECS service and initial task definition were created with terraform, but
+# removed via `terraform state rm ...` so that they could be handled by the CD
+# server without it needing permission to access the rest of the terraform
+# state. I think that's better architecturally, but it means that this service
+# isn't really managed by anything in code. It must be deleted and rebuilt
+# manually if it ever needs to change. The config here is left as an example.
+################################################################################
 
-  network_configuration {
-    assign_public_ip = true
-    subnets          = [aws_subnet.www.id, aws_subnet.www2.id]
-    security_groups  = [aws_security_group.ecs.id]
-  }
+# resource "aws_ecs_service" "openmind" {
+#   name            = "openmind"
+#   cluster         = aws_ecs_cluster.openmind.id
+#   task_definition = aws_ecs_task_definition.openmind-web.arn
+#   desired_count   = 1
+#   launch_type     = "FARGATE"
 
-  load_balancer {
-    target_group_arn = aws_lb_target_group.openmind.arn
-    container_name   = "openmind-webserver"
-    container_port   = var.container-port
-  }
-}
+#   network_configuration {
+#     assign_public_ip = true
+#     subnets          = [aws_subnet.www.id, aws_subnet.www2.id]
+#     security_groups  = [aws_security_group.ecs.id]
+#   }
+
+#   load_balancer {
+#     target_group_arn = aws_lb_target_group.openmind.arn
+#     container_name   = "openmind-webserver"
+#     container_port   = var.container-port
+#   }
+# }
 
 resource "aws_iam_role" "ecs-task-role" {
   name = "ecs-task-role"
@@ -575,46 +584,6 @@ EOF
 resource "aws_iam_role_policy_attachment" "attach-ecs-task-execution-policy" {
   role       = aws_iam_role.ecs-execution-role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
-}
-
-resource "aws_ecs_task_definition" "openmind-web" {
-  family                   = "openmind"
-  network_mode             = "awsvpc"
-  requires_compatibilities = ["FARGATE"]
-  cpu                      = var.cpu
-  memory                   = var.memory
-  task_role_arn            = aws_iam_role.ecs-task-role.arn
-  execution_role_arn       = aws_iam_role.ecs-execution-role.arn
-  container_definitions    = <<DEF
-[{"name": "openmind-webserver",
-	 "essential": true,
-	 "image": "${aws_ecr_repository.openmind.repository_url}:${var.image-id}",
-	 "networkMode": "awsvpc",
-	 "cpu": ${var.cpu},
-	 "memory": ${var.memory},
-	 "startTimeout": 120,
-	 "portMappings": [{"containerPort":${var.container-port},
-										 "hostPort":${var.host-port}}],
-		"environment": [{"name": "JVM_OPTS",
-										 "value": "${var.jvm-opts}"},
-										{"name": "PORT",
-										 "value": "${var.host-port}"},
-										{"name": "DEV_MODE",
-										 "value": ""},
-										{"name": "ELASTIC_URL",
-										 "value": "https://${aws_elasticsearch_domain.openmind.endpoint}"},
-										{"name": "ELASTIC_EXTRACT_INDEX",
-										 "value": "extracts"},
-										{"name": "S3_DATA_BUCKET",
-										 "value": "${aws_s3_bucket.openmind-data.bucket}"},
-										{"name": "ORCID_CLIENT_ID",
-										 "value": "${var.orcid-client-id}"},
-										{"name": "ORCID_CLIENT_SECRET",
-										 "value": "${var.orcid-client-secret}"},
-										{"name": "ORCID_REDIRECT_URI",
-										 "value": "${var.orcid-redirect-uri}"}]
-	}]
-DEF
 }
 
 output "task-arn" {
