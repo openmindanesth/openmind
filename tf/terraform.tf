@@ -415,11 +415,11 @@ resource "aws_ecr_lifecycle_policy" "retention-policy" {
     "rules": [
         {
             "rulePriority": 1,
-            "description": "Only keep 5 most recent images",
+            "description": "Only keep 3 most recent images",
             "selection": {
                 "tagStatus": "untagged",
                 "countType": "imageCountMoreThan",
-                "countNumber": 5
+                "countNumber": 3
             },
             "action": {
                 "type": "expire"
