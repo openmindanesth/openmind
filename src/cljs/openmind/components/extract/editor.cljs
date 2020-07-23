@@ -371,7 +371,6 @@
                                   "your search results will reflect the search"
                                   " index once it has been updated")}]
                    [:navigate {:route :search}]]}
-     ;;TODO: Fix notification bar.
      {:dispatch [:notify {:status  :error
                           :message "failed to create extract"}]})))
 
@@ -380,10 +379,11 @@
  (fn [cofx [_ {:keys [status message id]}]]
    (if (= :success status)
      {:dispatch-n [[::clear id]
-                   [:notify {:status  :success
-                             :message (str "changes submitted successfully\n"
-                                           "it may take a moment for the changes"
-                                           " to be reflected in your results.")}]
+                   [:notify {:status :success
+                             :message
+                             (str "changes submitted successfully\n"
+                                  "it may take a moment for the changes"
+                                  " to be reflected in your results.")}]
                    [:navigate {:route :search}]]}
      {:dispatch [:notify {:status :error :message "failed to save changes"}]})))
 
@@ -1223,8 +1223,6 @@
 
        [:button.bg-dark-grey.border-round.wide.text-white.p1
         {:on-click (fn [_]
-                     ;; TODO: Spinning cursor while waiting for response from
-                     ;; server.
                      (re-frame/dispatch [::update-extract id]))}
         (if (= ::new id) "CREATE" "SAVE")]]]
      (map input-row (map (partial add-form-data id) extract-creation-form)))))

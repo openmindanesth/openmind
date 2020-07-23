@@ -1,7 +1,8 @@
 (ns openmind.spec.validation)
 
 (defn describe-problem [{:keys [pred via path]}]
-  ;; HACK: This is an horrid way to get human messages from specs. There's got to be a better way...
+  ;; HACK: This is an horrid way to get human messages from specs. There's got
+  ;; to be a better way...
   (cond
     (= pred 'cljs.core/not-empty)
     "field cannot be left blank"

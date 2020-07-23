@@ -84,7 +84,6 @@
     (.getTime ^java.util.Calendar (java.util.GregorianCalendar. y m d))))
 
 (defn parse-author [author]
-  ;; REVIEW: This has a lot more info than we're taking: Orcid id, affilliation, etc.
   (let [first    (content (filter-by-tag :ForeName author))
         initials (content (filter-by-tag :Initials author))
         last     (content (filter-by-tag :LastName author))

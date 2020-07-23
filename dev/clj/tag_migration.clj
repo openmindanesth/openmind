@@ -144,7 +144,6 @@
     (invert-tag-tree tag-map (assoc (:content root) :id (:hash root)))))
 
 (def old-tag-lookup-hash
-  ;;FIXME: This should *not* be hardcoded
   #openmind.hash/ref "34101d8a82a2714923a446f4bb203a31")
 
 (def

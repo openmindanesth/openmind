@@ -161,7 +161,6 @@
   (merge
    {:from  0
     :size  20
-    ;; TODO: search author and tag names (and doi)
     ;; TODO: extract votes in mapping
     ;; TODO: Advanced search
     :query {:bool {:filter (tags/tags-filter-query
@@ -255,7 +254,6 @@
   [{{:keys [tags source]} :content :as imm}]
   (async/go
     (if (s/valid? :openmind.spec.extract/extract (:content imm))
-      ;; TODO: Index the nested object instead of flattening it.
       (let [tag-names (map #(:name (get tags/tag-tree %)) tags)
             date      (or (:publication/date source)
                           (:observation/date source))

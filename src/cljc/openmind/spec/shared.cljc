@@ -17,7 +17,6 @@
 
 (s/def :time/created ::inst)
 
-;; TODO: What makes a valid Orcid ID? Is this the right place to validate it?
 (s/def ::orcid-id
   (s/and string? not-empty))
 
@@ -67,7 +66,6 @@
 (s/def :url/domain
   (s/and string?
          not-empty
-         ;; REVIEW: This excludes top level domains. I think that's fine, but...
          #(string/includes? % ".")))
 
 (s/def ::url

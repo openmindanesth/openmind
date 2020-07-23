@@ -19,6 +19,4 @@
   string?)
 
 (s/def ::image-data
-  ;; data:image/???;base64...
-  ;; REVIEW: Is a spec an appropriate place to validate the data url format?
   string?)

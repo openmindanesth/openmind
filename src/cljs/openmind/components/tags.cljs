@@ -326,7 +326,6 @@
 
 (defn tag-view [display data]
   (let [tag-tree @(re-frame/subscribe [::tags])]
-    ;; HACK: Select anaesthesia automatically.
     (when (empty? (get-path display))
       (open-path display [(:id tag-tree)]))
     [filter-view tag-tree display data]))

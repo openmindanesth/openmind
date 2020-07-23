@@ -20,9 +20,6 @@
   connected devices logged into the account of the sender."
   [{:keys [send-fn ?reply-fn uid]} msg]
   (cond
-    ;; REVIEW: If you're logged in on your phone and your laptop, and you
-    ;; search on your laptop, should the search on your phone change
-    ;; automatically? I don't think so...
     (fn? ?reply-fn) (?reply-fn msg)
 
     ;; But if it's the only way to return the result to you...
@@ -49,16 +46,6 @@
   (log/warn "Unhandled client event:" e))
 
 ;;;;; Search
-
-;;FIXME: This is a rather crummy search. We want to at least split on tokens in
-;;the query and match all of them...
-
-;; TODO: Better prefix search:
-;; https://www.elastic.co/guide/en/elasticsearch/guide/master/_index_time_search_as_you_type.html
-;; or
-;; https://www.elastic.co/guide/en/elasticsearch/reference/current/search-suggesters-completion.html
-;; or
-;; https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-edgengram-tokenizer.html
 
 (defn format-search-response [res]
   (mapv (fn [e]
@@ -197,7 +184,6 @@
 
 (defmethod dispatch :openmind/intern
   [{[_ imm] :event :as req}]
-  ;; TODO: Author check. Validation is already done in several places.
   (when-let [res (intern-and-index imm)]
     (respond-with-fallback req [:openmind/extract-metadata res])))
 

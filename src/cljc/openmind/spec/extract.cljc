@@ -73,7 +73,6 @@
   boolean?)
 
 (s/def ::pubmed-reference
-  ;; TODO: Store the pubmed id separately from the URL.
   (s/keys :req [:publication/date]
           :opt-un [::volume ::issue]
           :req-un [::authors ::doi ::title ::abstract ::journal ::u/url]))
