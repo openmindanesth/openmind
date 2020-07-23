@@ -1,6 +1,12 @@
 (ns openmind.elastic-test
   "This test, exceptionally, requires a running elasticsearch instance. Its main
   purpose is to test that various kinds of searches return sensible results."
+  ;; TODO: Change this to grab extracts from the index and test queries on
+  ;; them. Real data is much better than spec data for testing queries. We also
+  ;; don't need to test that putting new extracts into elastic works. Though it
+  ;; is good to test that the mapping is valid on the version of elastic we're
+  ;; using.
+  ;; TODO: Separate the infrastructure test from the query tests
   (:require [clojure.core.async :as async]
             [clojure.spec.alpha :as s]
             [clojure.string :as string]
