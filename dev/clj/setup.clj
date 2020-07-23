@@ -2,7 +2,7 @@
   (:require [clojure.core.async :as async]
             [openmind.elastic :as elastic]
             [openmind.indexing :as index]
-            [openmind.datastore :as s3]
+            [openmind.datastore :as ds]
             [openmind.util :as util]))
 
 ;;;;; Elasticsearch setup
@@ -21,9 +21,9 @@
 
 (defn load-es-from-s3! []
   (let [extract-ids (-> elastic/active-es-index
-                        s3/get-index
+                        ds/get-index
                         :content)
-        extracts (map s3/lookup extract-ids)]
+        extracts (map ds/lookup extract-ids)]
     (async/go
       (async/<! (init-cluster!))
       (run! elastic/index-extract! extracts))))

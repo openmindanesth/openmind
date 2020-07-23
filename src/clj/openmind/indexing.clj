@@ -1,19 +1,19 @@
 (ns openmind.indexing
   (:require [clojure.spec.alpha :as s]
-            [openmind.datastore :as s3]
+            [openmind.datastore :as ds]
             [openmind.spec :as spec]
             [openmind.transaction-fns :as txfns]
             [taoensso.timbre :as log]))
 
 (def extract-metadata-index
-  (s3/create-index
+  (ds/create-index
    "openmind.indexing/extract-metadata"))
 
 (defn extract-meta-ref
   "Returns the hash of the metadoc for doc referrenced by `hash`."
   [hash]
   (-> extract-metadata-index
-      s3/get-index
+      ds/get-index
       :content
       (get hash)))
 
@@ -22,7 +22,7 @@
   [hash]
   (-> hash
       extract-meta-ref
-      s3/lookup
+      ds/lookup
       :content))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -41,7 +41,7 @@
 (defn index [imm]
   (let [t (first (:content (s/conform ::spec/immutable imm)))]
     (if-let [f (get index-methods t)]
-     (s3/swap-index! extract-metadata-index (f imm))
+     (ds/swap-index! extract-metadata-index (f imm))
      ;; allow no-ops without triggering warnings.
      (when-not (contains? index-methods t)
        (log/warn "Attempt to index unconformable data:\n" imm)))))
@@ -51,20 +51,20 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn update-relations [id rels]
-  (s3/swap-index! extract-metadata-index
+  (ds/swap-index! extract-metadata-index
                   (txfns/update-relations id rels)))
 
 (defn edit-relations [prev-id new-id rels]
   (update-relations (or new-id prev-id) rels))
 
 (defn forward-metadata [prev id editor]
-  (s3/swap-index! extract-metadata-index
+  (ds/swap-index! extract-metadata-index
                   (txfns/forward-metadata prev id editor)))
 
 
 (defn retract-extract! [id]
   (log/warn "Retracting:" id)
-  (s3/swap-index! extract-metadata-index
+  (ds/swap-index! extract-metadata-index
                   (txfns/remove-other-relations id)))
 
 (comment "IDs being messed with"

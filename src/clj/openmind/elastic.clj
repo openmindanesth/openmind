@@ -3,7 +3,7 @@
   (:require [clojure.core.async :as async]
             [clojure.spec.alpha :as s]
             [clojure.string :as string]
-            [openmind.datastore :as s3]
+            [openmind.datastore :as ds]
             [openmind.env :as env]
             [openmind.json :as json]
             [openmind.tags :as tags]
@@ -230,24 +230,24 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def active-es-index
-  (s3/create-index
+  (ds/create-index
    "openmind.indexing/elastic-active"))
 
 (defn add-to-index [id]
-  (s3/swap-index! active-es-index (fn [i]
+  (ds/swap-index! active-es-index (fn [i]
                                     (if (empty? i)
                                       #{id}
                                       (conj i id)))))
 
 (defn replace-in-index [old new]
-  (s3/swap-index! active-es-index (fn [i]
+  (ds/swap-index! active-es-index (fn [i]
                                     (-> i
                                         (disj old)
                                         (conj new)))))
 
 (defn remove-from-index [id]
   (log/warn "Removing from elastic:" id)
-  (s3/swap-index! active-es-index (fn [i] (disj i id)))
+  (ds/swap-index! active-es-index (fn [i] (disj i id)))
   (send-off! (delete-req index (.-hash-string ^ValueRef id))))
 
 (defn index-extract!
