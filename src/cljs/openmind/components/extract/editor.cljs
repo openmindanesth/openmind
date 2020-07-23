@@ -479,26 +479,29 @@
        [common/error errors])]))
 
 (defn textarea
-  [{:keys [label key required? placeholder spec errors content data-key on-change]}]
-  [:div
-   [:textarea.full-width-textarea
-    (merge {:id        (str key)
-            :rows      2
-            :style     {:resize :vertical}
-            :type      :text
-            :on-change (juxt (pass-edit data-key [key])
-                             #(when on-change
-                                (on-change (-> % .-target .-value)))
-                             #(when errors
-                                (re-frame/dispatch [::revalidate data-key])))}
-           (cond
-             (seq content) {:value content}
-             placeholder   {:value       nil
-                            :placeholder placeholder})
-           (when errors
-             {:class "form-error"}))]
-   (when errors
-     [common/error errors])])
+  [{:keys [label key required? placeholder spec errors content rows
+           data-key on-change on-blur] :as opts}]
+  (let [ks (if (vector? key) key [key])]
+    [:div
+     [:textarea.full-width-textarea
+      (merge {:id        (str key)
+              :rows      (or rows 2)
+              :style     {:resize :vertical}
+              :type      :text
+              :on-blur   #(when on-blur (on-blur opts))
+              :on-change (juxt (pass-edit data-key ks)
+                               #(when on-change
+                                  (on-change (-> % .-target .-value)))
+                               #(when errors
+                                  (re-frame/dispatch [::revalidate data-key])))}
+             (cond
+               (seq content) {:value content}
+               placeholder   {:value       nil
+                              :placeholder placeholder})
+             (when errors
+               {:class "form-error"}))]
+     (when errors
+       [common/error errors])]))
 
 (defn text-input-list
   [{:keys [key placeholder spec errors content data-key sub-key]}]
@@ -648,11 +651,12 @@
       [:a.text-dark-grey.pl1
        {:on-click (juxt halt #(re-frame/dispatch [::remove-figure data-key]))}
        [:span "remove"]]]
-     [text {:key         [:figure-data :content :caption]
-            :data-key    data-key
-            :on-blur     #(re-frame/dispatch [::update-caption data-key])
-            :content     caption
-            :placeholder "additional info about figure"} ]]))
+     [textarea {:key         [:figure-data :content :caption]
+                :rows        4
+                :data-key    data-key
+                :on-blur     #(re-frame/dispatch [::update-caption data-key])
+                :content     caption
+                :placeholder "additional info about figure"} ]]))
 
 (defn image-drop
   [opts]
@@ -686,7 +690,8 @@
     [image-drop opts]))
 
 (defn source-preview [{:keys [data-key] :as opts}]
-  (let [{:keys [source extract/type]} @(re-frame/subscribe [::content data-key])]
+  (let [{:keys [source extract/type]}
+        @(re-frame/subscribe [::content data-key])]
     (when (and (= type :article) (:abstract source))
       [extract/source-content source])))
 
@@ -695,7 +700,8 @@
  (fn [cofx [_ id url]]
    (let [last-searched (-> cofx :db ::extracts (get id) :content :source :url)]
      (when-not (= url last-searched)
-       {:dispatch-n [[:->server [:openmind/article-lookup {:res-id id :term url}]]
+       {:dispatch-n
+        [[:->server [:openmind/article-lookup {:res-id id :term url}]]
                      [:openmind.components.window/spin]]}))))
 
 (re-frame/reg-event-fx
@@ -704,7 +710,8 @@
    (let [current (get-in db [::extracts res-id :content :article-search])]
      (if (and (= term current) (seq source))
        {:db         (-> db
-                        (update-in [::extracts res-id :content :source] merge source)
+                        (update-in [::extracts res-id :content :source]
+                                   merge source)
                         (assoc-in [::extracts res-id ::found-article?] true))
         :dispatch-n [[:openmind.components.window/unspin]
                      [:notify {:status :success :message "article found"}]]}
@@ -1109,6 +1116,7 @@
 (def extract-creation-form
   [{:component   textarea
     :label       "extract"
+    :rows 4
     :on-change   #(when (< 4 (count %))
                     (re-frame/dispatch
                      [:openmind.components.search/search-request
