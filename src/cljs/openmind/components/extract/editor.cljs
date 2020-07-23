@@ -540,7 +540,8 @@
          (map-indexed
           (fn [i c]
             (let [err (get errors i)]
-              ;; REVIEW: Is this just cut and paste of the textarea component?!?!
+              ;; REVIEW: Is this just cut and paste of the textarea
+              ;; component?!?!
               [:div
                [:textarea.full-width-textarea
                 (merge {:id          (name (str key i))

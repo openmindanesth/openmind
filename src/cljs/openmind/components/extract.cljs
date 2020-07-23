@@ -243,14 +243,15 @@
            (when @open?
              (let [position (fit-to-screen @float-size @link-size)]
                [:div.absolute.ml1.mr1.hover-link.border-round.bg-plain.border-solid
-                {:style         (merge {:padding "0.1rem"
-                                        :cursor  :default
-                                        :z-index 1001}
-                                       (when orientation
-                                         {orientation 0})
-                                       position
-                                       (when-not @float-size
-                                         {:display :none}))
+                {:style (merge {:padding "0.1rem"
+                                :cursor  :default
+                                :z-index 1001}
+                               (when orientation
+                                 {orientation 0})
+                               position
+                               (when-not @float-size
+                                 {:display :none}))
+
                  :on-mouse-over halt
                  :on-mouse-out  halt}
                 [:div (when (:will-overflow position)
@@ -405,7 +406,8 @@
                    {:key (str "previous-" (.-hash-string previous-version))}))))
             (reverse history)))))
 
-(defn summary [{:keys [text author source figure tags hash resources] :as extract}
+(defn summary [{:keys [text author source figure tags hash resources]
+                :as extract}
                & [{:keys [edit-link? controls pb0? c i] :as opts
                    :or   {edit-link? true}}]]
   [:div.search-result.flex.ph
