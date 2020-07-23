@@ -348,7 +348,7 @@ resource "aws_security_group" "es" {
 
 resource "aws_elasticsearch_domain" "openmind" {
   domain_name           = "openmind-production"
-  elasticsearch_version = "7.1"
+  elasticsearch_version = "7.4"
 
   cluster_config {
     instance_type  = "t2.small.elasticsearch"
