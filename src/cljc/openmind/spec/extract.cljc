@@ -8,12 +8,6 @@
     :cljs
     [(:require [cljs.spec.alpha :as s] [openmind.spec.shared :as u])]))
 
-;; Here's an idea of how to use specs to generate form validation:
-;; https://medium.com/@kirill.ishanov/building-forms-with-re-frame-and-clojure-spec-6cf1df8a114d
-;; Give it a shot
-
-;;;;; General
-
 (s/def ::extract
   (s/keys :req-un [::u/text
                    ::u/author
