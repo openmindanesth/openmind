@@ -1072,22 +1072,24 @@
   [search-results ::related-search-results data-key])
 
 (defn resources-widget [{:keys [data-key content errors key] :as opts}]
-  [:div.flex
-   (into [:div]
+  [:div.flex.full-width
+   (into [:div.full-width]
          (map-indexed
           (fn [i c]
             (let [err (get errors i)]
               [:div.flex
                [:span.pr1
+                {:style {:flex-grow 2}}
                 [text {:content  (:label c)
                        :key      [key i :label]
                        :placeholder "type, e.g. data, code, toolkit"
                        :data-key data-key
                        :errors   (:label err)}]]
                [:span
+                {:style {:flex-grow 2}}
                 [text {:content (:link c)
                        :key [key i :link]
-                       :placeholder "link to resource"
+                       :placeholder "link to repository"
                        :data-key data-key
                        :errors (:link err)}]]]))
           content))
@@ -1128,7 +1130,7 @@
     :key         :figure
     :placeholder [:span [:b "choose a file"] " or drag it here"]}
    {:component   resources-widget
-    :label       "resources"
+    :label       "repos"
     :placeholder "link to any code / data that you'd like to share"
     :key         :resources}
    {:component   comment-widget

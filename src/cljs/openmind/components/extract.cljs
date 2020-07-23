@@ -439,7 +439,7 @@
         {:orientation :left}]
        [hover-link "history" [edit-history hash]]
        [hover-link "related" [related-extracts hash]]
-       [hover-link "resources" [resource-hover resources]]
+       [hover-link "repos" [resource-hover resources]]
        [hover-link "tags" [tag-hover tags]]
        [hover-link [source-link (:extract/type extract) source]
         [source-hover (:extract/type extract) source]
