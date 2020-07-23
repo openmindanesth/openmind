@@ -62,10 +62,12 @@
           :opt-un [::abstract ::journal ::volume ::issue]))
 
 (s/def ::issue
-  string?)
+  (s/or :nil nil?
+        :string string?))
 
 (s/def ::volume
-  string?)
+  (s/or :nil nil?
+        :string string?))
 
 (s/def ::peer-reviewed?
   boolean?)
