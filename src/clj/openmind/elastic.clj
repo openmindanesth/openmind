@@ -46,6 +46,7 @@
                                                  :index false}
                                     :orcid-id   {:type  :keyword
                                                  :index false}}}}})
+
 (def mapping
   {:properties {:time/created             {:type :date}
                 ;; hack to combine labnotes and extracts
