@@ -4,7 +4,7 @@
             [openmind.indexing :as index]
             [openmind.transaction-fns :as txfns]
             [openmind.pubmed :as pubmed]
-            [openmind.s3 :as s3]
+            [openmind.datastore :as s3]
             [tag-migration :as tags]
             [openmind.util :as util]
             setup))

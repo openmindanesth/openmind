@@ -4,8 +4,8 @@
   itself, thus accidentally reaching out of the transaction. That was getting to
   be a problem when everything was in the same ns."
   (:require [clojure.walk :as walk]
+            [openmind.datastore :as s3]
             [openmind.notification :as notify]
-            [openmind.s3 :as s3]
             [openmind.util :as util]
             [taoensso.timbre :as log]))
 

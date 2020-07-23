@@ -371,7 +371,6 @@
                                   "your search results will reflect the search"
                                   " index once it has been updated")}]
                    [:navigate {:route :search}]]}
-     ;;TODO: Fix notification bar.
      {:dispatch [:notify {:status  :error
                           :message "failed to create extract"}]})))
 
@@ -380,10 +379,11 @@
  (fn [cofx [_ {:keys [status message id]}]]
    (if (= :success status)
      {:dispatch-n [[::clear id]
-                   [:notify {:status  :success
-                             :message (str "changes submitted successfully\n"
-                                           "it may take a moment for the changes"
-                                           " to be reflected in your results.")}]
+                   [:notify {:status :success
+                             :message
+                             (str "changes submitted successfully\n"
+                                  "it may take a moment for the changes"
+                                  " to be reflected in your results.")}]
                    [:navigate {:route :search}]]}
      {:dispatch [:notify {:status :error :message "failed to save changes"}]})))
 
@@ -479,26 +479,29 @@
        [common/error errors])]))
 
 (defn textarea
-  [{:keys [label key required? placeholder spec errors content data-key on-change]}]
-  [:div
-   [:textarea.full-width-textarea
-    (merge {:id        (str key)
-            :rows      2
-            :style     {:resize :vertical}
-            :type      :text
-            :on-change (juxt (pass-edit data-key [key])
-                             #(when on-change
-                                (on-change (-> % .-target .-value)))
-                             #(when errors
-                                (re-frame/dispatch [::revalidate data-key])))}
-           (cond
-             (seq content) {:value content}
-             placeholder   {:value       nil
-                            :placeholder placeholder})
-           (when errors
-             {:class "form-error"}))]
-   (when errors
-     [common/error errors])])
+  [{:keys [label key required? placeholder spec errors content rows
+           data-key on-change on-blur] :as opts}]
+  (let [ks (if (vector? key) key [key])]
+    [:div
+     [:textarea.full-width-textarea
+      (merge {:id        (str key)
+              :rows      (or rows 2)
+              :style     {:resize :vertical}
+              :type      :text
+              :on-blur   #(when on-blur (on-blur opts))
+              :on-change (juxt (pass-edit data-key ks)
+                               #(when on-change
+                                  (on-change (-> % .-target .-value)))
+                               #(when errors
+                                  (re-frame/dispatch [::revalidate data-key])))}
+             (cond
+               (seq content) {:value content}
+               placeholder   {:value       nil
+                              :placeholder placeholder})
+             (when errors
+               {:class "form-error"}))]
+     (when errors
+       [common/error errors])]))
 
 (defn text-input-list
   [{:keys [key placeholder spec errors content data-key sub-key]}]
@@ -537,7 +540,8 @@
          (map-indexed
           (fn [i c]
             (let [err (get errors i)]
-              ;; REVIEW: Is this just cut and paste of the textarea component?!?!
+              ;; REVIEW: Is this just cut and paste of the textarea
+              ;; component?!?!
               [:div
                [:textarea.full-width-textarea
                 (merge {:id          (name (str key i))
@@ -629,26 +633,31 @@
                         :image-data)
                     (:image-data
                      @(re-frame/subscribe [:content content])))
-        caption (or (-> @(re-frame/subscribe [::content data-key])
-                        :figure-data
-                        :content
-                        :caption)
-                    (:caption
-                     @(re-frame/subscribe [:content content])))]
+        caption    (or (-> @(re-frame/subscribe [::content data-key])
+                           :figure-data
+                           :content
+                           :caption)
+                       (:caption
+                        @(re-frame/subscribe [:content content])))]
     [:div.flex.flex-column
-     [:div.p1.flex
-      {:style {:max-width "40rem"}}
-      [:img.border-round
+     [:div.flex
+      [:img.border-round.mb1
        {:src   image-data
-        :style {:width :max-content}}]
+        :style {:width      "100%"
+                :height     "auto"
+                :max-height "30vh"
+                :object-fit :contain
+                :display    :block
+                :max-width  "calc(90vw - 16rem)"}}]
       [:a.text-dark-grey.pl1
        {:on-click (juxt halt #(re-frame/dispatch [::remove-figure data-key]))}
        [:span "remove"]]]
-     [text {:key         [:figure-data :content :caption]
-            :data-key    data-key
-            :on-blur     #(re-frame/dispatch [::update-caption data-key])
-            :content     caption
-            :placeholder "additional info about figure"} ]]))
+     [textarea {:key         [:figure-data :content :caption]
+                :rows        4
+                :data-key    data-key
+                :on-blur     #(re-frame/dispatch [::update-caption data-key])
+                :content     caption
+                :placeholder "additional info about figure"} ]]))
 
 (defn image-drop
   [opts]
@@ -668,8 +677,8 @@
                         :on-drop       (juxt halt #(reset! drag-hover? false)
                                              (partial drop-upload
                                                       data-key key))}]
-        [:div.mt1.mb2.flex.flex-column
-         [:label.p2.border-round drop-state placeholder]
+        [:div.mt3.mb4
+         [:label.p3.border-round drop-state placeholder]
          [:input {:type      :file
                   :id        id
                   :style     {:visibility :hidden}
@@ -682,7 +691,8 @@
     [image-drop opts]))
 
 (defn source-preview [{:keys [data-key] :as opts}]
-  (let [{:keys [source extract/type]} @(re-frame/subscribe [::content data-key])]
+  (let [{:keys [source extract/type]}
+        @(re-frame/subscribe [::content data-key])]
     (when (and (= type :article) (:abstract source))
       [extract/source-content source])))
 
@@ -691,7 +701,8 @@
  (fn [cofx [_ id url]]
    (let [last-searched (-> cofx :db ::extracts (get id) :content :source :url)]
      (when-not (= url last-searched)
-       {:dispatch-n [[:->server [:openmind/article-lookup {:res-id id :term url}]]
+       {:dispatch-n
+        [[:->server [:openmind/article-lookup {:res-id id :term url}]]
                      [:openmind.components.window/spin]]}))))
 
 (re-frame/reg-event-fx
@@ -700,7 +711,8 @@
    (let [current (get-in db [::extracts res-id :content :article-search])]
      (if (and (= term current) (seq source))
        {:db         (-> db
-                        (update-in [::extracts res-id :content :source] merge source)
+                        (update-in [::extracts res-id :content :source]
+                                   merge source)
                         (assoc-in [::extracts res-id ::found-article?] true))
         :dispatch-n [[:openmind.components.window/unspin]
                      [:notify {:status :success :message "article found"}]]}
@@ -1072,22 +1084,24 @@
   [search-results ::related-search-results data-key])
 
 (defn resources-widget [{:keys [data-key content errors key] :as opts}]
-  [:div.flex
-   (into [:div]
+  [:div.flex.full-width
+   (into [:div.full-width]
          (map-indexed
           (fn [i c]
             (let [err (get errors i)]
               [:div.flex
                [:span.pr1
+                {:style {:flex-grow 2}}
                 [text {:content  (:label c)
                        :key      [key i :label]
                        :placeholder "type, e.g. data, code, toolkit"
                        :data-key data-key
                        :errors   (:label err)}]]
                [:span
+                {:style {:flex-grow 2}}
                 [text {:content (:link c)
                        :key [key i :link]
-                       :placeholder "link to resource"
+                       :placeholder "link to repository"
                        :data-key data-key
                        :errors (:link err)}]]]))
           content))
@@ -1103,6 +1117,7 @@
 (def extract-creation-form
   [{:component   textarea
     :label       "extract"
+    :rows 4
     :on-change   #(when (< 4 (count %))
                     (re-frame/dispatch
                      [:openmind.components.search/search-request
@@ -1128,7 +1143,7 @@
     :key         :figure
     :placeholder [:span [:b "choose a file"] " or drag it here"]}
    {:component   resources-widget
-    :label       "resources"
+    :label       "repos"
     :placeholder "link to any code / data that you'd like to share"
     :key         :resources}
    {:component   comment-widget
@@ -1208,8 +1223,6 @@
 
        [:button.bg-dark-grey.border-round.wide.text-white.p1
         {:on-click (fn [_]
-                     ;; TODO: Spinning cursor while waiting for response from
-                     ;; server.
                      (re-frame/dispatch [::update-extract id]))}
         (if (= ::new id) "CREATE" "SAVE")]]]
      (map input-row (map (partial add-form-data id) extract-creation-form)))))

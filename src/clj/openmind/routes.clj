@@ -2,11 +2,11 @@
   (:require [clojure.core.async :as async]
             [clojure.spec.alpha :as s]
             [clojure.string :as string]
+            [openmind.datastore :as s3]
             [openmind.elastic :as es]
             [openmind.env :as env]
             [openmind.indexing :as index]
             [openmind.notification :as notify]
-            [openmind.s3 :as s3]
             [openmind.sources :as sources]
             [openmind.tags :as tags]
             [taoensso.timbre :as log]))
@@ -20,9 +20,6 @@
   connected devices logged into the account of the sender."
   [{:keys [send-fn ?reply-fn uid]} msg]
   (cond
-    ;; REVIEW: If you're logged in on your phone and your laptop, and you
-    ;; search on your laptop, should the search on your phone change
-    ;; automatically? I don't think so...
     (fn? ?reply-fn) (?reply-fn msg)
 
     ;; But if it's the only way to return the result to you...
@@ -50,33 +47,7 @@
 
 ;;;;; Search
 
-;;FIXME: This is a rather crummy search. We want to at least split on tokens in
-;;the query and match all of them...
-(defn search->elastic [{:keys [term filters sort-by type]}]
-  {:sort  {:time/created {:order :desc}}
-   :from  0
-   :size  20
-   :query {:bool (merge {:filter (tags/tags-filter-query
-                                  ;; FIXME: Hardcoded anaesthesia
-                                  "anaesthesia" filters)}
-                        {:must_not {:term {:deleted? true}}
-                         :must (into []
-                                     (remove nil?)
-                                     [(when (seq term)
-                                        {:match_phrase_prefix {:text term}})
-                                      (when (and type (not= type :all))
-                                        {:term {:extract/type type}})])})}})
-;; TODO: Better prefix search:
-;; https://www.elastic.co/guide/en/elasticsearch/guide/master/_index_time_search_as_you_type.html
-;; or
-;; https://www.elastic.co/guide/en/elasticsearch/reference/current/search-suggesters-completion.html
-;; or
-;; https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-edgengram-tokenizer.html
-
-(defn search-req [query]
-  (es/search es/index query))
-
-(defn parse-search-response [res]
+(defn format-search-response [res]
   (mapv (fn [e]
           (-> e
               :_source
@@ -86,10 +57,9 @@
 (defmethod dispatch :openmind/search
   [{[_ query] :event :as req}]
   (async/go
-    (let [res   (-> (search->elastic query)
-                    search-req
+    (let [res   (-> (es/search-q query)
                     es/request<!
-                    parse-search-response)
+                    format-search-response)
           event [:openmind/search-response
                  #:openmind.components.search
                  {:results   res
@@ -214,7 +184,6 @@
 
 (defmethod dispatch :openmind/intern
   [{[_ imm] :event :as req}]
-  ;; TODO: Author check. Validation is already done in several places.
   (when-let [res (intern-and-index imm)]
     (respond-with-fallback req [:openmind/extract-metadata res])))
 

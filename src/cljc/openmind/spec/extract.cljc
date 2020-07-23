@@ -1,13 +1,12 @@
 (ns openmind.spec.extract
-  (:require [openmind.spec.shared :as u]
-            #?(:clj  [clojure.spec.alpha :as s]
-               :cljs [cljs.spec.alpha :as s])))
-
-;; Here's an idea of how to use specs to generate form validation:
-;; https://medium.com/@kirill.ishanov/building-forms-with-re-frame-and-clojure-spec-6cf1df8a114d
-;; Give it a shot
-
-;;;;; General
+  #?@
+   (:clj
+    [(:require
+      [clojure.spec.alpha :as s]
+      [openmind.spec.shared :as u]
+      [openmind.tags :as tags])]
+    :cljs
+    [(:require [cljs.spec.alpha :as s] [openmind.spec.shared :as u])]))
 
 (s/def ::extract
   (s/keys :req-un [::u/text
@@ -36,10 +35,14 @@
   ::u/url)
 
 (s/def :extract/type
-  (s/and some? keyword?))
+  #{:article :labnote})
 
 (s/def :extract/tags
-  (s/coll-of ::u/hash :kind set?))
+  (s/coll-of ::tag :kind set?))
+
+(s/def ::tag
+  #?(:clj (into #{} (keys tags/tag-tree))
+     :cljs ::u/hash))
 
 (s/def ::source
   (s/or
@@ -52,22 +55,34 @@
           :req-un [::u/url ::authors ::peer-reviewed? ::doi ::title]
           :opt-un [::abstract ::journal ::volume ::issue]))
 
+(s/def ::issue
+  (s/or :nil nil?
+        :string string?))
+
+(s/def ::volume
+  (s/or :nil nil?
+        :string string?))
+
+(s/def ::peer-reviewed?
+  boolean?)
+
 (s/def ::pubmed-reference
-  ;; TODO: Store the pubmed id separately from the URL.
   (s/keys :req [:publication/date]
           :opt-un [::volume ::issue]
           :req-un [::authors ::doi ::title ::abstract ::journal ::u/url]))
 
 (s/def :publication/date
-  inst?)
+  ::u/inst)
 
 (s/def ::authors
   (s/coll-of ::author-details :kind vector? :min-count 1))
 
 
 (s/def ::author-details
-  (s/keys :req-un []
-          :opt-un [::u/orcid-id  ::short-name ::full-name]))
+  (s/and
+   (s/keys :req-un []
+                 :opt-un [::u/orcid-id  ::short-name ::full-name])
+   not-empty))
 
 (s/def ::string
   (s/and
@@ -97,7 +112,7 @@
           :req [:observation/date]))
 
 (s/def :observation/date
-  inst?)
+  ::u/inst)
 
 (s/def :labnote/lab
   ::string)

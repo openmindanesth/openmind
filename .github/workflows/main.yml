@@ -40,6 +40,12 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-central-1
 
+      - name: tests
+        id: unit-tests
+        env:
+          S3_DATA_BUCKET: "test-data-17623"
+        run: dev/test.sh
+
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
@@ -85,20 +91,3 @@ jobs:
           service: openmind
           cluster: openmind
           wait-for-service-stability: true
-
-      # - name: Update Task and Service
-      #   id: terraform-update
-      #   env:
-      #     IMAGE_TAG: ${{ github.sha }}
-      #   run: |
-      #     cd tf
-      #     wget -O terraform.zip 'https://releases.hashicorp.com/terraform/0.12.21/terraform_0.12.21_linux_amd64.zip'
-      #     unzip terraform.zip
-      #     chmod +x terraform
-
-      #     ./terraform init
-      #     ./terraform apply -auto-approve \
-      #       -var "image-id=${IMAGE_TAG}" \
-      #       -var "orcid-client-id=${ORCID_CLIENT_ID}" \
-      #       -var "orcid-client-secret=${ORCID_CLIENT_SECRET}" \
-      #       -target=aws_ecs_service.openmind

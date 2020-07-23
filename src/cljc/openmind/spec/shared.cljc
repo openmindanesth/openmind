@@ -3,11 +3,20 @@
             [openmind.hash :as h]
             [openmind.url :as url]
             #?(:clj  [clojure.spec.alpha :as s]
-               :cljs [cljs.spec.alpha :as s])))
+               :cljs [cljs.spec.alpha :as s])
+            #?(:clj  [clojure.spec.gen.alpha :as gen]
+               :cljs [cljs.spec.gen.alpha :as gen])))
 
-(s/def :time/created inst?)
+(s/def ::inst
+ (s/and inst?
+        ;; Elasticsearch can't parse dates too far into the future. Dates in the
+        ;; far past aren't relevant either, and spec is weird about them; I've
+        ;; gotten more than one older than the earth which actually overflows
+        ;; and wraps into the far future.
+        #(< 0 (inst-ms %) 33152861806000)) )
 
-;; TODO: What makes a valid Orcid ID? Is this the right place to validate it?
+(s/def :time/created ::inst)
+
 (s/def ::orcid-id
   (s/and string? not-empty))
 
@@ -16,8 +25,15 @@
 
 (s/def :author/name string?)
 
+(defn hash-gen []
+  "Very dumb hash generator. Only hashes strings, but we're only going for
+  syntax anyway."
+  (gen/fmap h/hash (s/gen string?)))
+
 (s/def ::hash
-  h/value-ref?)
+  (s/with-gen
+    h/value-ref?
+    hash-gen))
 
 (s/def :history/previous-version
   ::hash)
@@ -50,12 +66,13 @@
 (s/def :url/domain
   (s/and string?
          not-empty
-         ;; REVIEW: This excludes top level domains. I think that's fine, but...
          #(string/includes? % ".")))
 
 (s/def ::url
-  (s/and
-   string?
-   ;; REVIEW: This works, but breaks explain, conform, etc. Spec includes regex
-   ;; operators, would the right way be to use those directly on the string?
-   #(s/valid? ::url-record (url/parse %))))
+  (s/with-gen
+    (s/and
+     string?
+     ;; REVIEW: This works, but breaks explain, conform, etc. Spec includes regex
+     ;; operators, would the right way be to use those directly on the string?
+     #(s/valid? ::url-record (url/parse %)))
+     #(s/gen #{"http://www.example.com"})))

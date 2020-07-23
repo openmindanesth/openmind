@@ -62,6 +62,4 @@
     ch))
 
 (defn unwatch [id ch]
-  ;; REVIEW: What if I just close the subscribing channel? Will that clean up
-  ;; correctly or break something internal?
   (async/unsub metadata-pub id ch))

@@ -2,7 +2,7 @@
   "This whole file is an inefficient ball of mud. I'm keeping it for historical
   reasons because the way the data store is designed, this is the only way to
   understand how it was built in the first place."
-  (:require [openmind.s3 :as s3]
+  (:require [openmind.datastore :as s3]
             [openmind.util :as util]))
 
 (def the-domain
@@ -144,7 +144,6 @@
     (invert-tag-tree tag-map (assoc (:content root) :id (:hash root)))))
 
 (def old-tag-lookup-hash
-  ;;FIXME: This should *not* be hardcoded
   #openmind.hash/ref "34101d8a82a2714923a446f4bb203a31")
 
 (def

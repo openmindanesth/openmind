@@ -2,28 +2,77 @@
   (:refer-clojure :exclude [intern])
   (:require [clojure.core.async :as async]
             [clojure.spec.alpha :as s]
+            [clojure.string :as string]
+            [openmind.datastore :as ds]
             [openmind.env :as env]
             [openmind.json :as json]
-            [openmind.s3 :as s3]
+            [openmind.tags :as tags]
             [org.httpkit.client :as http]
             [taoensso.timbre :as log])
   (:import openmind.hash.ValueRef))
 
 (def index (env/read :elastic-extract-index))
 
-(def mapping
-  {:properties {:time/created {:type :date}
-                ;; FIXME: Going back to 7.1 means no search_as_you_type
-                ;; that could be something of a problem.
-                :text         {:type :text}
-                :hash         {:type :keyword}
-                :source       {:type       :object
-                               :properties {:publication/date {:type :date}}}
-                :figure       {:type :text}
-                :tags         {:type :keyword}
-                :extract/type {:type :keyword}
+(def source-mapping
+  {:type       :object
+   :properties {:publication/date {:type  :date
+                                   :index false}
+                :observation/date {:type  :date
+                                   :index false}
+                :doi              {:type :keyword}
+                :abstract         {:type  :text
+                                   :index false}
+                :title            {:type  :text
+                                   :index false}
+                :url              {:type  :text
+                                   :index false}
+                :journal          {:type  :text
+                                   :index false}
+                :volume           {:type  :text
+                                   :index false}
+                :issue            {:type  :text
+                                   :index false}
+                :lab              {:type  :text
+                                   :index false}
+                :institution      {:type  :text
+                                   :index false}
+                :investigator     {:type  :text
+                                   :index false}
+                :authors          {:type :object
+                                   :properties
+                                   {:short-name {:type  :text
+                                                 :index false}
+                                    :full-name  {:type  :text
+                                                 :index false}
+                                    :orcid-id   {:type  :keyword
+                                                 :index false}}}}})
 
-                :author {:type :object}}})
+(def mapping
+  {:properties {:time/created             {:type :date}
+                ;; hack to combine labnotes and extracts
+                :es/pub-date              {:type :date}
+                :history/previous-version {:type  :keyword
+                                           :index false}
+                :extract/type             {:type :keyword}
+
+                :source source-mapping
+
+                :text      {:type     :text
+                            :analyzer :english}
+                :hash      {:type  :keyword
+                            :index false}
+                :figure    {:type  :text
+                            :index false}
+                :resources {:type       :object
+                            :properties {:label {:type  :text
+                                                 :index false}
+                                         :link  {:type  :keyword
+                                                 :index false}}}
+                :tags      {:type :keyword}
+                :tag-names {:type :search_as_you_type}
+                :author    {:type       :object
+                            :properties {:name     {:type :text}
+                                         :orcid-id {:type :keyword}}}}})
 
 ;;;;; REST API wrapping
 
@@ -79,6 +128,62 @@
          :url (str base-url "/" index)
          :method :put))
 
+;;;;; Searching
+
+(def sorter-map
+  {:publication-date      {:es/pub-date :desc}
+   :extract-creation-date {:time/created :desc}})
+
+;; FIXME: This is utterly attrocious. It's basically impossible to get the
+;; nesting of maps and vectors right without running the tests over an over like
+;; a trained monkey.
+(defn search-all [term]
+  (let [tokens (string/split term #"\s")]
+    {:dis_max
+     {:queries
+      (into [{:match {:text term}}]
+            (comp cat (remove nil?))
+            (concat
+             [(when (< 2 (count term))
+                [{:match_phrase_prefix {:text term}}])]
+             (map (fn [t]
+                    (concat
+                     [{:multi_match
+                       {:query  t
+                        :fields [:source.doi
+                                 :author.name
+                                 :author.orcid-id]}}]
+                     (when (< 2 (count t))
+                       [{:match_phrase_prefix {:tag-names t}}
+                        {:match_phrase_prefix {:author.name t}}])))
+                  tokens)))}}))
+
+(defn elasticise [{:keys [term filters sort-by type limit offset]}]
+  (merge
+   {:from  0
+    :size  20
+    ;; TODO: extract votes in mapping
+    ;; TODO: Advanced search
+    :query {:bool {:filter (tags/tags-filter-query
+                            ;; FIXME: Hardcoded anaesthesia
+                            "anaesthesia" filters)
+                   :must (into []
+                               (comp cat (remove nil?))
+                               (concat
+                                [(when (and type (not= type :all))
+                                   [{:term {:extract/type type}}])]
+                                [(when (seq term)
+                                   [(search-all term)])]))}}}
+   (when sort-by
+     {:sort (get sorter-map (or sort-by :extract-creation-date))})
+   (when offset
+     {:from offset})
+   (when limit
+     {:size limit})))
+
+(defn search-q [q]
+  (search index (elasticise q)))
+
 ;;;;; Wheel #6371
 
 (defn parse-response
@@ -125,38 +230,42 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def active-es-index
-  (s3/create-index
+  (ds/create-index
    "openmind.indexing/elastic-active"))
 
 (defn add-to-index [id]
-  (s3/swap-index! active-es-index (fn [i]
+  (ds/swap-index! active-es-index (fn [i]
                                     (if (empty? i)
                                       #{id}
                                       (conj i id)))))
 
 (defn replace-in-index [old new]
-  (s3/swap-index! active-es-index (fn [i]
+  (ds/swap-index! active-es-index (fn [i]
                                     (-> i
                                         (disj old)
                                         (conj new)))))
 
 (defn remove-from-index [id]
   (log/warn "Removing from elastic:" id)
-  (s3/swap-index! active-es-index (fn [i] (disj i id)))
+  (ds/swap-index! active-es-index (fn [i] (disj i id)))
   (send-off! (delete-req index (.-hash-string ^ValueRef id))))
 
 (defn index-extract!
   "Given an immutable, index the contained extract in es."
-  [imm]
+  [{{:keys [tags source]} :content :as imm}]
   (async/go
     (if (s/valid? :openmind.spec.extract/extract (:content imm))
-      ;; TODO: Index the nested object instead of flattening it.
-      (let [ext (assoc (:content imm)
-                       :hash (:hash imm)
-                       :time/created (:time/created imm))
-            key (.-hash-string ^ValueRef (:hash imm))
-            res (async/<! (send-off!
-                           (index-req index ext key)))]
+      (let [tag-names (map #(:name (get tags/tag-tree %)) tags)
+            date      (or (:publication/date source)
+                          (:observation/date source))
+            ext       (assoc (:content imm)
+                             :tag-names tag-names
+                             :es/pub-date date
+                             :hash (:hash imm)
+                             :time/created (:time/created imm))
+            key       (.-hash-string ^ValueRef (:hash imm))
+            res       (async/<! (send-off!
+                                 (index-req index ext key)))]
         (log/trace "Indexed" (:hash imm) res)
         res)
       (log/error "Trying to index invalid extract:" imm))))

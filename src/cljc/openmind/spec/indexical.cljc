@@ -49,7 +49,7 @@
   (s/coll-of ::rel/relation :kind set?))
 
 ;; TODO: Somehow we have to sync this with the :openmind.spec.comment/comment
-;; spec. This is a strict extension. Same goes for ::relation
+;; spec. This is a strict extension.
 (s/def ::comment
   (s/keys :req-un [::u/text ::u/author ::u/hash]
           :req    [:time/created]

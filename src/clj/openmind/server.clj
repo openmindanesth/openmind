@@ -69,9 +69,6 @@
   (c/GET "/chsk" req ((:ajax-get-or-ws-handshake-fn socket) req))
   (c/POST "/chsk" req ((:ajax-post-fn socket) req))
 
-  (c/GET "/favicon.ico" req {:status 404})
-  ;; REVIEW: defer to the SPA code to route everything else. Are there any
-  ;; problems with this? Particularly regarding security?
   (c/GET "*" req index))
 
 (def app

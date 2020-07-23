@@ -7,10 +7,8 @@
   ;;FIXME: This should *not* be hardcoded
   #openmind.hash/ref "fff379f5824c511757d5868c3270f046")
 
-(def
-  ^{:private true
-    :doc "Tree of taxonomy tags fetched from datastore."}
-  tag-tree
+(def tag-tree
+   "Tree of taxonomy tags fetched from datastore."
   (-> tag-lookup-hash
       s3/lookup
       :content))
@@ -25,5 +23,5 @@
          (map (fn [[k v]] (assoc v :tag k)))
          (group-by :parents)
          vals
-         (map #(map :tag %))
-         (map (fn [ts] {:terms {:tags ts}})))))
+         (map #(mapv :tag %))
+         (mapv (fn [ts] {:terms {:tags ts}})))))

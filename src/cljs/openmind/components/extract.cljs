@@ -60,10 +60,10 @@
             (let [abslink (if (string/starts-with? link "http")
                          link
                          (str "http://" link))]
-              [:h3
+              [:h4
                [:a.link-blue {:href abslink}
-                label ":"
-                [:span.plh "(" link ")"]]])))
+                [:b.text-black label ":"]
+                [:span.plh link]]])))
      resources)))
 
 (defn comments-hover [id]
@@ -243,14 +243,15 @@
            (when @open?
              (let [position (fit-to-screen @float-size @link-size)]
                [:div.absolute.ml1.mr1.hover-link.border-round.bg-plain.border-solid
-                {:style         (merge {:padding "0.1rem"
-                                        :cursor  :default
-                                        :z-index 1001}
-                                       (when orientation
-                                         {orientation 0})
-                                       position
-                                       (when-not @float-size
-                                         {:display :none}))
+                {:style (merge {:padding "0.1rem"
+                                :cursor  :default
+                                :z-index 1001}
+                               (when orientation
+                                 {orientation 0})
+                               position
+                               (when-not @float-size
+                                 {:display :none}))
+
                  :on-mouse-over halt
                  :on-mouse-out  halt}
                 [:div (when (:will-overflow position)
@@ -260,18 +261,17 @@
                  [wrapper]]])))]))))
 
 (defn sizes [id]
-  (let [node (.getElementById js/document id)
-        parent (.-parentNode node)]
-    [(.-clientHeight node) (.-clientHeight parent)]))
+  (when-let [node (.getElementById js/document id)]
+    (when-let [parent (.-parentNode node)]
+      [(.-clientHeight node) (.-clientHeight parent)])))
 
 (re-frame/reg-event-fx
  ::recentre
  (fn [{:keys [db]} [_ id]]
-   (let [[h ph] (sizes id)
-         offset (quot (- ph h) 2)]
-     (when (pos? offset)
-
-       {:db (assoc-in db [::thumbnail-offsets id] offset)}))))
+   (when-let [[h ph] (sizes id)]
+     (let [offset (quot (- ph h) 2)]
+       (when (pos? offset)
+         {:db (assoc-in db [::thumbnail-offsets id] offset)})))))
 
 (re-frame/reg-sub
  ::offsets
@@ -406,7 +406,8 @@
                    {:key (str "previous-" (.-hash-string previous-version))}))))
             (reverse history)))))
 
-(defn summary [{:keys [text author source figure tags hash resources] :as extract}
+(defn summary [{:keys [text author source figure tags hash resources]
+                :as extract}
                & [{:keys [edit-link? controls pb0? c i] :as opts
                    :or   {edit-link? true}}]]
   [:div.search-result.flex.ph
@@ -440,7 +441,7 @@
         {:orientation :left}]
        [hover-link "history" [edit-history hash]]
        [hover-link "related" [related-extracts hash]]
-       [hover-link "resources" [resource-hover resources]]
+       [hover-link "repos" [resource-hover resources]]
        [hover-link "tags" [tag-hover tags]]
        [hover-link [source-link (:extract/type extract) source]
         [source-hover (:extract/type extract) source]

@@ -1,4 +1,6 @@
 (ns openmind.hash
+  ;; FIXME: We can't hash Ratios in clj. That isn't a problem yet, but is
+  ;; annoying in testing and might break something eventually
   (:refer-clojure :exclude [hash])
   (:require [hasch.core :as h]
             [hasch.base64 :as b64]
