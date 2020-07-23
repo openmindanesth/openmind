@@ -40,6 +40,12 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-central-1
 
+      - name: tests
+        id: unit-tests
+        env:
+          S3_DATA_BUCKET: "test-data-17623"
+        run: dev/test.sh
+
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
@@ -85,4 +91,3 @@ jobs:
           service: openmind
           cluster: openmind
           wait-for-service-stability: true
-
