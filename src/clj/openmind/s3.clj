@@ -7,7 +7,7 @@
             AwsBasicCredentials StaticCredentialsProvider]
            software.amazon.awssdk.core.sync.RequestBody
            software.amazon.awssdk.regions.Region
-           [software.amazon.awssdk.services.s3 DefaultS3Client S3Client]
+           [software.amazon.awssdk.services.s3 S3Client]
            [software.amazon.awssdk.services.s3.model
             GetObjectRequest HeadObjectRequest PutObjectRequest]))
 
@@ -24,7 +24,7 @@
                    (env/read :aws-access-key)
                    (env/read :aws-secret-key))))
                 (.region Region/EU_CENTRAL_1)))
-      (DefaultS3Client/create))
+      (S3Client/create))
     (catch Exception e nil)))
 
 (defn- ^HeadObjectRequest headreq
