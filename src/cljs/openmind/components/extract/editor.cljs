@@ -629,18 +629,22 @@
                         :image-data)
                     (:image-data
                      @(re-frame/subscribe [:content content])))
-        caption (or (-> @(re-frame/subscribe [::content data-key])
-                        :figure-data
-                        :content
-                        :caption)
-                    (:caption
-                     @(re-frame/subscribe [:content content])))]
+        caption    (or (-> @(re-frame/subscribe [::content data-key])
+                           :figure-data
+                           :content
+                           :caption)
+                       (:caption
+                        @(re-frame/subscribe [:content content])))]
     [:div.flex.flex-column
-     [:div.p1.flex
-      {:style {:max-width "40rem"}}
-      [:img.border-round
+     [:div.flex
+      [:img.border-round.mb1
        {:src   image-data
-        :style {:width :max-content}}]
+        :style {:width      "100%"
+                :height     "auto"
+                :max-height "30vh"
+                :object-fit :contain
+                :display    :block
+                :max-width  "calc(90vw - 16rem)"}}]
       [:a.text-dark-grey.pl1
        {:on-click (juxt halt #(re-frame/dispatch [::remove-figure data-key]))}
        [:span "remove"]]]
@@ -668,8 +672,8 @@
                         :on-drop       (juxt halt #(reset! drag-hover? false)
                                              (partial drop-upload
                                                       data-key key))}]
-        [:div.mt1.mb2.flex.flex-column
-         [:label.p2.border-round drop-state placeholder]
+        [:div.mt3.mb4
+         [:label.p3.border-round drop-state placeholder]
          [:input {:type      :file
                   :id        id
                   :style     {:visibility :hidden}
