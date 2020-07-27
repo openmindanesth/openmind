@@ -142,6 +142,11 @@
 (defn update-relations-meta [rels m]
   (let [old-rels (:relations m)
         add      (map util/immutable (remove #(contains? old-rels %) rels))
+        ;; FIXME: This logic should be performed in the client, and the client
+        ;; should issue retractions for relations. Retractions should be values
+        ;; which get stored just like relations themselves (which are really
+        ;; assertions of realtions, not the relations themselves, whatever those
+        ;; are).
         retract  (remove #(contains? rels %) old-rels)]
     (apply comp (concat (map add-relation add)
                         (map retract-relation retract)))))

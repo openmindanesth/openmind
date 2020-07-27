@@ -310,7 +310,7 @@
 
 (defn extract-changed? [old new]
   (let [content (dissoc (:content old) :hash :time/created)]
-    (when-not (= content new)
+    (when-not (= (:hash old) (:hash (util/immutable new)))
       (util/immutable
        (assoc new :history/previous-version (:hash old))))))
 
