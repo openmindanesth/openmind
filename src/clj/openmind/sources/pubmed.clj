@@ -172,7 +172,10 @@
         (-> article
             parse-xml-string
             extract-article-info)
-        (catch Exception _ ::failed)))))
+        (catch Exception e
+          (do (log/error "error from pubmed fetch:\n"
+                         (with-out-str (.printStackTrace e)))
+              ::failed))))))
 
 (defn find-article [id]
   (async/go

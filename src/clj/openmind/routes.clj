@@ -22,8 +22,7 @@
   (cond
     (fn? ?reply-fn) (?reply-fn msg)
 
-    ;; But if it's the only way to return the result to you...
-    (not= :taoensso.sente/nil-uid uid) (send-fn uid msg)
+    (and send-fn (not= :taoensso.sente/nil-uid uid)) (send-fn uid msg)
 
     :else (log/warn "No way to return response to sender." uid msg))
   true)
