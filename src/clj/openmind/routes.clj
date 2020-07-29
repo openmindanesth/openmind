@@ -147,21 +147,24 @@
 
 (defn update-extract!
   "Handles all of the updating logic after."
-  [{{id :hash {prev :history/previous-version author :author} :content :as imm}
-    :new-extract
-    :keys [editor figure relations]}]
+  [{{id :hash {author :author} :content :as imm} :new-extract
+    :keys [editor figure relations previous-id]}]
   (async/go
     (when (valid? imm)
-      (when-not (= id prev)
+      (when-not (= id previous-id)
         (when (ds/intern imm)
-          (index/forward-metadata prev id editor)
-          (async/<! (es/retract-extract! prev))
+          (index/forward-metadata previous-id id editor)
+          (async/<! (es/retract-extract! previous-id))
           (async/<! (es/index-extract! imm))
-          (es/replace-in-index prev (:hash imm))
-          (notify/extract-edited prev id)
+          (es/replace-in-index previous-id (:hash imm))
+          (notify/extract-edited previous-id id)
           (when figure
             (ds/intern figure)))))
-    (index/edit-relations prev (:hash imm) relations)))
+
+    ;; FIXME: If relations is nil (not present), then do nothing, but if it's
+    ;; empty, wipe all relations. I don't like this, it's too dangerous.
+    (when relations
+      (index/edit-relations previous-id (:hash imm) relations))))
 
 (defmethod dispatch :openmind/update
   [{:keys [client-id send-fn ?reply-fn uid tokens]
