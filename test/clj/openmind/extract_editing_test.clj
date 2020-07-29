@@ -9,7 +9,8 @@
             [openmind.notification :as notify]
             [openmind.routes :as routes]
             [openmind.sources :as sources]
-            [openmind.util :as util]))
+            [openmind.util :as util]
+            [openmind.tags :as tags]))
 
 ;;;;; Dummy data
 
@@ -38,13 +39,16 @@
     {:full-name "Thoralf Niendorf", :short-name "Niendorf, T"}],
    :publication/date #inst "2016-01-29T05:00:00.000-00:00"})
 
+(def author
+  {:name     "Dev Johnson"
+   :orcid-id "0000-NONE"})
+
 (def ex1
   (util/immutable
    {:text         "I am and extract"
     :extract/type :article
     :tags         #{}
-    :author       {:name     "Dev Johnson"
-                   :orcid-id "0000-NONE"}
+    :author       author
     :source       pma}))
 
 (def ex2
@@ -52,21 +56,33 @@
    {:text         "I am another"
     :extract/type :article
     :tags         #{}
-    :author       {:name     "Dev Johnson"
-                   :orcid-id "0000-NONE"}
+    :author       author
     :source       pma}))
 
 (def labnote
   (util/immutable
    {:text         "Nota bene"
-    :author       {:name     "Dev Johnson"
-                   :orcid-id "0000-NONE"}
+    :author       author
     :tags         #{}
     :extract/type :labnote
     :source       {:lab              "1"
                    :investigator     "yours truly"
                    :institution      "wub"
                    :observation/date (java.util.Date.)}}))
+
+(def trel
+  (util/immutable
+   {:entity (:hash ex1)
+    :attribute :related-to
+    :value (:hash ex2)
+    :author author}))
+
+(def labrel
+  (util/immutable {:entity    (:hash labnote)
+                   :value     (:hash ex1)
+                   :attribute :confirmed-by
+                   :author    author}))
+
 ;;;;; Stubs
 
 (def s3-mock (atom {}))
@@ -75,26 +91,20 @@
 
 ;;;;; tests
 
-(defn queues-cleared []
+(defn queues-cleared? []
   (dosync
    (and (empty? @ds/running)
         (empty? (ensure @#'ds/intern-queue))
         (every? empty? (map (comp ensure :tx-queue) @ds/index-map)))))
 
 (defn wait-for-queues
-  "Polls intern-queue until all writes are finished. good enough for tests."
+  "Polls intern and indexing queues until all writes are finished. good enough
+  for tests."
   []
   (loop []
-    (when-not (queues-cleared)
+    (when-not (queues-cleared?)
       (Thread/sleep 100)
       (recur))))
-
-(defn ws-req [t ex]
-  {:uid    "uid1"
-   :id     t
-   :event  [t {:extract ex}]
-   :tokens {:name     "Dev Johnson 1"
-            :orcid-id "0000-NONE"}})
 
 (defn summarise-notifications []
   {:created (->> @notifications
@@ -130,9 +140,98 @@
                 [ex1 ex2 labnote]))
 
 
+  (routes/intern-and-index trel)
+
+  (wait-for-queues)
+
+  ;; Relation was added to both extracts
+  (t/is (= #{(:content trel)}
+           (:relations (indexing/extract-metadata (:hash ex2)))
+           (:relations (indexing/extract-metadata (:hash ex1)))))
+
+  (async/<!! (routes/update-extract! {:editor      author
+                                      :previous-id (:hash ex2)
+                                      :relations   #{}}))
+
+  (wait-for-queues)
+
+  ;; Relation was deleted from both extracts
+  (t/is (= #{}
+           (:relations (indexing/extract-metadata (:hash ex2)))
+           (:relations (indexing/extract-metadata (:hash ex1)))))
+
+  (async/<!! (routes/update-extract!
+              {:editor      author
+               :previous-id (:hash labnote)
+               :relations   #{(:content labrel)}}))
+
+  (wait-for-queues)
+
+  (t/is (= #{(:content labrel)}
+           (:relations (indexing/extract-metadata (:hash labnote)))
+           (:relations (indexing/extract-metadata (:hash ex1)))))
+
+  (let [figure (util/immutable
+                {:image-data "data::"
+                 :author     author
+                 :caption    "I'm not real."})
+        nl     (util/immutable
+                (assoc (:content labnote)
+                       :history/previous-version (:hash labnote)
+                       :figure (:hash figure)
+                       :tags #{(key (first tags/tag-tree))}))]
+    (async/<!!
+     (routes/update-extract!
+      {:editor      author
+       :figure      figure
+       :new-extract nl
+       :previous-id (:hash labnote)}))
+
+    (wait-for-queues)
+
+    (t/is (= (get @s3-mock (:hash figure)) figure)
+          "Figure was not interned during update.")
+
+    (t/is (= (assoc (:content labrel)
+                    :entity (:hash nl))
+             (first (:relations (indexing/extract-metadata (:hash nl))))))
+
+    ;; REVIEW: I don't think that this is the behaviour we want. But it is the
+    ;; behaviour we have.
+    ;;
+    ;; Instead the indexed relation in the metadata of ex1 should change to
+    ;; reflect the new version of labnote (nl).
+    (t/is (= (:content labrel)
+             (first (:relations (indexing/extract-metadata (:hash ex1))))))
+
+
+    (let [r3 {:author author
+              :entity (:hash nl)
+              :attribute :contrast-to
+              :value (:hash ex2)}]
+      (async/<!!
+       (routes/update-extract!
+        {:editor author
+         :previous-id (:hash nl)
+         :relations #{r3}}))
+
+      (wait-for-queues)
+
+      ;; FIXME: This is one big reason why relations should change to reflect
+      ;; new versions of extracts.
+      (t/is (= (:content labrel)
+               (first (:relations (indexing/extract-metadata (:hash ex1))))))
+
+      (t/is (= #{r3}
+               (:relations (indexing/extract-metadata (:hash ex2)))
+               (:relations (indexing/extract-metadata (:hash nl))))))
+
+    )
+
+
   )
 
-(defn test-ns-hook []
+(defn isolate [f]
   (with-redefs [s3/exists? #(contains? @s3-mock %)
                 s3/lookup  #(get @s3-mock % nil)
                 s3/write!  (fn [k o] (swap! s3-mock assoc k o))
@@ -143,7 +242,10 @@
                                                  (swap! notifications conj m)))
 
                 es/index-extract!   (fn [_] (async/go {:status 200}))
-                es/add-to-index     (constantly nil)
-                es/retract-extract! (constantly nil)
-                es/replace-in-index (constantly nil)]
-    (extract-lifecycle)))
+                es/add-to-index     (fn [_] (async/go {:status 200}))
+                es/retract-extract! (fn [_] (async/go {:status 200}))
+                es/replace-in-index (fn [_ _] (async/go {:status 200}))]
+    (f)))
+
+(defn test-ns-hook []
+  (isolate extract-lifecycle))
