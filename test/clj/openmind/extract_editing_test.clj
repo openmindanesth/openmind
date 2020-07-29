@@ -73,51 +73,77 @@
 
 (def notifications (atom []))
 
-;; REVIEW: I'm prempting the notification system to make sure that critical
-;; messages are sent, but I'm not reverting it. This might not play too well
-;; with other tests.
-;;
-;; N.B.: You'll have to restart the server if you're running it in the same repl as this test.
-
-(notify/init-notification-system!
- (fn [_ m] (swap! notifications conj m))
- (fn [] ["uid1"]))
-
 ;;;;; tests
 
-(defn wait-for-intern
+(defn queues-cleared []
+  (dosync
+   (and (empty? @ds/running)
+        (empty? (ensure @#'ds/intern-queue))
+        (every? empty? (map (comp ensure :tx-queue) @ds/index-map)))))
+
+(defn wait-for-queues
   "Polls intern-queue until all writes are finished. good enough for tests."
   []
-  (let [q @#'ds/intern-queue]
-    (loop []
-      (when (or (seq @q)
-                (contains? @ds/running q))
-        (Thread/sleep 100)
-        (recur)))))
+  (loop []
+    (when-not (queues-cleared)
+      (Thread/sleep 100)
+      (recur))))
 
 (defn ws-req [t ex]
   {:uid    "uid1"
    :id     t
    :event  [t {:extract ex}]
-   :tokens {:name     "Dev Johnson"
+   :tokens {:name     "Dev Johnson 1"
             :orcid-id "0000-NONE"}})
 
+(defn summarise-notifications []
+  {:created (->> @notifications
+                 (filter #(= (first %) :openmind/extract-created))
+                 (map second)
+                 (into #{}))
+   :updated (->> @notifications
+                 (filter #(= (first %) :openmind/updated-metadata))
+                 (map second)
+                 (map :extract)
+                 frequencies)})
+
 (t/deftest extract-lifecycle
-  (with-redefs [s3/exists?          #(contains? @s3-mock %)
-                s3/lookup           #(get @s3-mock % nil)
-                s3/write!           (fn [k o] (swap! s3-mock assoc k o))
+  (run! #(async/<!! (routes/write-extract! % [] "uid1"))
+        [ex1 ex2 labnote])
+
+  (wait-for-queues)
+
+  ;; Extracts added to datastore
+  (t/is (every? #(contains? @s3-mock (:hash %)) [ex1 ex2 labnote]))
+
+  ;; blank metadata was added to each extract
+  (t/is (every? #(= (indexing/extract-metadata (:hash %))
+                    {:extract (:hash %)})
+                [ex1 ex2 labnote]))
+
+  ;; Creation notifications
+  (t/is (every? #(contains? (:created (summarise-notifications)) (:hash %))
+                [ex1 ex2 labnote]))
+
+  ;; Metadata creation (update is creation in this context) notifications
+  (t/is (every? #(contains? (:updated (summarise-notifications)) (:hash %))
+                [ex1 ex2 labnote]))
+
+
+  )
+
+(defn test-ns-hook []
+  (with-redefs [s3/exists? #(contains? @s3-mock %)
+                s3/lookup  #(get @s3-mock % nil)
+                s3/write!  (fn [k o] (swap! s3-mock assoc k o))
+
+                notify/get-all-connections-fn (atom (fn [] ["uid1"]))
+                notify/send-fn                (atom
+                                               (fn [_ m]
+                                                 (swap! notifications conj m)))
+
+                es/index-extract!   (fn [_] (async/go {:status 200}))
                 es/add-to-index     (constantly nil)
                 es/retract-extract! (constantly nil)
                 es/replace-in-index (constantly nil)]
-
-    (routes/dispatch (ws-req :openmind/index ex1))
-    (routes/dispatch (ws-req :openmind/index ex2))
-    (routes/dispatch (ws-req :openmind/index labnote))
-
-    (wait-for-intern)
-
-    (t/is (every? #(contains? @s3-mock (:hash %)) [ex1 ex2 labnote]))
-    (t/is (every? #(= (indexing/extract-metadata (:hash %))
-                     {:extract (:hash %)})
-                  [ex1 ex2 labnote]))
-    ))
+    (extract-lifecycle)))
