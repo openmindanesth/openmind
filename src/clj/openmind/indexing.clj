@@ -61,7 +61,6 @@
   (ds/swap-index! extract-metadata-index
                   (txfns/forward-metadata prev id editor)))
 
-
 (defn retract-extract! [id]
   (log/warn "Retracting:" id)
   (ds/swap-index! extract-metadata-index
