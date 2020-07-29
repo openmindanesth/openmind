@@ -194,7 +194,8 @@
 
     (t/is (= (assoc (:content labrel)
                     :entity (:hash nl))
-             (first (:relations (indexing/extract-metadata (:hash nl))))))
+             (first (:relations (indexing/extract-metadata (:hash nl)))))
+          "relation entity was not updated during metadata migration.")
 
     ;; REVIEW: I don't think that this is the behaviour we want. But it is the
     ;; behaviour we have.
