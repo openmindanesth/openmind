@@ -79,7 +79,7 @@
    :user-agent "Openmind server"})
 
 (def base-url
-  (let [^String url (env/read :elastic-url)]
+  (when-let [^String url (env/read :elastic-url)]
     (if (.endsWith url "/")
       (apply str (butlast url))
       url)))
