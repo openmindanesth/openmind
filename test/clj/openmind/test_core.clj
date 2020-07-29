@@ -12,7 +12,6 @@
   (let [summary (t/run-tests 'openmind.s3-test
                              'openmind.sources-test
                              'openmind.extract-editing-test)]
-    (println summary)
     (if (and (= 0 (:fail summary))
              (= 0 (:error summary)))
       (System/exit 0)
