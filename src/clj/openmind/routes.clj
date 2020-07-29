@@ -2,7 +2,7 @@
   (:require [clojure.core.async :as async]
             [clojure.spec.alpha :as s]
             [clojure.string :as string]
-            [openmind.datastore :as s3]
+            [openmind.datastore :as ds]
             [openmind.elastic :as es]
             [openmind.env :as env]
             [openmind.indexing :as index]
@@ -28,7 +28,7 @@
   true)
 
 (defn intern-and-index [imm]
- (when (s3/intern imm)
+ (when (ds/intern imm)
    (index/index imm)))
 
 (defmulti dispatch (fn [{:keys [id] :as e}]
@@ -113,13 +113,20 @@
 
 (defn write-extract!
   "Saves extract to S3 and indexes it in elastic."
-  [extract]
+  [extract extras uid]
   (async/go
-    (when (s3/intern extract)
-      (let [res (async/<! (es/index-extract! extract))]
-        (es/add-to-index (:hash extract))
-        (notify/extract-created (:hash extract))
-        res))))
+    (when (valid? extract)
+      (notify/notify-on-creation uid (:hash extract))
+      (when (ds/intern extract)
+        (let [res (async/<! (es/index-extract! extract))]
+          (es/add-to-index (:hash extract))
+          (notify/extract-created (:hash extract))
+          (if (and (:status res) (<= 200 (:status res) 201))
+            (do
+              (index/index extract)
+              (run! intern-and-index extras))
+            (log/error "Failed to index new extract:\n" extract
+                       "\nresponse from elastic:\n" res)))))))
 
 (defmethod dispatch :openmind/index
   [{:keys [uid tokens] [_ {:keys [extract extras]}] :event :as req}]
@@ -127,30 +134,8 @@
     (async/go
       (when (check-author (select-keys (:orcid tokens) [:name :orcid-id])
                           (:author (:content extract)))
-        (when (valid? extract)
-          (notify/notify-on-creation uid (:hash extract))
-          (when-let [res (write-extract! extract)]
-            (let [res (async/<! res)]
-              (if (and (:status res) (<= 200 (:status res) 299))
-                (do
-                  (index/index extract)
-                  (run! intern-and-index extras))
-                (log/error "Failed to index new extract:\n" extract
-                           "\nresponse from elastic:\n" res)))))))
-    (respond-with-fallback
-     req [:openmind/index-result {:status :success}])))
-
-(defn update-extract!
-  [{id :hash {prev :history/previous-version author :author} :content :as imm}
-   editor]
-  (async/go
-    (when-not (= id prev)
-      (when (s3/intern imm)
-        (index/forward-metadata prev id editor)
-        (async/<! (es/retract-extract! prev))
-        (async/<! (es/index-extract! imm))
-        (es/replace-in-index prev (:hash imm))
-        (notify/extract-edited prev id)))))
+        (write-extract! extract extras uid)))
+    (respond-with-fallback req [:openmind/index-result {:status :success}])))
 
 (defn valid-edit?
   "Checks that the edit is legitimate. Currently that only means that the author
@@ -158,28 +143,41 @@
   [prev-id new-extract]
   (or (empty? new-extract)
       (= (:author (:content new-extract))
-         (-> prev-id s3/lookup :content :author))))
+         (-> prev-id ds/lookup :content :author))))
+
+(defn update-extract!
+  "Handles all of the updating logic after."
+  [{{id :hash {prev :history/previous-version author :author} :content :as imm}
+    :new-extract
+    :keys [editor figure relations]}]
+  (async/go
+    (when (valid? imm)
+      (when-not (= id prev)
+        (when (ds/intern imm)
+          (index/forward-metadata prev id editor)
+          (async/<! (es/retract-extract! prev))
+          (async/<! (es/index-extract! imm))
+          (es/replace-in-index prev (:hash imm))
+          (notify/extract-edited prev id)
+          (when figure
+            (ds/intern figure)))))
+    (index/edit-relations prev (:hash imm) relations)))
 
 (defmethod dispatch :openmind/update
   [{:keys [client-id send-fn ?reply-fn uid tokens]
-    [_ {:keys [previous-id new-extract figure relations editor]}] :event
+
+    [_ {:keys [previous-id new-extract editor] :as mesg}] :event
+
     :as req}]
   (when (or (not= uid :taoensso.sente/nil-uid) env/dev-mode?)
     (async/go
       (when (check-author (select-keys (:orcid tokens) [:name :orcid-id]) editor)
         (when (valid-edit? previous-id new-extract)
           (notify/notify-on-creation uid (:hash new-extract))
-          (when new-extract
-            (when (valid? new-extract)
-              (async/<! (update-extract! new-extract editor))
-              (when figure
-                (s3/intern figure))))
-
-          (index/edit-relations previous-id (:hash new-extract) relations))))
+          (update-extract! mesg))))
     ;; FIXME: No feedback if something goes wrong.
-    (respond-with-fallback
-     req [:openmind/update-response {:status :success
-                                     :id     previous-id}])))
+    (respond-with-fallback req [:openmind/update-response
+                                {:status :success :id previous-id}])))
 
 (defmethod dispatch :openmind/intern
   [{[_ imm] :event :as req}]
