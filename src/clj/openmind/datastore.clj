@@ -39,8 +39,9 @@
                     "which already exists. Doing nothing."))
         (do
           (log/trace "Interning object\n" obj)
-          (s3/write! key obj)
-          (swap! recently-added dissoc key)))))
+          (s3/write! key obj)))
+      (swap! recently-added dissoc key)
+      nil))
 
 (def running
   (atom #{}))
