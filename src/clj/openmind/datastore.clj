@@ -26,7 +26,7 @@
 
 (defn- get-all [q]
   (dosync
-   (let [xs (seq @q)]
+   (let [xs (seq (ensure q))]
      (ref-set q (clojure.lang.PersistentQueue/EMPTY))
      xs)))
 
@@ -39,8 +39,9 @@
                     "which already exists. Doing nothing."))
         (do
           (log/trace "Interning object\n" obj)
-          (s3/write! key obj)
-          (swap! recently-added dissoc key)))))
+          (s3/write! key obj)))
+      (swap! recently-added dissoc key)
+      nil))
 
 (def running
   (atom #{}))

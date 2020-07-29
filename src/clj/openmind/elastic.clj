@@ -40,10 +40,8 @@
                                    :index false}
                 :authors          {:type :object
                                    :properties
-                                   {:short-name {:type  :text
-                                                 :index false}
-                                    :full-name  {:type  :text
-                                                 :index false}
+                                   {:short-name {:type  :text}
+                                    :full-name  {:type  :text}
                                     :orcid-id   {:type  :keyword
                                                  :index false}}}}})
 
