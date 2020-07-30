@@ -1,5 +1,6 @@
 (ns openmind.components.search
-  (:require [openmind.components.extract :as extract]
+  (:require [clojure.string :as string]
+            [openmind.components.extract :as extract]
             [openmind.components.tags :as tags]
             [openmind.events :as events]
             [re-frame.core :as re-frame]))
@@ -132,17 +133,55 @@
                              ::response-number nonce)
                       (update :openmind.components.extract.core/metadata
                               merge meta-ids))
-      :dispatch-n (mapv (fn [e]
-                          [:openmind.components.extract.core/add-extract
-                           e (get meta-ids (:hash e))])
-                        results)})))
+      :dispatch-n (into [[:openmind.components.window/unspin]]
+                        (mapv (fn [e]
+                                [:openmind.components.extract.core/add-extract
+                                 e (get meta-ids (:hash e))])
+                              results))})))
 
 (re-frame/reg-event-fx
- ::update-term
+ ::search
  (fn [cofx [_ term]]
    (let [query (-> cofx :db :openmind.router/route :parameters :query)]
-     {:dispatch [:navigate {:route :search
-                            :query (assoc query :term term)}]})))
+     {:dispatch-n [[:navigate {:route :search
+                                :query (assoc query :term term)}]
+                   [:openmind.components.window/spin]]})))
+
+(re-frame/reg-event-db
+ ::update-term
+ (fn [db [_ term]]
+   (assoc db ::temp-search term)))
+
+(re-frame/reg-sub
+ ::term
+ (fn [db]
+   (::temp-search db)))
+
+(defn search-box []
+  (let [search-term @(re-frame/subscribe [::term])]
+    [:div.flex {:style {:height "100%"}}
+     [:input.grow-2 (merge {:type      :text
+                            :style     {:height "100%"}
+                            :on-change (fn [e]
+                                         (let [v (-> e .-target .-value)]
+                                           (re-frame/dispatch
+                                            [::update-term v])))
+                            :on-key-press (fn [e]
+                                            (when (= 13 (.-which e))
+                                              (let [t (-> e .-target .-value
+                                                          string/trim)]
+                                                (re-frame/dispatch [::search t])
+                                                (re-frame/dispatch
+                                                 [::update-term t]))))}
+                    (if (empty? search-term)
+                      {:value       nil
+                       :placeholder "specific term"}
+                      {:value search-term}))]
+     [:button.border-round.text-white.bg-blue.ph.mlh
+      {:on-click (fn [_]
+                   (re-frame/dispatch [::search search-term]))
+       :style    {:height "100%"}}
+      "search"]]))
 
 (defn search-results []
   (let [results @(re-frame/subscribe [::extracts])]

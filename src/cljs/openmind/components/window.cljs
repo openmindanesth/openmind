@@ -116,41 +116,27 @@
 
 
 (defn title-bar []
-  (let [search-term (-> (re-frame/subscribe [:route])
-                        deref
-                        :parameters
-                        :query
-                        :term)]
-    [:div
-     [:div.flex.space-between.mr2
-      [:button.border-round.menu-button
-       {:id       "menu-button"
-        :style    {:z-index      1000
-                   :border-width "2px"}
-        :on-click #(re-frame/dispatch (if @(re-frame/subscribe [::subs/menu-open?])
-                                        [::events/close-menu]
-                                        [::events/open-menu]))}
-       [:span
-        {:style {:padding         "0.2rem"
-                 :text-decoration :underline}}
-        "menu"]]
-      [:a.ctext.grow-1.pl1.pr1.xxl.pth.plain
-       {:href  (href :search)
-        :style {:cursor :pointer}}
-       "open" [:b "mind"]]
-      ;; REVIEW: I think this component should be with the rest of the search
-      ;; logic.
-      [:input.grow-2 (merge {:type      :text
-                             :on-change (fn [e]
-                                          (let [v (-> e .-target .-value)]
-                                            (re-frame/dispatch
-                                             [::search/update-term v])))}
-                            (if (empty? search-term)
-                              {:value       nil
-                               :placeholder "specific term"}
-                              {:value search-term}))]]
-     (when @(re-frame/subscribe [::subs/menu-open?])
-       [menu])]))
+  [:div
+   [:div.flex.space-between.mr2
+    [:button.border-round.menu-button
+     {:id       "menu-button"
+      :style    {:z-index      1000
+                 :border-width "2px"}
+      :on-click #(re-frame/dispatch (if @(re-frame/subscribe [::subs/menu-open?])
+                                      [::events/close-menu]
+                                      [::events/open-menu]))}
+     [:span
+      {:style {:padding         "0.2rem"
+               :text-decoration :underline}}
+      "menu"]]
+    [:a.ctext.grow-1.pl1.pr1.xxl.pth.plain
+     {:href  (href :search)
+      :style {:cursor :pointer}}
+     "open" [:b "mind"]]
+    [:div.grow-2
+     [search/search-box]]]
+   (when @(re-frame/subscribe [::subs/menu-open?])
+     [menu])])
 
 (re-frame/reg-sub
  ::status-message
