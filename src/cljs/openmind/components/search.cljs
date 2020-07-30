@@ -110,9 +110,10 @@
    ;; TODO: infinite scroll
    (let [nonce (-> cofx :db ::nonce inc)]
      {:db       (assoc (:db cofx) ::nonce nonce)
-      :dispatch [:->server
-                 [:openmind/search (assoc (prepare-search query nonce)
-                                          :search-id id)]]})))
+      :dispatch-n [[:->server
+                    [:openmind/search (assoc (prepare-search query nonce)
+                                             :search-id id)]]
+                   [:openmind.components.window/spin]]})))
 
 (re-frame/reg-event-fx
  ::refresh-search
@@ -143,9 +144,7 @@
  ::search
  (fn [cofx [_ term]]
    (let [query (-> cofx :db :openmind.router/route :parameters :query)]
-     {:dispatch-n [[:navigate {:route :search
-                                :query (assoc query :term term)}]
-                   [:openmind.components.window/spin]]})))
+     {:dispatch [:navigate {:route :search :query (assoc query :term term)}]})))
 
 (re-frame/reg-event-db
  ::update-term
@@ -158,14 +157,18 @@
    (::temp-search db)))
 
 (defn search-box []
-  (let [search-term @(re-frame/subscribe [::term])]
+  (let [search-term @(re-frame/subscribe [::term])
+        spinning?   @(re-frame/subscribe [:openmind.components.window/spinner])]
     [:div.flex {:style {:height "100%"}}
-     [:input.grow-2 (merge {:type      :text
-                            :style     {:height "100%"}
-                            :on-change (fn [e]
-                                         (let [v (-> e .-target .-value)]
-                                           (re-frame/dispatch
-                                            [::update-term v])))
+     [:input.grow-2 (merge {:type         :text
+                            :style        (merge
+                                           {:height "100%"}
+                                           (when spinning?
+                                             {:cursor :wait}))
+                            :on-change    (fn [e]
+                                            (let [v (-> e .-target .-value)]
+                                              (re-frame/dispatch
+                                               [::update-term v])))
                             :on-key-press (fn [e]
                                             (when (= 13 (.-which e))
                                               (let [t (-> e .-target .-value
@@ -180,7 +183,10 @@
      [:button.border-round.text-white.bg-blue.ph.mlh
       {:on-click (fn [_]
                    (re-frame/dispatch [::search search-term]))
-       :style    {:height "100%"}}
+       :style    (merge
+                  {:height "100%"}
+                  (when spinning?
+                    {:cursor :wait}))}
       "search"]]))
 
 (defn search-results []
