@@ -435,7 +435,6 @@
         {:orientation :left
          :hover?      true}]]
       [:div.flex.flex-wrap.space-between.full-width
-
        [hover-link "comments"
         [comments-hover hash]
         {:orientation :left}]

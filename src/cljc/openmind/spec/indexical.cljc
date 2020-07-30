@@ -19,15 +19,12 @@
   (s/or
    :tag-lookup-table ::tag-lookup
    :es-index ::searchable-index
-   :tx-log ::tx-log
+   :tx-log-item ::tx-log-item
    :extract-metadata ::extract-metadata
    :extract-metadata-table ::extract-metadata-table))
 
 (s/def ::searchable-index
   (s/coll-of ::u/hash :kind set?))
-
-(s/def ::tx-log
-  (s/coll-of ::u/hash :kind vector?))
 
 (s/def ::extract-metadata-table
   (s/map-of ::u/hash ::u/hash))
@@ -51,10 +48,14 @@
   (s/coll-of ::comment  :distinct true))
 
 (s/def ::relations
-  (s/coll-of ::rel/relation :kind set?))
+  (s/coll-of ::relation :kind set?))
 
-;; TODO: Somehow we have to sync this with the :openmind.spec.comment/comment
-;; spec. This is a strict extension.
+(s/def ::relation
+  (s/keys :req-un [::entity
+                   ::attribute
+                   ::value
+                   ::author]))
+
 (s/def ::comment
   (s/keys :req-un [::u/text ::author ::u/hash]
           :req    [:time/created]
@@ -75,8 +76,8 @@
 
 (s/def ::tx-log-item
   (s/cat :type  ::assertion-type
-         :agent ::author
          :item  ::u/hash
+         :agent ::author
          :time  :time/created))
 
 (s/def ::assertion-type
