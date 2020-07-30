@@ -8,7 +8,7 @@
 
 (s/def ::figure
   (s/keys
-   :req-un [::image-data ::u/author]
+   :req-un [::image-data]
    :opt-un [::caption]))
 
 ;; REVIEW: should the same image with different captions share the image-data?

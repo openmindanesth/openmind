@@ -10,7 +10,6 @@
 
 (s/def ::extract
   (s/keys :req-un [::u/text
-                   ::u/author
                    :extract/tags
                    ::source]
           :req [:extract/type]

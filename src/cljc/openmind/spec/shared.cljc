@@ -20,11 +20,6 @@
 (s/def ::orcid-id
   (s/and string? not-empty))
 
-(s/def :openmind.spec.shared/author
-  (s/keys :req-un [:author/name ::orcid-id]))
-
-(s/def :author/name string?)
-
 (defn hash-gen []
   "Very dumb hash generator. Only hashes strings, but we're only going for
   syntax anyway."

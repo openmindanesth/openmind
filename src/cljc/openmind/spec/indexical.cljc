@@ -7,6 +7,11 @@
             #?(:clj  [clojure.spec.alpha :as s]
                :cljs [cljs.spec.alpha :as s])))
 
+(s/def ::author
+  (s/keys :req-un [:author/name ::orcid-id]))
+
+(s/def :author/name string?)
+
 (s/def ::tag-lookup
   (s/map-of ::u/hash ::tag/tag))
 
@@ -40,7 +45,7 @@
 (s/def ::edit
   (s/keys :req [:history/previous-version
                 :time/created]
-          :req-un [::u/author]))
+          :req-un [::author]))
 
 (s/def ::comments
   (s/coll-of ::comment  :distinct true))
@@ -51,7 +56,7 @@
 ;; TODO: Somehow we have to sync this with the :openmind.spec.comment/comment
 ;; spec. This is a strict extension.
 (s/def ::comment
-  (s/keys :req-un [::u/text ::u/author ::u/hash]
+  (s/keys :req-un [::u/text ::author ::u/hash]
           :req    [:time/created]
           :opt-un [::replies ::rank ::votes]))
 
@@ -60,10 +65,19 @@
                    ::u/hash]))
 
 (s/def ::votes
-  (s/map-of ::u/author ::vote-summary))
+  (s/map-of ::author ::vote-summary))
 
 (s/def ::replies
   ::comments)
 
 (s/def ::rank
   int?)
+
+(s/def ::tx-log-item
+  (s/cat :type  ::assertion-type
+         :agent ::author
+         :item  ::u/hash
+         :time  :time/created))
+
+(s/def ::assertion-type
+  #{:assert :retract})

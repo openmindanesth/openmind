@@ -6,8 +6,7 @@
 (s/def ::relation
   (s/keys :req-un [::entity
                    ::attribute
-                   ::value
-                   ::u/author]))
+                   ::value]))
 
 (s/def ::attribute
   keyword?)
