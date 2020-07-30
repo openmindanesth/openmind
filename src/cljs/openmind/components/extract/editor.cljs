@@ -1,6 +1,6 @@
 (ns openmind.components.extract.editor
   (:require [cljs.spec.alpha :as s]
-            [clojure.data :as set]
+            [clojure.set :as set]
             [clojure.string :as string]
             [openmind.components.comment :as comment]
             [openmind.components.common :as common :refer [halt]]
@@ -42,7 +42,6 @@
       {:errors (assoc (validation/interpret-explanation err)
                       :source source-err
                       :resources (validate-resources extract))})))
-
 
 (def extract-keys
   [:text
@@ -155,12 +154,6 @@
      {:db (update db ::extracts assoc id {:content content})})))
 
 (re-frame/reg-event-db
- ::reconcile-metadata
- (fn [db [_ hash metadata]]
-   (update-in db [::extracts hash :content]
-              assoc :relations (:relations metadata))))
-
-(re-frame/reg-event-db
  ::set-figure-data
  (fn [db [_ fid id]]
    (assoc-in db [::extracts id :content :figure-data]
@@ -267,6 +260,7 @@
  ::clear-related-search
  (fn [db]
    (dissoc db ::related-search-results)))
+
 
 (re-frame/reg-event-db
  ::form-edit
@@ -975,18 +969,25 @@
              :right "5px"}}
     "x"]])
 
-(defn relation-summary [{:keys [content]}]
-  (let [summary (into {} (map (fn [[k v]] [k (count v)]))
-                      (group-by :attribute content))]
+(defn relation-summary [{:keys [data-key]}]
+  (let [base-rels   @(re-frame/subscribe [:openmind.components.extract/relations])
+        extract     @(re-frame/subscribe [::extract data-key])
+        new-rels    (:new-relations extract)
+        retractions (:retracted-relations extract)
+        rel-display (set/difference (set/union base-rels new-rels)
+                                    retractions)
+        summary     (into {} (map (fn [[k v]] [k (count v)]))
+                          (group-by :attribute rel-display))]
+    (println extract)
     (into [:div.flex.flex-column]
           (map (fn [a]
                  (let [c (get summary a)]
                    (when (< 0 c)
                      [:div {:style {:margin-top "3rem"
-                                    :max-width "12rem"}}
+                                    :max-width  "12rem"}}
                       [:span
                        {:style {:display :inline-block
-                                :width "70%"}}
+                                :width   "70%"}}
                        (get extract/relation-names a)]
                       [:span.p1.border-solid.border-round
                        {:style {:width "20%"}}
@@ -994,15 +995,15 @@
           [:related :confirmed :contrast])))
 
 (defn relation [data-key {:keys [attribute value entity author] :as rel}]
-  (let [other (if (= data-key entity) value entity)
+  (let [other   (if (= data-key entity) value entity)
         extract @(re-frame/subscribe [:content other])
-        login @(re-frame/subscribe [:openmind.subs/login-info])]
+        login   @(re-frame/subscribe [:openmind.subs/login-info])]
     [:span
      (when (= login author)
        [cancel-button #(re-frame/dispatch [::remove-relation data-key rel])])
      [extract/summary extract
-      {:controls (extract/relation-meta attribute)
-       :edit-link?   false}]]))
+      {:controls   (extract/relation-meta attribute)
+       :edit-link? false}]]))
 
 (def scrollbox-style
   {:style {:max-height      "40rem"
@@ -1023,22 +1024,15 @@
                               [(if (= entity data-key) value entity) rel]))
                        (:relations @(re-frame/subscribe [::content data-key])))]
     (into [:div.flex.flex-column scrollbox-style]
-          (concat
-           (into []
-                 (comp
-                  (remove (fn [id] (contains? selected id)))
-                  (map (fn [id] @(re-frame/subscribe [:content id])))
-                  (map (fn [extract]
-                         [extract/summary extract
-                          {:controls (related-buttons data-key)
-                           :edit-link? false}])))
-                 results)
-           (into []
-                 (comp
-                  (map #(get selected %))
-                  (remove nil?)
-                  (map (partial relation data-key)))
-                 results)))))
+          (into []
+                (comp
+                 (remove (fn [id] (contains? selected id)))
+                 (map (fn [id] @(re-frame/subscribe [:content id])))
+                 (map (fn [extract]
+                        [extract/summary extract
+                         {:controls (related-buttons data-key)
+                          :edit-link? false}])))
+                results))))
 
 (defn similar-extracts [{:keys [data-key] :as opts}]
   (let [open? (r/atom true)]
@@ -1169,46 +1163,11 @@
     :key         :tags
     :full-width? true}])
 
-(re-frame/reg-sub
- ::invisihack
- (fn [db [_ id]]
-   (contains? (::invisihack db) id)))
-
-(re-frame/reg-event-db
- ::start-hack
- (fn [db [_ id]]
-   (if (contains? db ::invisihack)
-     (update db ::invisihack conj id)
-     (assoc db ::invisihack #{id}))))
-
-(re-frame/reg-event-db
- ::end-hack
- (fn [db [_ id]]
-   (update db ::invisihack disj id)))
-
-(defn invisihack [id]
-  (when-not (= id ::new)
-      (let [content @(re-frame/subscribe [::content id])
-            metadata @(re-frame/subscribe [:extract-metadata id])]
-        (when metadata
-          (when (not= (:relations content) (:relations metadata))
-            ;; HACK: Issuing events from the component is not recommended. The
-            ;; problem is that I need an event to react to a subscription that
-            ;; reacts to events that ... Subscribptions are beautifully
-            ;; reactive, but trying to have an event only process if a chain
-            ;; of previous events are already complete eludes me. Hence this.
-            (re-frame/dispatch [::reconcile-metadata id metadata]))
-          (re-frame/dispatch [::end-hack id]))))
-  [:div {:style {:display :none}}])
-
 (defn extract-editor
   [{{:keys [id] :or {id ::new}} :path-params}]
-  (let [id (if (= ::new id) id (edn/read-string id))
-        invisihack? @(re-frame/subscribe [::invisihack id])]
+  (let [id (if (= ::new id) id (edn/read-string id))]
     (into
      [:div.flex.flex-column.flex-start.pl2.pr2
-      (when invisihack?
-        [invisihack id])
       [:div.flex.space-around
        [:h2 (if (= ::new id)
               "create a new extract"
@@ -1242,6 +1201,5 @@
                             (re-frame/dispatch [::clear nil])
                             (let [id (edn/read-string id)]
                               (when-not @(re-frame/subscribe [::extract id])
-                                (re-frame/dispatch [::start-hack id])
                                 (re-frame/dispatch
                                  [:ensure id [::editing-copy id]]))))}]}]])
