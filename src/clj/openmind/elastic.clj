@@ -136,7 +136,7 @@
 ;; nesting of maps and vectors right without running the tests over an over like
 ;; a trained monkey.
 (defn search-all [term]
-  (let [tokens (string/split term #"\s")]
+  (let [tokens (remove empty? (string/split term #"\s"))]
     {:dis_max
      {:queries
       (into [{:match {:text term}}]
@@ -157,27 +157,28 @@
                   tokens)))}}))
 
 (defn elasticise [{:keys [term filters sort-by type limit offset]}]
-  (merge
-   {:from  0
-    :size  20
-    ;; TODO: extract votes in mapping
-    ;; TODO: Advanced search
-    :query {:bool {:filter (tags/tags-filter-query
-                            ;; FIXME: Hardcoded anaesthesia
-                            "anaesthesia" filters)
-                   :must (into []
-                               (comp cat (remove nil?))
-                               (concat
-                                [(when (and type (not= type :all))
-                                   [{:term {:extract/type type}}])]
-                                [(when (seq term)
-                                   [(search-all term)])]))}}}
-   (when sort-by
-     {:sort (get sorter-map (or sort-by :extract-creation-date))})
-   (when offset
-     {:from offset})
-   (when limit
-     {:size limit})))
+  (let [term (string/trim term)]
+    (merge
+     {:from  0
+      :size  20
+      ;; TODO: extract votes in mapping
+      ;; TODO: Advanced search
+      :query {:bool {:filter (tags/tags-filter-query
+                              ;; FIXME: Hardcoded anaesthesia
+                              "anaesthesia" filters)
+                     :must (into []
+                                 (comp cat (remove nil?))
+                                 (concat
+                                  [(when (and type (not= type :all))
+                                     [{:term {:extract/type type}}])]
+                                  [(when (seq term)
+                                     [(search-all term)])]))}}}
+     (when sort-by
+       {:sort (get sorter-map (or sort-by :extract-creation-date))})
+     (when offset
+       {:from offset})
+     (when limit
+       {:size limit}))))
 
 (defn search-q [q]
   (search index (elasticise q)))
