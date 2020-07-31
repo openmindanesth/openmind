@@ -405,6 +405,21 @@
       (assoc :data-key id)
       (merge @(re-frame/subscribe [::form-input-data id key]))))
 
+(defn collapsible-row [{:keys [initially-open?]}]
+  (let [open? (r/atom initially-open?)]
+    (fn [{:keys [open closed label] :as opts}]
+      [:div
+       [:div.left-col
+        [:a.super.right.plh.prh
+         {:on-click (fn [_] (swap! open? not))
+          :title (if @open? "collapse" "expand")}
+         [:div (when @open? {:style {:transform "rotate(90deg)"}}) "➤"]]
+        [:span [:b label]]]
+       [:div.right-col
+        (if @open?
+          [open opts]
+          [closed opts])]])))
+
 (defn tag-selector
   [{id :data-key}]
   [:div {:style {:min-height "40rem"}}
@@ -606,27 +621,18 @@
  (fn [db [_ id]]
    (assoc-in db [::extracts id ::found-article?] false)))
 
-;; TODO: Abstract this collapsible thing wrapper. There are now three copies of
-;; the same logic in this file.
 (defn compact-source-preview [opts]
-  (let [open? (r/atom false)]
-    (fn [{:keys [data-key content]}]
-      [:div
-       [:div.left-col
-        [:a.super.right.plh.prh
-         {:on-click (fn [_] (swap! open? not))
-          :title (if @open? "collapse" "expand")}
-         [:div (when @open? {:style {:transform "rotate(90deg)"}}) "➤"]]
-        [:span [:b "article details"]]]
-       [:div.right-col
-        [:div {:style {:margin-top 0}}
-         (if @open?
-           [:div
-            [:button.right.p1.text-white.border-round.bg-blue
-             {:on-click #(re-frame/dispatch [::force-edit data-key])}
-             "edit"]
-            [extract/source-content content]]
-           [extract/citation content])]]])))
+  [collapsible-row
+   (merge opts
+          {:label "article details"
+           :open  (fn [{:keys [content data-key]}]
+                    [:div
+                     [:button.right.p1.text-white.border-round.bg-blue
+                      {:on-click #(re-frame/dispatch [::force-edit data-key])}
+                      "edit"]
+                     [extract/source-content content]])
+           :closed (fn [{:keys [content]}]
+                     [extract/citation content])})])
 
 (defn source-details [{:keys [data-key content] :as opts}]
   (let [extract @(re-frame/subscribe [::content data-key])
@@ -732,11 +738,12 @@
         (map (partial relation data-key))
         content))
 
-(defn search-results [key data-key]
+(defn search-results [{:keys [key data-key]}]
   (let [results @(re-frame/subscribe [key])
         selected (into {}
                        (map (fn [{:keys [entity value] :as rel}]
                               [(if (= entity data-key) value entity) rel]))
+                       ;; FIXME: There should be a subscription for active-relations
                        (:relations @(re-frame/subscribe [::content data-key])))]
     (into [:div.flex.flex-column scrollbox-style]
           (into []
@@ -749,48 +756,32 @@
                           :edit-link? false}])))
                 results))))
 
-(defn similar-extracts [{:keys [data-key] :as opts}]
-  (let [open? (r/atom true)]
-    (fn [opts]
-      (let [content @(re-frame/subscribe [::content data-key])
-            similar @(re-frame/subscribe [::similar])]
-        (when (and (< 4 (count (:text content))) (seq similar))
-          [:div
-           [:div.left-col
-            [:a.super.right.plh.prh
-             {:on-click (fn [_] (swap! open? not))
-              :title (if @open? "collapse" "expand")}
-             [:div (when @open? {:style {:transform "rotate(90deg)"}}) "➤"]]
-            [:span [:b "possibly similar extracts"]]]
-           [:div.right-col
-            (if @open?
-              [search-results ::similar data-key]
-              [:div.pl1 {:style {:padding-bottom "0.3rem"}}
-               [:b "..."]])]])))))
+(defn ellipsis []
+  [:div.pl1 {:style {:padding-bottom "0.3rem"}}
+   [:b "..."]])
 
-(defn shared-source [{:keys [data-key]}]
-  (let [open? (r/atom true)]
-    (fn [opts]
-      (let [content @(re-frame/subscribe [::content data-key])
-            same-article @(re-frame/subscribe [::article-extracts])]
-        (when (and (= :article (:extract/type content)) (seq same-article))
-          [:div
-           [:div.left-col
-            [:a.super.right.plh.prh
-              {:on-click (fn [_] (swap! open? not))}
-              [:div (when @open? {:style {:transform "rotate(90deg)"}}) "➤"]]
-            [:span [:b "extracts based on this article"]]]
-           [:div.right-col
-            [:div.border-round.border-solid.ph
-             {:style {:border-color :lightgrey
-                      :box-shadow "1px 1.5px grey inset"}}
-             (if @open?
-               [:div.pl1 "placeholder"]
-               [:div.pl1
-                [:b "not implemented"]])]]])))))
+(defn similar-extracts [{:keys [data-key] :as opts}]
+  (let [content @(re-frame/subscribe [::content data-key])
+        similar @(re-frame/subscribe [::similar])]
+    (when (and (< 4 (count (:text content))) (seq similar))
+      [collapsible-row (merge opts {:open            search-results
+                                    :closed          ellipsis
+                                    :label           "possibly similar extracts"
+                                    :initially-open? true})])))
+
+(defn shared-source [{:keys [data-key] :as opts}]
+  (let [content      @(re-frame/subscribe [::content data-key])
+        same-article @(re-frame/subscribe [::article-extracts])]
+    (when (and (= :article (:extract/type content)) (seq same-article))
+      [collapsible-row
+       (merge opts
+              {:open            (fn [] [:div.pl1 "placeholder"])
+               :closed          (fn [] [:div.pl1 "placeholder"])
+               :label           "extracts based on the same article"
+               :initially-open? true})])))
 
 (defn extract-search-results [{:keys [data-key]}]
-  [search-results ::related-search-results data-key])
+  [search-results {:key ::related-search-results :data-key data-key}])
 
 (defn resources-widget [{:keys [data-key content errors key] :as opts}]
   [:div.flex.full-width
@@ -835,7 +826,7 @@
     :required?   true
     :placeholder "what have you discovered?"}
    {:component   similar-extracts
-    :key         :similar
+    :key         ::similar
     :full-width? true}
    {:component source-selector
     :label     "source"

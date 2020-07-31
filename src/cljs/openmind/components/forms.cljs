@@ -142,7 +142,6 @@
 
 (defn textarea-list
   [{:keys [key placeholder spec errors content data-key] :as opts}]
-  (println "!!!"  key data-key content)
   [:div
    (into [:div]
          (map-indexed
