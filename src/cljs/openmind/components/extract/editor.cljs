@@ -1,11 +1,11 @@
 (ns openmind.components.extract.editor
   (:require [cljs.spec.alpha :as s]
             [clojure.set :as set]
-            [clojure.string :as string]
             [openmind.components.comment :as comment]
-            [openmind.components.common :as common :refer [halt]]
+            [openmind.components.common :as common]
             [openmind.components.extract :as extract]
-            [openmind.components.extract.core :as core]
+            [openmind.components.extract.editor.figure :as figure]
+            [openmind.components.forms :as forms]
             [openmind.components.tags :as tags]
             [openmind.edn :as edn]
             [openmind.events :as events]
@@ -105,14 +105,13 @@
 (defn finalise-extract [prepared {:keys [figure-data relations comments figure]}]
   (let [imm (util/immutable prepared)
         rels (map (sub-new (:hash imm)) relations)
-        id (:hash imm)
-        author (:author prepared)]
+        id (:hash imm)]
     {:imm imm
      :snidbits (concat (when figure [figure-data])
                        (map util/immutable rels)
                        (map (fn [t]
                               (util/immutable
-                               {:author author :text t :extract id}))
+                               {:text t :extract id}))
                             (remove empty? comments)))}))
 
 (re-frame/reg-event-fx
@@ -265,7 +264,8 @@
 (re-frame/reg-event-db
  ::form-edit
  (fn [db [_ id k v]]
-   (assoc-in db (concat [::extracts id :content] k) v)))
+   (let [k (if (vector? k) k [k])]
+     (assoc-in db (concat [::extracts id :content] k) v))))
 
 (re-frame/reg-event-db
  ::clear-form-element
@@ -400,163 +400,10 @@
 
 ;;;; Components
 
-(defn pass-edit [id ks & [sub-key]]
-  (fn [ev]
-    (let [v (-> ev .-target .-value)
-          v' (if sub-key {sub-key v} v)]
-      (re-frame/dispatch [::form-edit id ks v']))))
-
 (defn add-form-data [id {:keys [key] :as elem}]
   (-> elem
       (assoc :data-key id)
       (merge @(re-frame/subscribe [::form-input-data id key]))))
-
-(defn date-string
-  "Given a javascript Date, return a string which [:input {:type :date}] will
-  understand.
-  This is seriously messed up. Who the hell counts months starting at zero? Days
-  are counted from one...
-  "
-  [d]
-  (if (inst? d)
-    (let [month (inc (.getMonth d))
-          day (.getDate d)]
-      (str (.getFullYear d) "-"
-           (when (< month 10) "0")
-           month
-           "-"
-           (when (< day 10) "0")
-           day))
-    ""))
-
-(defn update-date [data-key key]
-  (fn [ev]
-    (let [s (-> ev .-target .-value)]
-      ;; When the widget is cleared, the browser sends an empty string.
-      (if (seq s)
-        (let [date (js/Date. (str s " 00:00"))]
-          (re-frame/dispatch [::form-edit data-key key date]))
-        (re-frame/dispatch [::clear-form-element data-key key])))))
-
-(defn date [{:keys [content errors key data-key]}]
-  [:div.full-width
-   [:input {:type :date
-            :class (when errors "form-error")
-            :on-change (juxt (update-date data-key key)
-                             #(when errors
-                                (re-frame/dispatch [::revalidate data-key])))
-            :value (date-string content)}]
-   (when errors
-       [common/error errors])])
-
-(defn text
-  [{:keys [label key placeholder errors content data-key on-change on-blur]
-    :as   opts}]
-  (let [ks (if (vector? key) key [key])]
-    [:div.full-width
-     [:input.full-width-textarea
-      (merge {:id        (apply str ks)
-              :type      :text
-              :on-blur   #(when on-blur (on-blur opts))
-              :on-change (juxt (pass-edit data-key ks)
-                               #(when on-change
-                                  (on-change (-> % .-target .-value)))
-                               #(when errors
-                                  (re-frame/dispatch [::revalidate data-key])))}
-             (cond
-               (seq content) {:value content}
-               placeholder   {:value       nil
-                              :placeholder placeholder})
-             (when errors
-               {:class "form-error"}))]
-     (when errors
-       [common/error errors])]))
-
-(defn textarea
-  [{:keys [label key required? placeholder spec errors content rows
-           data-key on-change on-blur] :as opts}]
-  (let [ks (if (vector? key) key [key])]
-    [:div
-     [:textarea.full-width-textarea
-      (merge {:id        (str key)
-              :rows      (or rows 2)
-              :style     {:resize :vertical}
-              :type      :text
-              :on-blur   #(when on-blur (on-blur opts))
-              :on-change (juxt (pass-edit data-key ks)
-                               #(when on-change
-                                  (on-change (-> % .-target .-value)))
-                               #(when errors
-                                  (re-frame/dispatch [::revalidate data-key])))}
-             (cond
-               (seq content) {:value content}
-               placeholder   {:value       nil
-                              :placeholder placeholder})
-             (when errors
-               {:class "form-error"}))]
-     (when errors
-       [common/error errors])]))
-
-(defn text-input-list
-  [{:keys [key placeholder spec errors content data-key sub-key]}]
-  [:div
-   [:div.flex
-    (into [:div.flex.flex-wrap
-           {:class (when errors "form-error")}]
-          (map-indexed
-           (fn [i c]
-             (let [err (get errors i)]
-               [:div
-                {:style {:padding-right "0.2rem"}}
-                [:input.full-width-textarea
-                 (merge {:type      :text
-                         :on-change (pass-edit data-key (conj key i) sub-key)}
-                        (if (seq c)
-                          {:value (if sub-key (get c sub-key) c)}
-                          {:value       nil
-                           :placeholder placeholder}))]])))
-          content)
-    [:a.plh.ptp {:on-click (fn [_]
-                             (if (nil? content)
-                               (re-frame/dispatch
-                                [::form-edit data-key key [""]])
-                               (re-frame/dispatch
-                                [::form-edit data-key
-                                 (conj key (count content)) ""])))}
-     "[+]"]]
-   (when errors
-     [common/error errors])])
-
-(defn textarea-list
-  [{:keys [key placeholder spec errors content data-key] :as e}]
-  [:div
-   (into [:div]
-         (map-indexed
-          (fn [i c]
-            (let [err (get errors i)]
-              ;; REVIEW: Is this just cut and paste of the textarea
-              ;; component?!?!
-              [:div
-               [:textarea.full-width-textarea
-                (merge {:id          (name (str key i))
-                        :style       {:resize :vertical}
-                        :rows        2
-                        :placeholder placeholder
-                        :type        :text
-                        :on-change   (pass-edit data-key [key i])}
-                       (when (seq content)
-                         {:value c})
-                       (when err
-                         {:class "form-error"}))]
-               (when err
-                 [:div.mbh
-                  [common/error err]])]))
-              content))
-   [:a.bottom-right {:on-click
-                     (fn [_]
-                       (re-frame/dispatch
-                        [::form-edit data-key [key (count content)] ""]))}
-    "[+]"]])
 
 (defn tag-selector
   [{id :data-key}]
@@ -567,122 +414,6 @@
                                  :add    [::add-editor-tag id]
                                  :remove [::remove-editor-tag id]}}]])
 
-(defn drop-upload
-  "Extracts the dropped image from the drop event and adds it to the app state."
-  ;;FIXME: Is there some sort of standard regarding the dragging of images from
-  ;;a browser? How can I be sure the first item will always contain a URL?
-  [dk k e]
-  (let [item (-> e .-dataTransfer .-items (aget 0))]
-    (if-let [file (.getAsFile item)]
-      (re-frame/dispatch [::load-figure dk file])
-      (.getAsString
-       item #(let [url (first (string/split % #"\n"))]
-               (re-frame/dispatch [::add-figure dk url]))))))
-
-(re-frame/reg-event-db
- ::remove-figure
- (fn [db [_ id]]
-   (update-in db [::extracts id :content] dissoc :figure :figure-data)))
-
-(defn select-upload [dk e]
-  (let [f (-> e .-target .-files (aget 0))]
-    (re-frame/dispatch [::load-figure dk f])))
-
-(re-frame/reg-event-db
- ;; REVIEW: This is a kludge that's necessary due to the fact that rehashing the
- ;; figure on every keystroke isn't feasible. This is clearly a sign that I'm
- ;; doing something wrong, but it seems to work for the time being.
- ;;
- ;; And on top of all that, it's still too slow with big images (100+ KB, not
- ;; that big even)
- ::update-caption
- (fn [db [_ dk]]
-   (let [fid        (get-in db [::extracts dk :content :figure])
-         author     (:login-info db)
-         new        (get-in db [::extracts dk :content :figure-data :content])
-         original   (:content (events/table-lookup db fid))
-         image-data (or (:image-data new)
-                        (:image-data original))
-         caption    (or (:caption new)
-                        (:caption original))]
-     (if (and (= image-data (:image-data original))
-              (= caption (:caption original)))
-       db
-       (let [fdata (util/immutable {:author     author
-                                    :caption    caption
-                                    :image-data image-data})]
-         (-> db
-             (update-in [::extracts dk :content] assoc
-                        :figure (:hash fdata)
-                        :figure-data fdata)))))))
-
-(defn figure-preview [{:keys [data-key content]}]
-  ;; Figure is either just uploaded, or in the data store. Except that one can
-  ;; edit the caption without changing the figure, and we have to deal with
-  ;; that...
-  (let [image-data (or
-                    (-> @(re-frame/subscribe [::content data-key])
-                        :figure-data
-                        :content
-                        :image-data)
-                    (:image-data
-                     @(re-frame/subscribe [:content content])))
-        caption    (or (-> @(re-frame/subscribe [::content data-key])
-                           :figure-data
-                           :content
-                           :caption)
-                       (:caption
-                        @(re-frame/subscribe [:content content])))]
-    [:div.flex.flex-column
-     [:div.flex
-      [:img.border-round.mb1
-       {:src   image-data
-        :style {:width      "100%"
-                :height     "auto"
-                :max-height "30vh"
-                :object-fit :contain
-                :display    :block
-                :max-width  "calc(90vw - 16rem)"}}]
-      [:a.text-dark-grey.pl1
-       {:on-click (juxt halt #(re-frame/dispatch [::remove-figure data-key]))}
-       [:span "remove"]]]
-     [textarea {:key         [:figure-data :content :caption]
-                :rows        4
-                :data-key    data-key
-                :on-blur     #(re-frame/dispatch [::update-caption data-key])
-                :content     caption
-                :placeholder "additional info about figure"} ]]))
-
-(defn image-drop
-  [opts]
-  (let [id          (str (gensym))
-        drag-hover? (r/atom false)]
-    (fn [{:keys [key placeholder content data-key]}]
-      (let [drop-state {:style         {:border    :dashed
-                                        :cursor    :pointer
-                                        :max-width "250px"}
-                        :class         (if @drag-hover?
-                                         :border-blue
-                                         :border-grey)
-                        :for           id
-                        :on-drag-enter (juxt halt #(reset! drag-hover? true))
-                        :on-drag-over  (juxt halt #(reset! drag-hover? true))
-                        :on-drag-leave (juxt halt #(reset! drag-hover? false))
-                        :on-drop       (juxt halt #(reset! drag-hover? false)
-                                             (partial drop-upload
-                                                      data-key key))}]
-        [:div.mt3.mb4
-         [:label.p3.border-round drop-state placeholder]
-         [:input {:type      :file
-                  :id        id
-                  :style     {:visibility :hidden}
-                  :accept    "image/png,image/gif,image/jpeg"
-                  :on-change (partial select-upload data-key)}]]))))
-
-(defn figure-select [{:keys [content] :as opts}]
-  (if content
-    [figure-preview opts]
-    [image-drop opts]))
 
 (defn source-preview [{:keys [data-key] :as opts}]
   (let [{:keys [source extract/type]}
@@ -719,56 +450,40 @@
                                (str "we couldn't find that article\n"
                                     "please enter its details below")}]]}))))
 
-(defn source-selector [{:keys [key content data-key errors] :as opts}]
-  [:div.flex.flex-column
-   [:div.flex.flex-start
-    (when (and errors (not content))
-      {:class "form-error border-round border-solid ph"
-       :style {:width "max-content"}})
-    [:button.p1.text-white.border-round
-     {:class    (if (= content :article)
-                  "bg-dark-blue"
-                  "bg-blue")
-      :on-click #(do (re-frame/dispatch
-                       [::form-edit data-key [key] :article])
-                     (when errors
-                       (re-frame/dispatch [::revalidate data-key])))}
-     "article"]
-    [:button.p1.ml1.text-white.border-round
-     {:class    (if (= content :labnote)
-                  "bg-dark-blue"
-                  "bg-blue")
-      :on-click #(do (re-frame/dispatch
-                      [::form-edit data-key [key] :labnote])
-                     (when errors
-                       (re-frame/dispatch [::revalidate data-key])))}
-     "lab note"]]])
+(defn select-button [{:keys [key value content label errors data-key]}]
+  [:button.p1.text-white.border-round
+   {:class    (if (= content value)
+                "bg-dark-blue"
+                "bg-blue")
+    :on-click #(do (re-frame/dispatch
+                    [::form-edit data-key key value])
+                   (when errors
+                     (re-frame/dispatch [::revalidate data-key])))}
+   label])
 
-;; FIXME: cut and paste!!
-(defn peer-review-widget [{:keys [key content data-key errors] :as opts}]
+(defn select-buttons [{:keys [content errors options] :as opts}]
   [:div.flex.flex-column
-   [:div.flex.flex-start
-    (when (and errors (not content))
-      {:class "form-error border-round border-solid ph"
-       :style {:width "max-content"}})
-    [:button.p1.text-white.border-round
-     {:class    (if (true? content)
-                  "bg-dark-blue"
-                  "bg-blue")
-      :on-click #(do (re-frame/dispatch
-                       [::form-edit data-key key true])
-                     (when errors
-                       (re-frame/dispatch [::revalidate data-key])))}
-     "peer reviewed article"]
-    [:button.p1.ml1.text-white.border-round
-     {:class    (if (false? content)
-                  "bg-dark-blue"
-                  "bg-blue")
-      :on-click #(do (re-frame/dispatch
-                      [::form-edit data-key key false])
-                     (when errors
-                       (re-frame/dispatch [::revalidate data-key])))}
-     "preprint"]]])
+   (into
+    [:div.flex.flex-start
+     (when (and errors (not content))
+       {:class "form-error border-round border-solid ph"
+        :style {:width "max-content"}})]
+    (interpose [:div.ml1]
+               (map (fn [v] [select-button (merge opts v)])
+                    options)))])
+
+
+(defn source-selector [opts]
+  [select-buttons (merge opts {:options [{:value :article
+                                          :label "article"}
+                                         {:value :labnote
+                                          :label "lab note"}]})])
+
+(defn peer-review-widget [opts]
+  [select-buttons (merge opts {:options [{:value true
+                                          :label "peer reviewed article"}
+                                         {:value false
+                                          :label "preprint"}]})])
 
 (defn responsive-two-column [l r]
   [:div.vcenter.mb1h.mbr2
@@ -805,22 +520,22 @@
 (def labnote-details-inputs
   ;; For lab notes we want to get the PI, institution (corp), and date of
   ;; observation.
-  [{:component text
+  [{:component forms/text
     :label "institution"
     :placeholder "university, company, etc."
     :key [:source :institution]
     :required? true}
-   {:component text
+   {:component forms/text
     :label "lab"
     :placeholder "lab name"
     :key [:source :lab]
     :required? true}
-   {:component text
+   {:component forms/text
     :label "investigator"
     :placeholder "principle investigator"
     :key [:source :investigator]
     :required? true}
-   {:component date
+   {:component forms/date
     :label "observation date"
     :required? true
     :key [:source :observation/date]}])
@@ -828,7 +543,7 @@
 (defn article-search [{:keys [data-key key content] :as opts}]
   (let [waiting? @(re-frame/subscribe [:openmind.components.window/spinner])]
     [:div.flex
-     [text opts]
+     [forms/text opts]
      [:button.bg-blue.ph.mlh.text-white.border-round
       {:style (when waiting? {:cursor :wait})
        :on-click #(re-frame/dispatch [::article-lookup data-key content])}
@@ -841,7 +556,7 @@
     :component   article-search
     :label       "find paper"
     :placeholder "article url or DOI"}
-   {:component   text
+   {:component   forms/text
     :label       "link to article"
     :key         [:source :url]
     :placeholder "www.ncbi.nlm.nih.gov/pubmed/..."
@@ -851,33 +566,33 @@
     :title     "is this article peer reviewed, or a preprint?"
     :key       [:source :peer-reviewed?]
     :required? true}
-   {:component text
+   {:component forms/text
     :label     "doi"
     :key       [:source :doi]
     :required? true}
-   {:component textarea
+   {:component forms/textarea
     :label     "title"
     :key       [:source :title]
     :required? true}
-   {:component text-input-list
+   {:component forms/text-input-list
     :label     "authors"
     :key       [:source :authors]
     :sub-key   :full-name
     :required? true}
-   {:component date
+   {:component forms/date
     :label     "publication date"
     :key       [:source :publication/date]
     :required? true}
-   {:component textarea
+   {:component forms/textarea
     :label     "abstract"
     :key       [:source :abstract]}
-   {:component text
+   {:component forms/text
     :label     "journal"
     :key       [:source :journal]}
-   {:component text
+   {:component forms/text
     :label     "volume"
     :key       [:source :volume]}
-   {:component text
+   {:component forms/text
     :label     "issue"
     :key       [:source :issue]}])
 
@@ -940,8 +655,9 @@
 
 (defn comment-widget [{:keys [data-key] :as opts}]
   (if (= data-key ::new)
-    [textarea-list opts]
-    [comment/comment-page-content data-key]))
+    [forms/textarea-list opts]
+    (let [comments @(re-frame/subscribe [::edited-comments data-key])]
+      [comment/comment-page-content comments])))
 
 (defn relation-button [text event]
   [:button.text-white.ph.border-round.bg-dark-grey
@@ -978,7 +694,6 @@
                                     retractions)
         summary     (into {} (map (fn [[k v]] [k (count v)]))
                           (group-by :attribute rel-display))]
-    (println extract)
     (into [:div.flex.flex-column]
           (map (fn [a]
                  (let [c (get summary a)]
@@ -1086,14 +801,14 @@
               [:div.flex
                [:span.pr1
                 {:style {:flex-grow 2}}
-                [text {:content  (:label c)
+                [forms/text {:content  (:label c)
                        :key      [key i :label]
                        :placeholder "type, e.g. data, code, toolkit"
                        :data-key data-key
                        :errors   (:label err)}]]
                [:span
                 {:style {:flex-grow 2}}
-                [text {:content (:link c)
+                [forms/text {:content (:link c)
                        :key [key i :link]
                        :placeholder "link to repository"
                        :data-key data-key
@@ -1109,7 +824,7 @@
     "[+]"]])
 
 (def extract-creation-form
-  [{:component   textarea
+  [{:component   forms/textarea
     :label       "extract"
     :rows 4
     :on-change   #(when (< 4 (count %))
@@ -1132,7 +847,7 @@
    {:component   shared-source
     :key         :same-article
     :full-width? true}
-   {:component   figure-select
+   {:component   figure/figure-select
     :label       "figure"
     :key         :figure
     :placeholder [:span [:b "choose a file"] " or drag it here"]}
@@ -1144,7 +859,7 @@
     :label       "comments"
     :key         :comments
     :placeholder "anything you think is important"}
-   {:component   text
+   {:component   forms/text
     :placeholder "find extract that might be related to this one"
     :on-change   #(re-frame/dispatch
                    (if (< 2 (count %))
