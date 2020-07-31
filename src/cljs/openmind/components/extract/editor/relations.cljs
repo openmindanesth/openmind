@@ -86,6 +86,7 @@
        :edit-link? false}]]))
 
 (defn related-extracts [{:keys [content data-key]}]
-  (into [:div.flex.flex-column common/scrollbox-style]
-        (map (partial relation data-key))
-        content))
+  (let [relations @(re-frame/subscribe [::active-relations data-key])]
+    (into [:div.flex.flex-column common/scrollbox-style]
+          (map (partial relation data-key))
+          relations)))
