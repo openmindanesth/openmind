@@ -51,9 +51,9 @@
   (s/coll-of ::relation :kind set?))
 
 (s/def ::relation
-  (s/keys :req-un [::entity
-                   ::attribute
-                   ::value
+  (s/keys :req-un [::rel/entity
+                   ::rel/attribute
+                   ::rel/value
                    ::author]))
 
 (s/def ::comment

@@ -9,7 +9,7 @@
                    ::value]))
 
 (s/def ::attribute
-  keyword?)
+  #{:related :confirmed :contrast})
 
 (s/def ::entity
   (s/or :new #(= :openmind.components.extract.editor/new %)
