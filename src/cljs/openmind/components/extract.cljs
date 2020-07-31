@@ -86,7 +86,7 @@
     (let [{:keys [caption]} @(re-frame/subscribe [:content figure])]
       [:div
        [:div.p1
-        [figure-img figure {:style {:max-width  "95%"
+        [figure-img figure {:style {:max-width  "90vw"
                                     :max-height "50vh"}}]]
        (when (seq caption)
          [:div.p1 caption])])))
@@ -212,7 +212,11 @@
                :else                    {:transform "translateX(-50%)"})
              ;; HACK: I don't see any way to not use a concrete pixel value, but
              ;; it isn't ideal.
-             (when (< vh (+ height y 32))
+             ;;
+             ;; The current maximum height of an extract is 10rem plus 1rem
+             ;; padding (half top, half bottom). We don't care about the top, so
+             ;; 170px. Sloppy, bound to break somewhere. Seems to work.
+             (when (< vh (+ height y 170))
                {:top (str "calc(100vh - 1.5rem + "
                           top "px - " y "px - " height "px) ")})
              (when (< (* 0.8 vh) height)
@@ -304,7 +308,6 @@
                                                                  "px)")}))}]]
          [figure-hover figure]
          {:orientation :left
-          :hover?      true
           :route       {:route :extract/figure :path {:id eid}}}]))))
 
 (re-frame/reg-sub
@@ -432,10 +435,8 @@
      [:div.pth.flex.full-width
       [:div
        [hover-link [type-indicator extract] [metadata extract]
-        {:orientation :left
-         :hover?      true}]]
+        {:orientation :left}]]
       [:div.flex.flex-wrap.space-between.full-width
-
        [hover-link "comments"
         [comments-hover hash]
         {:orientation :left}]
