@@ -7,6 +7,32 @@
             [re-frame.core :as re-frame]
             [reagent.core :as r]))
 
+(def extracts
+  :openmind.components.extract.editor/extracts)
+
+(re-frame/reg-event-fx
+ ::add-figure
+ (fn [{:keys [db]} [_ id data-url]]
+   (let [author (:login-info db)
+         img    (util/immutable {:image-data data-url
+                                 :caption ""
+                                 :author     author})]
+     {:db (-> db
+              (assoc-in [extracts id :content :figure] (:hash img))
+              (assoc-in [extracts id :content :figure-data] img))})))
+
+(re-frame/reg-event-fx
+ ::load-figure
+ (fn [cofx [_ id file]]
+   (let [reader (js/FileReader.)]
+     (set! (.-onload reader)
+           (fn [e]
+             (let [img (->> e
+                            .-target
+                            .-result)]
+               (re-frame/dispatch
+                [::add-figure id img]))))
+     (.readAsDataURL reader file))))
 
 (defn drop-upload
   "Extracts the dropped image from the drop event and adds it to the app state."
@@ -23,7 +49,7 @@
 (re-frame/reg-event-db
  ::remove-figure
  (fn [db [_ id]]
-   (update-in db [::extracts id :content] dissoc :figure :figure-data)))
+   (update-in db [:extracts id :content] dissoc :figure :figure-data)))
 
 (defn select-upload [dk e]
   (let [f (-> e .-target .-files (aget 0))]
@@ -38,9 +64,9 @@
  ;; that big even)
  ::update-caption
  (fn [db [_ dk]]
-   (let [fid        (get-in db [::extracts dk :content :figure])
+   (let [fid        (get-in db [extracts dk :content :figure])
          author     (:login-info db)
-         new        (get-in db [::extracts dk :content :figure-data :content])
+         new        (get-in db [extracts dk :content :figure-data :content])
          original   (:content (events/table-lookup db fid))
          image-data (or (:image-data new)
                         (:image-data original))
@@ -53,27 +79,38 @@
                                     :caption    caption
                                     :image-data image-data})]
          (-> db
-             (update-in [::extracts dk :content] assoc
+             (update-in [extracts dk :content] assoc
                         :figure (:hash fdata)
                         :figure-data fdata)))))))
+
+(re-frame/reg-sub
+ ::image-data
+ (fn [[_ id]]
+   (re-frame/subscribe [:openmind.components.extract.editor/content id]))
+ (fn [content]
+   (-> content
+       :figure-data
+       :content
+       :image-data)))
+
+(re-frame/reg-sub
+ ::caption
+ (fn [[_ id]]
+   (re-frame/subscribe [:openmind.components.extract.editor/content id]))
+ (fn [content]
+   (-> content
+       :figure-data
+       :content
+       :caption)))
 
 (defn figure-preview [{:keys [data-key content]}]
   ;; Figure is either just uploaded, or in the data store. Except that one can
   ;; edit the caption without changing the figure, and we have to deal with
   ;; that...
-  (let [image-data (or
-                    (-> @(re-frame/subscribe [::content data-key])
-                        :figure-data
-                        :content
-                        :image-data)
-                    (:image-data
-                     @(re-frame/subscribe [:content content])))
-        caption    (or (-> @(re-frame/subscribe [::content data-key])
-                           :figure-data
-                           :content
-                           :caption)
-                       (:caption
-                        @(re-frame/subscribe [:content content])))]
+  (let [image-data (or @(re-frame/subscribe [::image-data data-key])
+                       (:image-data @(re-frame/subscribe [:content content])))
+        caption    (or @(re-frame/subscribe [::caption data-key])
+                       (:caption @(re-frame/subscribe [:content content])))]
     [:div.flex.flex-column
      [:div.flex
       [:img.border-round.mb1

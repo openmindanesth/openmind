@@ -5,6 +5,7 @@
             [openmind.components.common :as common]
             [openmind.components.extract :as extract]
             [openmind.components.extract.editor.figure :as figure]
+            [openmind.components.extract.editor.relations :as relations]
             [openmind.components.forms :as forms]
             [openmind.components.tags :as tags]
             [openmind.edn :as edn]
@@ -273,30 +274,6 @@
    (update-in db (concat [::extracts id :content] (butlast k))
               dissoc (last k))))
 
-(re-frame/reg-event-fx
- ::add-figure
- (fn [{:keys [db]} [_ id data-url]]
-   (let [author (:login-info db)
-         img    (util/immutable {:image-data data-url
-                                 :caption ""
-                                 :author     author})]
-     {:db (-> db
-              (assoc-in [::extracts id :content :figure] (:hash img))
-              (assoc-in [::extracts id :content :figure-data] img))})))
-
-(re-frame/reg-event-fx
- ::load-figure
- (fn [cofx [_ id file]]
-   (let [reader (js/FileReader.)]
-     (set! (.-onload reader)
-           (fn [e]
-             (let [img (->> e
-                            .-target
-                            .-result)]
-               (re-frame/dispatch
-                [::add-figure id img]))))
-     (.readAsDataURL reader file))))
-
 (re-frame/reg-event-db
  ::form-errors
  (fn [db [_ errors id]]
@@ -352,7 +329,7 @@
              ;; no change, just go back to search
              {:dispatch-n [[:notify {:status  :warn
                                      :message "no changes to save"}]
-                           [:navigate {:route :search}]]})) )))))
+                           [:navigate {:route :search}]]})))))))
 
 (re-frame/reg-event-fx
  :openmind/index-result
@@ -380,23 +357,6 @@
                                   " to be reflected in your results.")}]
                    [:navigate {:route :search}]]}
      {:dispatch [:notify {:status :error :message "failed to save changes"}]})))
-
-(re-frame/reg-event-db
- ::add-relation
- (fn [db [_ id object-id type]]
-   (let [author (:login-info db)
-         rel    {:attribute type
-                 :value     object-id
-                 :entity    id
-                 :author    author}]
-     (if (get-in db [::extracts id :content :relations])
-       (update-in db [::extracts id :content :relations] conj rel)
-       (assoc-in db [::extracts id :content :relations] #{rel})))))
-
-(re-frame/reg-event-db
- ::remove-relation
- (fn [db [_ id rel]]
-   (update-in db [::extracts id :content :relations] disj rel)))
 
 ;;;; Components
 
@@ -465,6 +425,9 @@
                                (str "we couldn't find that article\n"
                                     "please enter its details below")}]]}))))
 
+;; N.B.: This has to be called as a function, never as a component since react
+;; and I disagree on the meaning of the argument `:key`. I've gotten complacent
+;; about language keywords while using clojure.
 (defn select-button [{:keys [key value content label errors data-key]}]
   [:button.p1.text-white.border-round
    {:class    (if (= content value)
@@ -484,7 +447,7 @@
        {:class "form-error border-round border-solid ph"
         :style {:width "max-content"}})]
     (interpose [:div.ml1]
-               (map (fn [v] [select-button (merge opts v)])
+               (map (fn [v] (select-button (merge opts v)))
                     options)))])
 
 
@@ -665,79 +628,6 @@
     (let [comments @(re-frame/subscribe [::edited-comments data-key])]
       [comment/comment-page-content comments])))
 
-(defn relation-button [text event]
-  [:button.text-white.ph.border-round.bg-dark-grey
-   {:on-click #(re-frame/dispatch event)}
-   text])
-
-(defn related-buttons [extract-id]
-  (fn  [{:keys [hash] :as extract}]
-    (let [ev [::add-relation extract-id hash]]
-      (into [:div.flex.space-evenly]
-            (map (fn [a]
-                   [relation-button (get extract/relation-names a) (conj ev a)]))
-            [:related :confirmed :contrast]))))
-
-(defn cancel-button [onclick]
-  [:a.border-circle.bg-white.text-black.border-black.relative.right
-   {:style    {:cursor   :pointer
-               :z-index  105
-               :top      "-1px"
-               :right    "-1px"}
-    :title    "remove relation"
-    :on-click (juxt common/halt onclick)}
-   [:span.absolute
-    {:style {:top   "-2px"
-             :right "5px"}}
-    "x"]])
-
-(defn relation-summary [{:keys [data-key]}]
-  (let [base-rels   @(re-frame/subscribe [:openmind.components.extract/relations])
-        extract     @(re-frame/subscribe [::extract data-key])
-        new-rels    (:new-relations extract)
-        retractions (:retracted-relations extract)
-        rel-display (set/difference (set/union base-rels new-rels)
-                                    retractions)
-        summary     (into {} (map (fn [[k v]] [k (count v)]))
-                          (group-by :attribute rel-display))]
-    (into [:div.flex.flex-column]
-          (map (fn [a]
-                 (let [c (get summary a)]
-                   (when (< 0 c)
-                     [:div {:style {:margin-top "3rem"
-                                    :max-width  "12rem"}}
-                      [:span
-                       {:style {:display :inline-block
-                                :width   "70%"}}
-                       (get extract/relation-names a)]
-                      [:span.p1.border-solid.border-round
-                       {:style {:width "20%"}}
-                       c]]))))
-          [:related :confirmed :contrast])))
-
-(defn relation [data-key {:keys [attribute value entity author] :as rel}]
-  (let [other   (if (= data-key entity) value entity)
-        extract @(re-frame/subscribe [:content other])
-        login   @(re-frame/subscribe [:openmind.subs/login-info])]
-    [:span
-     (when (= login author)
-       [cancel-button #(re-frame/dispatch [::remove-relation data-key rel])])
-     [extract/summary extract
-      {:controls   (extract/relation-meta attribute)
-       :edit-link? false}]]))
-
-(def scrollbox-style
-  {:style {:max-height      "40rem"
-           :padding         "0.1rem"
-           :scrollbar-width :thin
-           :overflow-y      :auto
-           :overflow-x      :visible}})
-
-(defn related-extracts [{:keys [content data-key]}]
-  (into [:div.flex.flex-column scrollbox-style]
-        (map (partial relation data-key))
-        content))
-
 (defn search-results [{:keys [key data-key]}]
   (let [results @(re-frame/subscribe [key])
         selected (into {}
@@ -745,14 +635,14 @@
                               [(if (= entity data-key) value entity) rel]))
                        ;; FIXME: There should be a subscription for active-relations
                        (:relations @(re-frame/subscribe [::content data-key])))]
-    (into [:div.flex.flex-column scrollbox-style]
+    (into [:div.flex.flex-column common/scrollbox-style]
           (into []
                 (comp
                  (remove (fn [id] (contains? selected id)))
                  (map (fn [id] @(re-frame/subscribe [:content id])))
                  (map (fn [extract]
                         [extract/summary extract
-                         {:controls (related-buttons data-key)
+                         {:controls (relations/related-buttons data-key)
                           :edit-link? false}])))
                 results))))
 
@@ -860,9 +750,9 @@
     :label       "search for related extracts"
     :key         :search}
    {:component extract-search-results}
-   {:component related-extracts
+   {:component relations/related-extracts
     :label     "related extracts"
-    :sublabel  relation-summary
+    :sublabel  relations/relation-summary
     :key       :relations}
    {:component   tag-selector
     :label       "add filter tags"
