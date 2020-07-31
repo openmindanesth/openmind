@@ -304,7 +304,6 @@
                                                                  "px)")}))}]]
          [figure-hover figure]
          {:orientation :left
-          :hover?      true
           :route       {:route :extract/figure :path {:id eid}}}]))))
 
 (re-frame/reg-sub
@@ -432,10 +431,8 @@
      [:div.pth.flex.full-width
       [:div
        [hover-link [type-indicator extract] [metadata extract]
-        {:orientation :left
-         :hover?      true}]]
+        {:orientation :left}]]
       [:div.flex.flex-wrap.space-between.full-width
-
        [hover-link "comments"
         [comments-hover hash]
         {:orientation :left}]
