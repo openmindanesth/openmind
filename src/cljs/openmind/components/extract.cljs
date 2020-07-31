@@ -1,6 +1,7 @@
 (ns openmind.components.extract
   (:require [clojure.string :as string]
             [openmind.components.comment :as comment]
+            [openmind.components.common :as common]
             [openmind.components.extract.core :as core]
             [openmind.components.tags :as tags]
             [openmind.edn :as edn]
@@ -175,10 +176,6 @@
   [:a {:on-click #(re-frame/dispatch [:navigate route])}
         text])
 
-(defn halt [e]
-  (.preventDefault e)
-  (.stopPropagation e))
-
 (defn cljsify [o]
   {:width  (.-width o)
    :height (.-height o)
@@ -252,8 +249,8 @@
                                (when-not @float-size
                                  {:display :none}))
 
-                 :on-mouse-over halt
-                 :on-mouse-out  halt}
+                 :on-mouse-over common/halt
+                 :on-mouse-out  common/halt}
                 [:div (when (:will-overflow position)
                         {:style {:height          "calc(80vh)"
                                  :scrollbar-width :thin
