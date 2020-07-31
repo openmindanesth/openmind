@@ -76,7 +76,9 @@
 (s/def ::authors
   (s/coll-of ::author-details :kind vector? :min-count 1))
 
-
+;; FIXME: This was a mistake. The runaround between full-name and short-name has
+;; lead to bugs all over the UI. It's tedious and error prone to have to figure
+;; out fallbacks for everything that shows one of these names.
 (s/def ::author-details
   (s/and
    (s/keys :req-un []

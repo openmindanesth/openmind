@@ -625,8 +625,7 @@
 (defn comment-widget [{:keys [data-key] :as opts}]
   (if (= data-key ::new)
     [forms/textarea-list opts]
-    (let [comments @(re-frame/subscribe [::edited-comments data-key])]
-      [comment/comment-page-content comments])))
+    [comment/comment-page-content data-key]))
 
 (defn search-results [{:keys [key data-key]}]
   (let [results @(re-frame/subscribe [key])
