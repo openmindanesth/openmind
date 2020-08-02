@@ -629,11 +629,13 @@
 
 (defn search-results [{:keys [key data-key]}]
   (let [results @(re-frame/subscribe [key])
+        relations @(re-frame/subscribe
+                    [:openmind.components.extract.editor.relations/active-relations
+                     data-key])
         selected (into {}
                        (map (fn [{:keys [entity value] :as rel}]
                               [(if (= entity data-key) value entity) rel]))
-                       ;; FIXME: There should be a subscription for active-relations
-                       (:relations @(re-frame/subscribe [::content data-key])))]
+                       relations)]
     (into [:div.flex.flex-column common/scrollbox-style]
           (into []
                 (comp

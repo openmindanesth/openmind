@@ -34,7 +34,6 @@
   (toString [_]
     (str "#" (str tag) " \"" hash-string "\"")))
 
-
 #?(:clj
    (defn- print-ref
      [^ValueRef ref ^java.io.Writer w]
@@ -63,6 +62,7 @@
           true
           (when (instance? ValueRef o)
             (= (.-hash-string this) (.-hash-string o))))))
+
      IHash
      (-hash [this]
        (cljs.core/hash (.-hash-string this)))))

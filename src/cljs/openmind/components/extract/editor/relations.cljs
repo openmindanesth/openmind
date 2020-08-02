@@ -1,8 +1,8 @@
 (ns openmind.components.extract.editor.relations
   (:require [re-frame.core :as re-frame]
+            [openmind.config :as config]
             [openmind.components.common :as common]
             [openmind.components.extract :as extract]))
-
 
 (def extracts
   :openmind.components.extract.editor/extracts)
@@ -10,23 +10,48 @@
 (re-frame/reg-event-db
  ::add-relation
  (fn [db [_ id object-id type]]
-   (let [author (:login-info db)
-         rel    {:attribute type
-                 :value     object-id
-                 :entity    id
-                 :author    author}]
-     (if (get-in db [extracts id :content :relations])
-       (update-in db [extracts id :content :relations] conj rel)
-       (assoc-in db [extracts id :content :relations] #{rel})))))
+   (let [rel {:attribute type
+              :value     object-id
+              :entity    id}]
+     (update-in db [extracts id ::new-relations]
+                (fn [rels] (conj (or rels #{}) rel))))))
 
 (re-frame/reg-event-db
  ::remove-relation
  (fn [db [_ id rel]]
-   (update-in db [extracts id :content :relations] disj rel)))
+   (let [added (get-in db [extracts id ::new-relations])]
+     (if (contains? added rel)
+       (update-in db [extracts id ::new-relations] disj rel)
+       (update-in db [extracts id ::retracted-relations]
+                  (fn [rels] (conj (or rels #{}) rel)))))))
+(re-frame/reg-sub
+ ::saved-relations
+ (fn [[_ id]]
+   (re-frame/subscribe [:extract-metadata id]))
+ (fn [metadata]
+   (:relations metadata)))
+
+(re-frame/reg-sub
+ ::relation-modifications
+ (fn [db [_ id]]
+   {:additions   (get-in db [extracts id ::new-relations])
+    :retractions (get-in db [extracts id ::retracted-relations])}))
+
+(re-frame/reg-sub
+ ::active-relations
+ (fn [[_ id]]
+   [(re-frame/subscribe [:openmind.subs/login-info])
+    (re-frame/subscribe [::saved-relations id])
+    (re-frame/subscribe [::relation-modifications id])])
+ (fn [[login existing {:keys [additions retractions]}]]
+   (into #{}
+         (remove (fn [rel] (contains? retractions rel)))
+         (concat existing
+                 (map (fn [rel] (assoc rel :author login)) additions)))))
 
 (defn relation-button [text event]
   [:button.text-white.ph.border-round.bg-dark-grey
-   {:on-click #(re-frame/dispatch event)}
+   {:on-click #(do (.log js/console %) (println event) (re-frame/dispatch event))}
    text])
 
 (defn related-buttons [extract-id]
@@ -49,11 +74,6 @@
     {:style {:top   "-2px"
              :right "5px"}}
     "x"]])
-
-(re-frame/reg-sub
- ::active-relations
- (fn [db [_ id]]
-   #{}))
 
 (defn relation-summary [{:keys [data-key]}]
   (let [relations @(re-frame/subscribe [::active-relations data-key])
@@ -79,7 +99,7 @@
         extract @(re-frame/subscribe [:content other])
         login   @(re-frame/subscribe [:openmind.subs/login-info])]
     [:span
-     (when (= login author)
+     (when (or config/debug? (= login author))
        [cancel-button #(re-frame/dispatch [::remove-relation data-key rel])])
      [extract/summary extract
       {:controls   (extract/relation-meta attribute)
