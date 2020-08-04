@@ -1,4 +1,4 @@
-(ns openmind.s3
+(ns openmind.datastore.backends.s3
   (:require [clojure.core.memoize :as memo]
             [openmind.edn :as edn]
             [openmind.env :as env]

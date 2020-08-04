@@ -1,0 +1,1 @@
+(ns openmind.datastore.elastic)

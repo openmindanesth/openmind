@@ -3,7 +3,7 @@
   (:require [clojure.core.async :as async]
             [clojure.spec.alpha :as s]
             [clojure.string :as string]
-            [openmind.datastore :as ds]
+            [openmind.datastore.indicies.elastic :as ind]
             [openmind.env :as env]
             [openmind.json :as json]
             [openmind.tags :as tags]
@@ -228,32 +228,12 @@
 ;;;;; Extract indexing
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def active-es-index
-  (ds/create-index
-   "openmind.indexing/elastic-active"))
-
-(defn add-to-index [id]
-  (ds/swap-index! active-es-index (fn [i]
-                                    (if (empty? i)
-                                      #{id}
-                                      (conj i id)))))
-
-(defn replace-in-index [old new]
-  (ds/swap-index! active-es-index (fn [i]
-                                    (-> i
-                                        (disj old)
-                                        (conj new)))))
-
-(defn remove-from-index [id]
-  (log/warn "Removing from elastic:" id)
-  (ds/swap-index! active-es-index (fn [i] (disj i id)))
-  (send-off! (delete-req index (.-hash-string ^ValueRef id))))
-
 (defn index-extract!
   "Given an immutable, index the contained extract in es."
   [{{:keys [tags source]} :content :as imm}]
   (async/go
     (if (s/valid? :openmind.spec.extract/extract (:content imm))
+
       (let [tag-names (map #(:name (get tags/tag-tree %)) tags)
             date      (or (:publication/date source)
                           (:observation/date source))
@@ -265,12 +245,14 @@
             key       (.-hash-string ^ValueRef (:hash imm))
             res       (async/<! (send-off!
                                  (index-req index ext key)))]
+        (ind/add-to-index (:hash imm))
         (log/trace "Indexed" (:hash imm) res)
         res)
       (log/error "Trying to index invalid extract:" imm))))
 
 (defn retract-extract! [^ValueRef hash]
   (async/go
+    (ind/remove-from-index hash)
     (let [res (-> (delete-req index (.-hash-string hash))
                   send-off!
                   async/<!)]

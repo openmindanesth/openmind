@@ -1,4 +1,4 @@
-(ns openmind.indexing
+(ns openmind.datastore.indicies.metadata
   (:require [clojure.spec.alpha :as s]
             [openmind.datastore :as ds]
             [openmind.spec :as spec]

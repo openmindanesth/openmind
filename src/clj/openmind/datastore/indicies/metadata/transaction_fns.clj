@@ -1,4 +1,4 @@
-(ns openmind.transaction-fns
+(ns openmind.datastore.indicies.metadata.transaction-fns
   "Transaction functions operating on the metadata index. The reason these are
   in a separate namespace is to make sure that I never refer to the index
   itself, thus accidentally reaching out of the transaction. That was getting to

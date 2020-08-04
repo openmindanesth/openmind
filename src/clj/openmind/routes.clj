@@ -120,7 +120,6 @@
       (notify/notify-on-creation uid (:hash extract))
       (when (ds/intern extract)
         (let [res (async/<! (es/index-extract! extract))]
-          (es/add-to-index (:hash extract))
           (notify/extract-created (:hash extract))
           (if (and (:status res) (<= 200 (:status res) 201))
             (do
@@ -156,7 +155,6 @@
           (index/forward-metadata previous-id id editor)
           (async/<! (es/retract-extract! previous-id))
           (async/<! (es/index-extract! imm))
-          (es/replace-in-index previous-id (:hash imm))
           (notify/extract-edited previous-id id)
           (when figure
             (ds/intern figure)))))
@@ -202,6 +200,7 @@
   (when (s/valid? :openmind.spec.indexical/tx o)
     (let [{:keys [author context assertions]} o]
       (when (check-author tokens author)
+        (println o)
         ;; Do stuff
         ))))
 
@@ -210,5 +209,5 @@
   relations to them from other extracts, but the extract is never removed from
   the store, nor is its metadata, so we can restore it at any time if need be."
   [id]
-  (es/remove-from-index id)
+  (es/retract-extract! id)
   (index/retract-extract! id))
