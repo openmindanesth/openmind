@@ -23,6 +23,8 @@
   (-coerce [this md-create-fn write-handlers]
     (benc/-coerce hash-string md-create-fn write-handlers))
   Object
+  (toString [_]
+    (str "#" (str tag) " \"" hash-string "\""))
   (equals [this o]
     (boolean
      (if (identical? this o)
@@ -30,9 +32,7 @@
        (when (instance? ValueRef o)
          (= hash-string (.-hash-string ^ValueRef o))))))
   (hashCode [_]
-    (.hashCode hash-string))
-  (toString [_]
-    (str "#" (str tag) " \"" hash-string "\"")))
+    (.hashCode hash-string)))
 
 #?(:clj
    (defn- print-ref
@@ -53,7 +53,7 @@
    (extend-type ValueRef
      IPrintWithWriter
      (-pr-writer [obj writer _]
-       (write-all writer (str obj)))
+       (-write writer (str obj)))
 
      IEquiv
      (-equiv [this o]
