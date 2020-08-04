@@ -1,6 +1,7 @@
 (ns openmind.spec.indexical
   (:require [taoensso.timbre :as log]
             [openmind.hash :as h]
+            [openmind.spec.content :as content]
             [openmind.spec.relation :as rel]
             [openmind.spec.shared :as u]
             [openmind.spec.tag :as tag]
@@ -79,9 +80,9 @@
 
 (s/def ::tx-row
   (s/cat :type  ::assertion-type
-         :item  ::u/hash
-         :agent ::author
-         :time  :time/created))
+         :what  ::u/hash
+         :who   ::author
+         :when  :time/created))
 
 (s/def ::assertion-type
   #{:assert :retract})
@@ -92,6 +93,9 @@
 (s/def ::assertions
   (s/coll-of ::assertion :kind vector?))
 
+(s/def ::assertion
+  (s/cat :assertion ::assertion-type :what ::u/hash))
+
 ;; FIXME: We need to decide what can be inserted.
 (s/def ::context
-  (s/map-of ::u/hash any?))
+  (s/map-of ::u/hash ::content/content))

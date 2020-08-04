@@ -4,6 +4,7 @@
             [openmind.components.comment :as comment]
             [openmind.components.common :as common]
             [openmind.components.extract :as extract]
+            [openmind.components.extract.core :as c]
             [openmind.components.extract.editor.figure :as figure]
             [openmind.components.extract.editor.relations :as relations]
             [openmind.components.forms :as forms]
@@ -94,24 +95,6 @@
     ;; the spec we want to keep around.
     (= :article type) (update :source #(apply dissoc % labnote-keys))
     (= :labnote type) (update :source #(apply dissoc % article-keys))))
-
-(defn sub-new [id]
-  (fn [{:keys [entity] :as rel}]
-    (if (= entity ::new)
-      (assoc rel :entity id)
-      rel)))
-
-(defn finalise-extract [prepared {:keys [figure-data relations comments figure]}]
-  (let [imm (util/immutable prepared)
-        rels (map (sub-new (:hash imm)) relations)
-        id (:hash imm)]
-    {:imm imm
-     :snidbits (concat (when figure [figure-data])
-                       (map util/immutable rels)
-                       (map (fn [t]
-                              (util/immutable
-                               {:text t :extract id}))
-                            (remove empty? comments)))}))
 
 (re-frame/reg-event-fx
  ::revalidate
@@ -275,17 +258,41 @@
  (fn [db [_ errors id]]
    (assoc-in db [::extracts id :errors] errors)))
 
-(defn extract-changed? [old new]
-  (let [content (dissoc (:content old) :hash :time/created)]
-    (when-not (= (:hash old) (:hash (util/immutable new)))
-      (util/immutable
-       (assoc new :history/previous-version (:hash old))))))
+(defn sub-new [id] (fn [{:keys [entity] :as rel}]
+    (if (= entity ::new)
+      (assoc rel :entity id)
+      rel)))
 
-(defn changed? [imm fig extract base]
-  (let [rels (:relations @(re-frame/subscribe [:extract-metadata (:hash extract)]))]
-    (or (some? imm)
-        (some? fig)
-        (not= rels (:relations base)))))
+(defn imap
+  "Converts a coll of immutables into a map from hashes to content."
+  [imms]
+  (into {}
+        (map (fn [{:keys [hash content]}] [hash content]))
+        imms))
+
+(defn new-extract [prepared {:keys [figure-data relations comments figure]}]
+  (let [imm      (util/immutable prepared)
+        id       (:hash imm)
+        rels     (map util/immutable (map (sub-new (:hash imm)) relations))
+        comments (map (fn [t] (util/immutable {:text t :extract id}))
+                      (remove empty? comments))]
+    {:context    (merge
+                  {id prepared}
+                  (when figure
+                    {(:hash figure-data) (:content figure-data)})
+                  (imap rels)
+                  (imap comments))
+     :assertions (into [[:assert id]]
+                       (remove nil?)
+                       (concat
+                        (map (fn [{:keys [hash]}] [:assert hash]) rels)
+                        (map (fn [{:keys [hash]}] [:assert hash])
+                             (remove empty? comments))))}))
+
+(defn extract-changed? [old new]
+  (when-not (= (:hash old) (:hash (util/immutable new)))
+    (util/immutable
+     (assoc new :history/previous-version (:hash old)))))
 
 (defn update-relations [oldid newid relations]
   (if newid
@@ -297,35 +304,68 @@
           relations)
     relations))
 
+(def rr
+  :openmind.components.extract.editor.relations/retracted-relations)
+
+(def nr
+  :openmind.components.extract.editor.relations/new-relations)
+
+(defn changed? [original new meta]
+  (not
+   (and (= (:hash original) (:hash new))
+        (empty? (rr meta))
+        (empty? (nr meta)))))
+
+(defn update-extract [original ometa new new-meta]
+  (let [core-change? (not= (:hash original) (:hash new))
+       ]
+    (if core-change?
+      (let [new' (util/immutable
+                  (assoc (:content new)
+                         :history/previous-version
+                         (:hash original)))
+            new-rels (imap (map util/immutable
+                                (update-relations
+                                 (:hash original) (:hash new') (nr new-meta))))
+            r-rels (imap (map util/immutable
+                              (update-relations
+                               (:hash original) (:hash new') (rr new-meta))))]
+        {:context (merge
+                   {(:hash new') (:content new')}
+                   (when-not (= (:figure (:content new'))
+                                (:figure (:content original)))
+                     {(:hash (:figure-data (:content new-meta)))
+                      (:content (:figure-data (:content new-meta)))})
+                   new-rels
+                   r-rels)
+         :assertions (into [[:retract (:hash original)]
+                            [:assert (:hash new')]]
+                           (concat
+                            (map (fn [r] [:assert r]) (keys new-rels))
+                            (map (fn [r] [:retract r]) (keys r-rels))))}))))
+
 (re-frame/reg-event-fx
  ::update-extract
  (fn [{:keys [db]} [_ id]]
    (let [base                   (get-in db [::extracts id :content])
          author                 (get db :login-info)
-         extract                (prepare-extract  base)
+         extract                (prepare-extract base)
          {:keys [valid errors]} (validate-extract extract)]
      (if errors
        {:dispatch [::form-errors errors id]}
        (if (= id ::new)
-         (let [{:keys [imm snidbits]} (finalise-extract extract base)]
-           {:dispatch [:->server [:openmind/tx
-                                  {:context    snidbits
-                                   :author     author
-                                   :assertions [:assert ]}]]})
-
+         {:dispatch [:->server [:openmind/tx
+                                (assoc (new-extract extract base)
+                                       :author author)]]}
          (let [original (events/table-lookup db id)
-               fig      (when-not (= (:figure extract) (:figure original))
-                          (:figure-data base))
-               imm      (extract-changed? original extract)]
-           (if (changed? imm fig original base)
-             {:dispatch [:->server [:openmind/update
-                                    {:new-extract imm
-                                     :editor      (get db :login-info)
-                                     :previous-id (:hash original)
-                                     :figure      fig
-                                     :relations   (update-relations
-                                                   id (:hash imm)
-                                                   (:relations base))}]]}
+               imm      (util/immutable extract)
+               ometa    (c/metadata db id)
+               new-meta (get-in db [::extracts id])]
+           (if (changed? original imm new-meta)
+             {:dispatch [:->server
+                         [:openmind/tx
+                          (assoc (update-extract original ometa imm new-meta)
+                                 :author author)]]}
              ;; no change, just go back to search
              {:dispatch-n [[:notify {:status  :warn
                                      :message "no changes to save"}]

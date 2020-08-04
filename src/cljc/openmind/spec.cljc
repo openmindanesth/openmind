@@ -1,23 +1,25 @@
 (ns openmind.spec
-  (:require [openmind.hash :as h]
-            [openmind.spec.comment :as comment]
-            [openmind.spec.extract :as extract]
-            [openmind.spec.figure :as figure]
-            [openmind.spec.indexical :as indexical]
-            [openmind.spec.relation :as relation]
-            [openmind.spec.shared :as u]
-            [openmind.spec.tag :as tag]
-            #?(:clj  [clojure.spec.alpha :as s]
-               :cljs [cljs.spec.alpha :as s])))
+  #?@
+   (:clj
+    [(:require
+      [clojure.spec.alpha :as s]
+      [openmind.spec.content :as content]
+      [openmind.spec.extract :as extract]
+      [openmind.spec.indexical :as indexical]
+      [openmind.spec.shared :as u])]
+    :cljs
+    [(:require
+      [cljs.spec.alpha :as s]
+      [openmind.spec.content :as content]
+      [openmind.spec.extract :as extract]
+      [openmind.spec.indexical :as indexical]
+      [openmind.spec.shared :as u])]))
 
-(s/def ::content
+(s/def ::content ::content/content)
+
+(s/def :immutable/content
   (s/or
-   :comment-vote ::comment/vote
-   :comment   ::comment/comment
-   :relation  ::relation/relation
-   :extract   ::extract/extract
-   :tag       ::tag/tag
-   :figure    ::figure/figure
+   :content ::content
    :indexical ::indexical/indexical))
 
 (s/def ::hash ::u/hash)
@@ -25,6 +27,5 @@
 (s/def ::extract ::extract/extract)
 
 (s/def ::immutable
-  (s/keys :req-un [::u/hash ::content]
-          :req [:time/created]
-          :opt [:history/previous-version]))
+  (s/keys :req-un [::u/hash :immutable/content ::indexical/author]
+          :req [:time/created]))
