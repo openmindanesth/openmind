@@ -86,12 +86,13 @@
   the server's point of view.
 
   Note: in dev mode the check always returns true."
-  [token author]
-  (if (or env/dev-mode? (= token author))
-    true
-    (do
-      (log/error "Login mismatch, possible attack:" token author)
-      false)))
+  [tokens author]
+  (let [tauth (select-keys (:orcid tokens) [:name :orcid-id])]
+    (if (or env/dev-mode? (= tauth author))
+      true
+      (do
+        (log/error "Login mismatch, possible attack:" tokens author)
+        false))))
 
 (defn valid?
   "Checks that `doc` is a valid extract based on its spec."
@@ -132,8 +133,7 @@
   [{:keys [uid tokens] [_ {:keys [extract extras]}] :event :as req}]
   (when (or (not= uid :taoensso.sente/nil-uid) env/dev-mode?)
     (async/go
-      (when (check-author (select-keys (:orcid tokens) [:name :orcid-id])
-                          (:author (:content extract)))
+      (when (check-author tokens (:author (:content extract)))
         (write-extract! extract extras uid)))
     (respond-with-fallback req [:openmind/index-result {:status :success}])))
 
@@ -174,7 +174,7 @@
     :as req}]
   (when (or (not= uid :taoensso.sente/nil-uid) env/dev-mode?)
     (async/go
-      (when (check-author (select-keys (:orcid tokens) [:name :orcid-id]) editor)
+      (when (check-author tokens editor)
         (when (valid-edit? previous-id new-extract)
           (notify/notify-on-creation uid (:hash new-extract))
           (update-extract! mesg))))
@@ -190,6 +190,20 @@
 (defmethod dispatch :openmind/extract-metadata
   [{[ev hash] :event :as req}]
   (respond-with-fallback req [ev hash (index/extract-meta-ref hash)]))
+
+(defmethod dispatch :openmind/tx
+  ;; gather assertions and retractions into sets which are processed all
+  ;; together, or not at all.
+  ;;
+  ;; Note that this does not mean that they are committed transactionally.
+  ;;
+  ;; So what good is this? That's a good question...
+  [{[ev o] :event :keys [tokens] :as req}]
+  (when (s/valid? :openmind.spec.indexical/tx o)
+    (let [{:keys [author context assertions]} o]
+      (when (check-author tokens author)
+        ;; Do stuff
+        ))))
 
 (defn- delete-extract!
   "Soft delete of extracts. Removes them from the search index and removes

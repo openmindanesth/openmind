@@ -74,10 +74,8 @@
    :observation/date])
 
 (defn prepare-extract
-  [author {:keys [extract/type] :as extract}]
+  [{:keys [extract/type] :as extract}]
   (cond-> (select-keys extract extract-keys)
-
-    (empty? (:author extract)) (assoc :author author)
 
     (= :article type)
     (update-in [:source :authors]
@@ -118,9 +116,7 @@
 (re-frame/reg-event-fx
  ::revalidate
  (fn [{:keys [db]} [_ id]]
-   (let [extract (prepare-extract
-                  (:login-info db)
-                  (get-in db [::extracts id :content]))]
+   (let [extract (prepare-extract (get-in db [::extracts id :content]))]
      {:dispatch [::form-errors (:errors (validate-extract extract)) id]})))
 
 ;;;;; New extract init
@@ -305,14 +301,18 @@
  ::update-extract
  (fn [{:keys [db]} [_ id]]
    (let [base                   (get-in db [::extracts id :content])
-         extract                (prepare-extract (get db :login-info) base)
+         author                 (get db :login-info)
+         extract                (prepare-extract  base)
          {:keys [valid errors]} (validate-extract extract)]
      (if errors
        {:dispatch [::form-errors errors id]}
        (if (= id ::new)
          (let [{:keys [imm snidbits]} (finalise-extract extract base)]
-           {:dispatch [:->server [:openmind/index
-                                  {:extract imm :extras snidbits}]]})
+           {:dispatch [:->server [:openmind/tx
+                                  {:context    snidbits
+                                   :author     author
+                                   :assertions [:assert ]}]]})
+
          (let [original (events/table-lookup db id)
                fig      (when-not (= (:figure extract) (:figure original))
                           (:figure-data base))

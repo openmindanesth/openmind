@@ -75,6 +75,9 @@
   int?)
 
 (s/def ::tx-log-item
+  (s/coll-of ::tx-row :kind vector?))
+
+(s/def ::tx-row
   (s/cat :type  ::assertion-type
          :item  ::u/hash
          :agent ::author
@@ -82,3 +85,13 @@
 
 (s/def ::assertion-type
   #{:assert :retract})
+
+(s/def ::tx
+  (s/keys :req-un [::author ::assertions ::context]))
+
+(s/def ::assertions
+  (s/coll-of ::assertion :kind vector?))
+
+;; FIXME: We need to decide what can be inserted.
+(s/def ::context
+  (s/map-of ::u/hash any?))
