@@ -1,7 +1,7 @@
 (ns setup
   (:require [clojure.core.async :as async]
             [openmind.elastic :as elastic]
-            [openmind.indexing :as index]
+            [openmind.spec :as s]
             [openmind.datastore :as ds]
             [openmind.util :as util]))
 
