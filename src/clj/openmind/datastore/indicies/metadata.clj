@@ -33,16 +33,16 @@
   "Indexing dispatch table. I know this should be a multi method, but openness
   isn't really an issue here and the rest is all just boilerplate."
   {[:assert :comment]       txfns/add-comment-to-meta
-   [:retract :comment]      (contantly (throw (Exception. "Not implemented")))
+   [:retract :comment]      #(throw (Exception. "Not implemented"))
    [:assert :comment-vote]  txfns/comment-vote
-   [:retract :comment-vote] (contantly (throw (Exception. "Not implemented")))
+   [:retract :comment-vote] #(throw (Exception. "Not implemented"))
    [:assert :extract]       txfns/new-extract
-   [:retract :extract]      (contantly (throw (Exception. "Not implemented")))
+   [:retract :extract]      #(throw (Exception. "Not implemented"))
    [:assert :relation]      txfns/add-relation
    [:retract :relation]     txfns/retract-relation})
 
 (defn index [[assertion hash _ _ obj]]
-  (let [obj (or obj (ds/lookup hash))]
+  (let [obj (or obj (:content (ds/lookup hash)))]
     (when-let [t (first (s/conform :openmind.spec/content obj))]
       (when-let [f (get index-methods [assertion t])]
         (ds/swap-index! extract-metadata-index (f hash obj))))))
