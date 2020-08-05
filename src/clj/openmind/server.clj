@@ -2,6 +2,8 @@
   (:require [clojure.java.io :as io]
             [compojure.core :as c]
             [compojure.route :as route]
+            [openmind.datastore.indicies.metadata :as metadata-index]
+            [openmind.elastic :as es]
             [openmind.env :as env]
             [openmind.notification :as notify]
             [openmind.oauth2 :as oauth2]
@@ -109,6 +111,14 @@
   (reset! router
           (sente/start-server-chsk-router! (:ch-recv socket) #'dispatch-msg)))
 
+(defn start-indicies! []
+  (es/start-indexing!)
+  (metadata-index/start-indexing!))
+
+(defn stop-indicies! []
+  (es/stop-indexing!)
+  (metadata-index/stop-indexing!))
+
 (defn start-server! []
   (when env/dev-mode?
     (set! *warn-on-reflection* true))
@@ -119,10 +129,12 @@
     (log/info "Server listening on port:" port)))
 
 (defn init! []
+  (start-indicies!)
   (start-server!)
   (start-router!))
 
 (defn stop! []
+  (stop-indicies!)
   (stop-router!)
   (when @stop-server!
     (@stop-server!)))
