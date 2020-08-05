@@ -199,7 +199,7 @@
       :component-did-update getsize})))
 
 ;; REVIEW: Eegahd
-(defn fit-to-screen [{:keys [width height]} {:keys [x y top]}]
+(defn fit-to-screen [{:keys [width height]} {:keys [x y top]} & [thumb?]]
   (let [de (.-documentElement js/document)
         vh (.-clientHeight de)
         vw (.-clientWidth de)]
@@ -216,53 +216,54 @@
              ;; The current maximum height of an extract is 10rem plus 1rem
              ;; padding (half top, half bottom). We don't care about the top, so
              ;; 170px. Sloppy, bound to break somewhere. Seems to work.
-             (when (< vh (+ height y 170))
+             (when (< vh (+ height y (if thumb? 170 24)))
                {:top (str "calc(100vh - 1.5rem + "
-                          top "px - " y "px - " height "px) ")})
+                          top "px - " y "px - min(80vh , "  height "px)) ")})
              (when (< (* 0.8 vh) height)
                ;; Mixing CSS with control data!
                {:will-overflow true})))))
 
 (defn hover-link [text float-content
-                  {:keys [orientation style hover?]}]
+                  {:keys [orientation style hover? hide-if thumb?]}]
   (let [open?      (reagent/atom false)
         float-size (reagent/atom nil)
         link-size  (reagent/atom false)]
     (fn [text float-content {:keys [orientation style]}]
-      (let [wrapper (size-reflector float-content float-size)
-            link    (size-reflector [:div.link-blue
-                                     {:style {:height "100%"}}
-                                     text]
-                                    link-size)]
-        [:div.plh.prh
-         (merge
-          {:on-mouse-leave #(reset! open? false)}
-          (if hover?
-            {:on-mouse-over #(reset! open? true)}
-            {:on-click #(reset! open? true)
-             :style    {:cursor :pointer}}))
-         [link]
-         (when float-content
-           ;; dev hack
-           (when @open?
-             (let [position (fit-to-screen @float-size @link-size)]
-               [:div.absolute.ml1.mr1.hover-link.border-round.bg-plain.border-solid
-                {:style (merge {:padding "0.1rem"
-                                :cursor  :default
-                                :z-index 1001}
-                               (when orientation
-                                 {orientation 0})
-                               position
-                               (when-not @float-size
-                                 {:display :none}))
+      (if (and (fn? hide-if) (hide-if))
+        [:div]
+        (let [wrapper (size-reflector float-content float-size)
+              link    (size-reflector [:div.link-blue
+                                       {:style {:height "100%"}}
+                                       text]
+                                      link-size)]
+          [:div.plh.prh
+           (merge
+            {:on-mouse-leave #(reset! open? false)}
+            (if hover?
+              {:on-mouse-over #(reset! open? true)}
+              {:on-click #(reset! open? true)
+               :style    {:cursor :pointer}}))
+           [link]
+           (when float-content
+             (when @open?
+               (let [position (fit-to-screen @float-size @link-size thumb?)]
+                 [:div.absolute.ml1.mr1.hover-link.border-round.bg-plain.border-solid
+                  {:style (merge {:padding "0.1rem"
+                                  :cursor  :default
+                                  :z-index 1001}
+                                 (when orientation
+                                   {orientation 0})
+                                 position
+                                 (when-not @float-size
+                                   {:display :none}))
 
-                 :on-mouse-over halt
-                 :on-mouse-out  halt}
-                [:div (when (:will-overflow position)
-                        {:style {:height          "calc(80vh)"
-                                 :scrollbar-width :thin
-                                 :overflow-y      :auto}})
-                 [wrapper]]])))]))))
+                   :on-mouse-over halt
+                   :on-mouse-out  halt}
+                  [:div (when (:will-overflow position)
+                          {:style {:height          "calc(80vh)"
+                                   :scrollbar-width :thin
+                                   :overflow-y      :auto}})
+                   [wrapper]]])))])))))
 
 (defn sizes [id]
   (when-let [node (.getElementById js/document id)]
@@ -308,6 +309,7 @@
                                                                  "px)")}))}]]
          [figure-hover figure]
          {:orientation :left
+          :thumb?      true
           :route       {:route :extract/figure :path {:id eid}}}]))))
 
 (re-frame/reg-sub
@@ -440,10 +442,16 @@
        [hover-link "comments"
         [comments-hover hash]
         {:orientation :left}]
-       [hover-link "history" [edit-history hash]]
-       [hover-link "related" [related-extracts hash]]
-       [hover-link "repos" [resource-hover resources]]
-       [hover-link "tags" [tag-hover tags]]
+       [hover-link "history" [edit-history hash]
+        {:hide-if
+         #(empty? (:history @(re-frame/subscribe [:extract-metadata hash])))}]
+       [hover-link "related" [related-extracts hash]
+        {:hide-if
+         #(empty? (:relations @(re-frame/subscribe [:extract-metadata hash])))}]
+       [hover-link "repos" [resource-hover resources]
+        {:hide-if #(empty? resources)}]
+       [hover-link "tags" [tag-hover tags]
+        {:hide-if #(empty? tags)}]
        [hover-link [source-link (:extract/type extract) source]
         [source-hover (:extract/type extract) source]
         {:orientation :right}]]]]]])
