@@ -3,7 +3,7 @@
   (:require [clojure.core.async :as async]
             [clojure.spec.alpha :as s]
             [clojure.string :as string]
-            [openmind.datastore.indicies.elastic :as ind]
+            [openmind.datastore :as ds]
             [openmind.env :as env]
             [openmind.json :as json]
             [openmind.tags :as tags]
@@ -226,7 +226,26 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Extract indexing
+;;
+;; Should this be in the datastore/indicies folder? I'm honestly conflicted
+;; about that; indicies are business logic, whereas the datastore is a
+;; library. Or such is the design...
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def active-es-index
+  (ds/create-index
+   "openmind.indexing/elastic-active"))
+
+(defn add-to-index [id]
+  (log/trace "adding to elastic: " id)
+  (ds/swap-index! active-es-index (fn [i]
+                                    (if (empty? i)
+                                      #{id}
+                                      (conj i id)))))
+
+(defn remove-from-index [id]
+  (log/trace "Removing from elastic:" id)
+  (ds/swap-index! active-es-index (fn [i] (disj i id))))
 
 (defn index-extract!
   "Given an immutable, index the contained extract in es."
@@ -245,19 +264,41 @@
             key       (.-hash-string ^ValueRef (:hash imm))
             res       (async/<! (send-off!
                                  (index-req index ext key)))]
-        (ind/add-to-index (:hash imm))
+        (add-to-index (:hash imm))
         (log/trace "Indexed" (:hash imm) res)
         res)
       (log/error "Trying to index invalid extract:" imm))))
 
 (defn retract-extract! [^ValueRef hash]
   (async/go
-    (ind/remove-from-index hash)
+    (remove-from-index hash)
     (let [res (-> (delete-req index (.-hash-string hash))
                   send-off!
                   async/<!)]
       (log/trace "Retracted " hash res)
       res)))
+
+(defn index [[assertion hash _ _ obj]]
+  (println "elastic!" obj)
+  (let [obj (or obj (:content (ds/lookup hash)))]
+    (when (s/valid? :openmind.spec/extract obj)
+      (case  assertion
+        :assert  (index-extract! {:hash hash :content obj})
+        :retract (retract-extract! hash)))))
+
+;; TODO: This boilerplate is identical to the metadata index and will likely be
+;; repeated in all indicies. Create a higher order registration fn.
+(defonce tx-ch (atom nil))
+
+(defn start-indexing! []
+  (reset! tx-ch (ds/tx-log))
+  (async/go-loop []
+    (when-let [tx (async/<! @tx-ch)]
+      (index tx)
+      (recur))))
+
+(defn stop-indexing! []
+  (async/close! @tx-ch))
 
 ;;;;; Testing helpers
 
