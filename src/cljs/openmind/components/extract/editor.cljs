@@ -330,6 +330,38 @@
           relations)
     relations))
 
+(declare labnote-details-inputs)
+(declare source-details-inputs)
+(declare extract-creation-form)
+
+(defn get-label [list key]
+  (:label (first (filter #(= (:key %) key) list))))
+
+(defn humanise-errors [type errors]
+  (let [se (:source errors)
+        re (dissoc errors :source)]
+    (println re)
+    (->>
+     (into ["there are errors below:"]
+           (remove nil?)
+           (concat
+            (when (seq re)
+              (map (fn [[k v]]
+                     (when (and k (seq v))
+                       (str (get-label extract-creation-form k) ": \"" v "\"")))
+                   re))
+            (when (seq se)
+              (map (fn [[k v]]
+                     (when (and k (seq v))
+                       (str (get-label (if (= type :labnote)
+                                         labnote-details-inputs
+                                         source-details-inputs)
+                                       [:source k])
+                            ": \"" v "\"")))
+                   se))))
+     (interpose "\n")
+     (apply str))))
+
 (re-frame/reg-event-fx
  ::update-extract
  (fn [{:keys [db]} [_ id]]
@@ -337,7 +369,9 @@
          extract                (prepare-extract (get db :login-info) base)
          {:keys [valid errors]} (validate-extract extract)]
      (if errors
-       {:dispatch [::form-errors errors id]}
+       (let [mesg (humanise-errors (:extract/type base) errors)]
+         {:dispatch-n [[::form-errors errors id]
+                       [:notify {:status :error :message mesg}]]})
        (if (= id ::new)
          (let [{:keys [imm snidbits]} (finalise-extract extract base)]
            {:dispatch [:->server [:openmind/index
