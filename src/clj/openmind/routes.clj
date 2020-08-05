@@ -5,7 +5,7 @@
             [openmind.datastore :as ds]
             [openmind.elastic :as es]
             [openmind.env :as env]
-            [openmind.indexing :as index]
+            [openmind.datastore.indicies.metadata :as meta-index]
             [openmind.notification :as notify]
             [openmind.sources :as sources]
             [openmind.tags :as tags]
@@ -26,10 +26,6 @@
 
     :else (log/warn "No way to return response to sender." uid msg))
   true)
-
-(defn intern-and-index [imm]
- (when (ds/intern imm)
-   (index/index imm)))
 
 (defmulti dispatch (fn [{:keys [id] :as e}]
                      ;; Ignore all internal sente messages at present
@@ -68,7 +64,7 @@
                                    (comp
                                     (map :hash)
                                     (map (fn [e]
-                                           [e (index/extract-meta-ref e)])))
+                                           [e (meta-index/extract-meta-ref e)])))
                                    res)}]]
       (respond-with-fallback req event))))
 
@@ -112,7 +108,7 @@
      [:openmind/article-details
       (assoc ev :source (async/<! (sources/lookup (string/trim term))))])))
 
-(defn write-extract!
+#_(defn write-extract!
   "Saves extract to S3 and indexes it in elastic."
   [extract extras uid]
   (async/go
@@ -128,13 +124,6 @@
             (log/error "Failed to index new extract:\n" extract
                        "\nresponse from elastic:\n" res)))))))
 
-(defmethod dispatch :openmind/index
-  [{:keys [uid tokens] [_ {:keys [extract extras]}] :event :as req}]
-  (when (or (not= uid :taoensso.sente/nil-uid) env/dev-mode?)
-    (async/go
-      (when (check-author tokens (:author (:content extract)))
-        (write-extract! extract extras uid)))
-    (respond-with-fallback req [:openmind/index-result {:status :success}])))
 
 (defn valid-edit?
   "Checks that the edit is legitimate. Currently that only means that the author
@@ -144,7 +133,7 @@
       (= (:author (:content new-extract))
          (-> prev-id ds/lookup :content :author))))
 
-(defn update-extract!
+#_(defn update-extract!
   "Handles all of the updating logic after."
   [{{id :hash {author :author} :content :as imm} :new-extract
     :keys [editor figure relations previous-id]}]
@@ -164,30 +153,9 @@
     (when relations
       (index/edit-relations previous-id (:hash imm) relations))))
 
-(defmethod dispatch :openmind/update
-  [{:keys [client-id send-fn ?reply-fn uid tokens]
-
-    [_ {:keys [previous-id new-extract editor] :as mesg}] :event
-
-    :as req}]
-  (when (or (not= uid :taoensso.sente/nil-uid) env/dev-mode?)
-    (async/go
-      (when (check-author tokens editor)
-        (when (valid-edit? previous-id new-extract)
-          (notify/notify-on-creation uid (:hash new-extract))
-          (update-extract! mesg))))
-    ;; FIXME: No feedback if something goes wrong.
-    (respond-with-fallback req [:openmind/update-response
-                                {:status :success :id previous-id}])))
-
-(defmethod dispatch :openmind/intern
-  [{[_ imm] :event :as req}]
-  (when-let [res (intern-and-index imm)]
-    (respond-with-fallback req [:openmind/extract-metadata res])))
-
 (defmethod dispatch :openmind/extract-metadata
   [{[ev hash] :event :as req}]
-  (respond-with-fallback req [ev hash (index/extract-meta-ref hash)]))
+  (respond-with-fallback req [ev hash (meta-index/extract-meta-ref hash)]))
 
 (defmethod dispatch :openmind/tx
   ;; gather assertions and retractions into sets which are processed all
@@ -196,15 +164,19 @@
   ;; Note that this does not mean that they are committed transactionally.
   ;;
   ;; So what good is this? That's a good question...
-  [{[ev o] :event :keys [tokens] :as req}]
-  (when (s/valid? :openmind.spec.indexical/tx o)
-    (let [{:keys [author context assertions]} o]
+  [{[ev tx] :event :keys [uid tokens] :as req}]
+  (when (s/valid? :openmind.spec.indexical/tx tx)
+    (let [{:keys [author context assertions]} tx]
       (when (check-author tokens author)
-        (println o)
-        ;; Do stuff
-        ))))
+        (run!
+         (fn [t id]
+           (case t
+             :assert  (notify/notify-on-assertion id)
+             :retract (notify/notify-on-retraction id)))
+         (:assertions tx))
+        (ds/transact (assoc tx :created (java.util.Date.)))))))
 
-(defn- delete-extract!
+#_(defn- delete-extract!
   "Soft delete of extracts. Removes them from the search index and removes
   relations to them from other extracts, but the extract is never removed from
   the store, nor is its metadata, so we can restore it at any time if need be."

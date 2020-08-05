@@ -109,7 +109,6 @@
   (reset! router
           (sente/start-server-chsk-router! (:ch-recv socket) #'dispatch-msg)))
 
-
 (defn start-server! []
   (when env/dev-mode?
     (set! *warn-on-reflection* true))

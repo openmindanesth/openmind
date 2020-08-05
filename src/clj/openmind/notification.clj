@@ -27,6 +27,10 @@
 (defn notify-on-creation [uid hash]
   (swap! creation-listeners update hash conj uid))
 
+(defn notify-on-assertion [uid hash])
+
+(defn notify-on-retraction [uid hash])
+
 (def metadata-chan
   (async/chan (async/sliding-buffer 128)))
 

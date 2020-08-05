@@ -1,8 +1,8 @@
 (ns openmind.datastore.indicies.metadata
-  (:require [clojure.spec.alpha :as s]
+  (:require [clojure.core.async :as async]
+            [clojure.spec.alpha :as s]
             [openmind.datastore :as ds]
-            [openmind.spec :as spec]
-            [openmind.transaction-fns :as txfns]
+            [openmind.datastore.indicies.metadata.transaction-fns :as txfns]
             [taoensso.timbre :as log]))
 
 (def extract-metadata-index
@@ -32,19 +32,32 @@
 (def index-methods
   "Indexing dispatch table. I know this should be a multi method, but openness
   isn't really an issue here and the rest is all just boilerplate."
-  {:comment      txfns/add-comment-to-meta
-   :comment-vote txfns/comment-vote
-   :extract      txfns/new-extract
-   :relation     txfns/add-relation
-   :figure       nil})
+  {[:assert :comment]       txfns/add-comment-to-meta
+   [:retract :comment]      (contantly (throw (Exception. "Not implemented")))
+   [:assert :comment-vote]  txfns/comment-vote
+   [:retract :comment-vote] (contantly (throw (Exception. "Not implemented")))
+   [:assert :extract]       txfns/new-extract
+   [:retract :extract]      (contantly (throw (Exception. "Not implemented")))
+   [:assert :relation]      txfns/add-relation
+   [:retract :relation]     txfns/retract-relation})
 
-(defn index [imm]
-  (let [t (first (:content (s/conform ::spec/immutable imm)))]
-    (if-let [f (get index-methods t)]
-     (ds/swap-index! extract-metadata-index (f imm))
-     ;; allow no-ops without triggering warnings.
-     (when-not (contains? index-methods t)
-       (log/warn "Attempt to index unconformable data:\n" imm)))))
+(defn index [[assertion hash _ _ obj]]
+  (let [obj (or obj (ds/lookup hash))]
+    (when-let [t (first (s/conform :openmind.spec/content obj))]
+      (when-let [f (get index-methods [assertion t])]
+        (ds/swap-index! extract-metadata-index (f hash obj))))))
+
+(defonce tx-ch (atom nil))
+
+(defn start-indexing! []
+  (reset! tx-ch (ds/tx-log))
+  (async/go-loop []
+    (when-let [tx (async/<! @tx-ch)]
+      (index tx)
+      (recur))))
+
+(defn stop-indexing! []
+  (async/close! @tx-ch))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Miscelanea

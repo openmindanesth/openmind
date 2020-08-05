@@ -85,11 +85,11 @@
 ;;;;; Comments
 
 (defn insert-comment
-  [comment-tree {{:keys [reply-to]} :content :as comment}]
+  [comment-tree hash {:keys [reply-to] :as comment}]
   (let [c* (-> comment
                :content
                (dissoc :reply-to)
-               (assoc :hash (:hash comment)
+               (assoc :hash hash
                       :time/created (:time/created comment)))]
     (if reply-to
       (walk/postwalk
@@ -102,8 +102,8 @@
         (conj comment-tree c*)
         [c*]))))
 
-(defn add-comment-to-meta [{{:keys [extract]} :content :as comment}]
-  (alter-meta extract (fn [m] (update m :comments insert-comment comment))))
+(defn add-comment-to-meta [hash {:keys [extract] :as comment}]
+  (alter-meta extract (fn [m] (update m :comments insert-comment hash comment))))
 
 (defn update-votes [comments {h :hash {:keys [vote author comment]} :content}]
   (walk/postwalk
@@ -128,7 +128,7 @@
 
 (defn add-relation [{{:keys [entity value] :as content} :content}]
   (let [update-entity (add-1 entity content)
-        update-value  (add-1 value  content)]
+        update-value  (add-1 value content)]
     (comp update-entity update-value)))
 
 (defn- retract-1 [id rel]

@@ -1,9 +1,9 @@
 (ns openmind.datastore.indexing
   (:require [clojure.spec.alpha :as s]
             [clojure.stacktrace :as st]
-            [openmind.datastore.impl :as impl]
             [openmind.datastore.backends.s3 :as s3]
-            [openmind.spec :as spec]
+            [openmind.datastore.impl :as impl]
+            [openmind.datastore.shared :refer [get-all]]
             [openmind.util :as util]
             [taoensso.timbre :as log]))
 
@@ -55,6 +55,9 @@
     (s3/write! (:bucket index) @(:current-value index))
     (when (seq @(:tx-queue index))
       (recur index))))
+
+(def running
+  (atom #{}))
 
 (defn drain-index-queue! [index]
   (let [runv @running]

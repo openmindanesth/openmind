@@ -1,7 +1,7 @@
 (ns openmind.tags
   "This ns is only about search filtering. To see about creating tags in the
   fist place, go to `dev/tag_migration.clj`"
-  (:require [openmind.s3 :as s3]))
+  (:require [openmind.datastore :as ds]))
 
 (def tag-lookup-hash
   ;;FIXME: This should *not* be hardcoded
@@ -10,7 +10,7 @@
 (def tag-tree
    "Tree of taxonomy tags fetched from datastore."
   (-> tag-lookup-hash
-      s3/lookup
+      ds/lookup
       :content))
 
 ;; TODO: This is a monster. I've forgotten how it works already. Either rewrite
