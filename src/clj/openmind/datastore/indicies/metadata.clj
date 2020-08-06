@@ -47,21 +47,15 @@
         (ds/swap-index! extract-metadata-index (f tx content))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;; Miscelanea
+;;;;; Dev stuff
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#_(defn update-relations [id rels]
-  (ds/swap-index! extract-metadata-index
-                  (txfns/update-relations id rels)))
-
-(defn edit-relations [prev-id new-id rels]
-  (update-relations (or new-id prev-id) rels))
-
-(defn forward-metadata [prev id editor]
-  (ds/swap-index! extract-metadata-index
-                  (txfns/forward-metadata prev id editor)))
-
-(defn retract-extract! [id]
+(defn retract-extract!
+  "Removes all relations pointing to an extract *from other extracts*. N.B.:
+  This leaves the metadata for the extract with hash `id` unchanged. This is
+  only to be used when `id` is removed from circulation, which should be an
+  exceptional situation."
+  [id]
   (log/warn "Retracting:" id)
   (ds/swap-index! extract-metadata-index
                   (txfns/remove-other-relations id)))
