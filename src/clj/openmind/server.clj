@@ -3,6 +3,7 @@
             [compojure.core :as c]
             [compojure.route :as route]
             [openmind.datastore.indicies.metadata :as metadata-index]
+            [openmind.datastore :as ds]
             [openmind.elastic :as es]
             [openmind.env :as env]
             [openmind.notification :as notify]
@@ -111,13 +112,18 @@
   (reset! router
           (sente/start-server-chsk-router! (:ch-recv socket) #'dispatch-msg)))
 
-(defn start-indicies! []
-  (es/start-indexing!)
-  (metadata-index/start-indexing!))
+(defonce index-stop-fn
+  (atom nil))
 
 (defn stop-indicies! []
-  (es/stop-indexing!)
-  (metadata-index/stop-indexing!))
+  (when (fn? @index-stop-fn)
+    (index-stop-fn)))
+
+(defn start-indicies! []
+  (stop-indicies!)
+  (reset! index-stop-fn
+          (juxt (ds/start-listener es/handler)
+                (ds/start-listener metadata-index/handler))))
 
 (defn start-server! []
   (when env/dev-mode?

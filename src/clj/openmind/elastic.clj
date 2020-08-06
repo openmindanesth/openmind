@@ -6,6 +6,7 @@
             [openmind.datastore :as ds]
             [openmind.env :as env]
             [openmind.json :as json]
+            [openmind.notification :as notify]
             [openmind.tags :as tags]
             [org.httpkit.client :as http]
             [taoensso.timbre :as log])
@@ -284,28 +285,12 @@
       (log/trace "Retracted " hash res)
       res)))
 
-(defn handle [[assertion hash author created obj]]
+(defn handler [[assertion hash author created obj]]
   (let [content (or obj (:content (ds/lookup hash)))]
     (when (s/valid? :openmind.spec/extract content)
       (case  assertion
         :assert  (index-extract! hash created author content)
         :retract (retract-extract! hash)))))
-
-;; TODO: This boilerplate is identical to the metadata index and will likely be
-;; repeated in all indicies. Create a higher order registration fn.
-(defonce tx-ch (atom nil))
-
-(defn start-indexing! []
-  (when-let [ch @tx-ch]
-    (async/close! ch))
-  (reset! tx-ch (ds/tx-log))
-  (async/go-loop []
-    (when-let [assertion (async/<! @tx-ch)]
-      (handle assertion)
-      (recur))))
-
-(defn stop-indexing! []
-  (async/close! @tx-ch))
 
 ;;;;; Testing helpers
 

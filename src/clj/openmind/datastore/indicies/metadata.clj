@@ -41,23 +41,11 @@
    [:assert :relation]      txfns/add-relation
    [:retract :relation]     txfns/retract-relation})
 
-(defn index [[assertion hash _ _ obj]]
+(defn handler [[assertion hash _ _ obj]]
   (let [obj (or obj (:content (ds/lookup hash)))]
     (when-let [t (first (s/conform :openmind.spec/content obj))]
       (when-let [f (get index-methods [assertion t])]
         (ds/swap-index! extract-metadata-index (f hash obj))))))
-
-(defonce tx-ch (atom nil))
-
-(defn start-indexing! []
-  (reset! tx-ch (ds/tx-log))
-  (async/go-loop []
-    (when-let [tx (async/<! @tx-ch)]
-      (index tx)
-      (recur))))
-
-(defn stop-indexing! []
-  (async/close! @tx-ch))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Miscelanea

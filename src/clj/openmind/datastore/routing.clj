@@ -27,3 +27,14 @@
 
 (defn publish-transaction! [{:keys [assertions context]}]
   (run! #(publish! % context) assertions))
+
+(defn start-listener [handler]
+  (let [tx-ch (tx-log)]
+    (async/go-loop []
+      (when-let [tx (async/<! tx-ch)]
+        (try
+          (handler tx)
+          (catch Exception e
+            (log/error "exception caught in indexer loop: " e)))
+        (recur)))
+    (fn [] (async/close! tx-ch))))

@@ -13,13 +13,13 @@
 
 (def lookup impl/lookup)
 
-(def tx-log routing/tx-log)
-
 (def create-index indexing/create-index)
 
 (def swap-index! indexing/swap-index!)
 
 (def get-index indexing/get-index)
+
+(def start-listener routing/start-listener)
 
 (defn transact [{:keys [assertions context author created] :as tx}]
   (async/go
