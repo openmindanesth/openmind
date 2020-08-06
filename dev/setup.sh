@@ -8,4 +8,4 @@ sleep 10
 
 echo "populating search index"
 
-clj -A:dev -m setup
+clj -A:dev -m populate-elastic

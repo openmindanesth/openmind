@@ -1,4 +1,4 @@
-(ns setup
+(ns populate-elastic
   (:require [clojure.core.async :as async]
             [openmind.elastic :as elastic]
             [openmind.spec :as s]
@@ -26,22 +26,10 @@
         extracts (map ds/lookup extract-ids)]
     (async/go
       (async/<! (init-cluster!))
-      (run! elastic/index-extract! extracts))))
+      (println (str "loading " (count extract-ids) " extracts"))
+      (run! (fn [{:keys [hash content time/created author]}]
+              (elastic/index-extract! hash created author content))
+            extracts))))
 
 (defn -main [& args]
   (async/<!! (load-es-from-s3!)))
-
-(defn dump-elastic!
-  "Dump last 100 extracts from elastic to edn file.
-  This isn't the recommended way to save/restore elastic. For that use the s3
-  datastore and `load-es-from-s3!`."
-  [filename]
-  (async/go
-    (->> elastic/most-recent
-         elastic/send-off!
-         async/<!
-         elastic/parse-response
-         :hits
-         :hits
-         (mapv :_source)
-         (spit filename))))
