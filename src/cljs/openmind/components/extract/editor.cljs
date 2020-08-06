@@ -75,7 +75,7 @@
    :observation/date])
 
 (defn prepare-extract
-  [{:keys [extract/type] :as extract}]
+  [{:keys [extract/type resources] :as extract}]
   (cond-> (select-keys extract extract-keys)
 
     (= :article type)
@@ -89,6 +89,8 @@
                               (into []
                                     (remove #(every? empty? (vals %)))
                                     r)))
+
+    (empty? (remove #(every? empty? (vals %)) resources)) (dissoc :resources)
 
     ;; We have to do this in case someone fills in data for both a labnote and
     ;; an article. We don't select-keys, because there may be other stuff not in
