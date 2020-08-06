@@ -21,15 +21,20 @@
   (reset! send-fn send)
   (reset! get-all-connections-fn clients))
 
-(def creation-listeners
+(defonce creation-listeners
+  (atom {}))
+
+(defonce deletion-listeners
   (atom {}))
 
 (defn notify-on-creation [uid hash]
   (swap! creation-listeners update hash conj uid))
 
-(defn notify-on-assertion [uid hash])
+(defn notify-on-assertion [uid hash]
+  (swap! creation-listeners update hash conj uid))
 
-(defn notify-on-retraction [uid hash])
+(defn notify-on-retraction [uid hash]
+  (swap! deletion-listeners update hash conj uid))
 
 (def metadata-chan
   (async/chan (async/sliding-buffer 128)))
@@ -39,16 +44,10 @@
                                         :metadata metadata}])
   #_(async/put! metadata-chan [id metadata]))
 
-(defn extract-created [extract]
+(defn assertion-indexed [extract]
   (when-let [send @send-fn]
     (run! #(send % [:openmind/extract-created extract])
           (get @creation-listeners extract))
-    ;; REVIEW: This looks like a possible race condition where last instant
-    ;; listeners don't get notified, but who is actually capable of listening
-    ;; for the creation of an extract that doesn't exist yet? No one but the
-    ;; person who initiated the creation.
-    ;;
-    ;; So I'm running on the assumption this is fine. I might be wrong.
     (swap! creation-listeners dissoc extract)))
 
 (defn extract-edited [oldhash newhash]

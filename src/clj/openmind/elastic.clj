@@ -267,6 +267,10 @@
               key       (.-hash-string hash)
               res       (async/<! (send-off!
                                    (index-req index ext key)))]
+          (when (<= 200 (:status res) 201)
+            ;; REVIEW: Do I notify here? in the metadata index? Both? Somewhere
+            ;; else entirely? I have to rethink this notification thing I think.
+            (notify/assertion-indexed hash))
           (log/trace "Indexed" hash res)
           res))
       (log/error "Trying to index invalid extract:" content))))
