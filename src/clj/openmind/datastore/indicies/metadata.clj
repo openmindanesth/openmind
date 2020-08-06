@@ -36,22 +36,21 @@
    [:retract :comment]      #(throw (Exception. "Not implemented"))
    [:assert :comment-vote]  txfns/comment-vote
    [:retract :comment-vote] #(throw (Exception. "Not implemented"))
-   [:assert :extract]       txfns/new-extract
-   [:retract :extract]      #(throw (Exception. "Not implemented"))
+   [:assert :extract]       txfns/create-extract
    [:assert :relation]      txfns/add-relation
    [:retract :relation]     txfns/retract-relation})
 
-(defn handler [[assertion hash _ _ obj]]
-  (let [obj (or obj (:content (ds/lookup hash)))]
-    (when-let [t (first (s/conform :openmind.spec/content obj))]
+(defn handler [[assertion hash _ _ obj :as tx]]
+  (let [content (or obj (:content (ds/lookup hash)))]
+    (when-let [t (first (s/conform :openmind.spec/content content))]
       (when-let [f (get index-methods [assertion t])]
-        (ds/swap-index! extract-metadata-index (f hash obj))))))
+        (ds/swap-index! extract-metadata-index (f tx content))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Miscelanea
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn update-relations [id rels]
+#_(defn update-relations [id rels]
   (ds/swap-index! extract-metadata-index
                   (txfns/update-relations id rels)))
 

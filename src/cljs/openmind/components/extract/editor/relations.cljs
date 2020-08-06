@@ -51,7 +51,7 @@
 
 (defn relation-button [text event]
   [:button.text-white.ph.border-round.bg-dark-grey
-   {:on-click #(do (.log js/console %) (println event) (re-frame/dispatch event))}
+   {:on-click #(re-frame/dispatch event)}
    text])
 
 (defn related-buttons [extract-id]

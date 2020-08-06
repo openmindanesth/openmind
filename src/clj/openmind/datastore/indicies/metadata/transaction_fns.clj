@@ -3,22 +3,29 @@
   in a separate namespace is to make sure that I never refer to the index
   itself, thus accidentally reaching out of the transaction. That was getting to
   be a problem when everything was in the same ns."
-  (:require [clojure.walk :as walk]
-            [openmind.datastore :as s3]
+  (:require [clojure.spec.alpha :as s]
+            [clojure.walk :as walk]
+            [openmind.datastore.impl :as ds]
+            [openmind.hash :as h]
             [openmind.notification :as notify]
-            [openmind.util :as util]
             [taoensso.timbre :as log]))
 
 (defn metadata [index hash]
   (-> index
       (get hash)
-      s3/lookup
+      ds/lookup
       :content))
 
+(defn wrap-meta [content]
+  (when (s/valid? :openmind.spec/indexical content)
+    {:hash         (h/hash content)
+     :time/created (java.util.Date.)
+     :content      content}))
+
 (defn set-meta [index id metadata]
-  (if-let [imm (util/immutable metadata)]
+  (if-let [imm (wrap-meta metadata)]
     (do
-      (s3/intern imm)
+      (ds/intern imm)
       (notify/metadata-update id imm)
       (assoc index id (:hash imm)))
     (do
@@ -37,22 +44,9 @@
 
 ;;;;; Extract Creation
 
-(defn new-extract [{:keys [hash]}]
-  (fn [index]
-    (set-meta index hash {:extract hash})))
-
-;;;;; Update Extract
-;;
-;; An important part of updating an extract is carrying the metadata from the
-;; old version forward to the new one. There are still some open questions about
-;; this like: do we create *new* comments and relations which target the new
-;; version, or do we just leave the originals in the datastore and munge the
-;; metadata?
-;;
-;; So far we're going with the latter. This way we keep provenance, and all we
-;; really want for the UI is the metadata, so it seems to work out.
-
-(defn set-extract [comment-tree id]
+(defn set-extract
+  "Recursively set `:extract` to `id` in every node of `comment-tree`."
+  [comment-tree id]
   (if comment-tree
     (walk/prewalk (fn [node]
                     (if (and (map? node) (contains? node :extract))
@@ -61,7 +55,7 @@
                   comment-tree)
     []))
 
-(defn forward-metadata [prev id editor]
+(defn forward-metadata [prev id author created]
   (fn [index]
     (let [prev-meta (metadata index prev)
           relations (into #{}
@@ -74,13 +68,20 @@
                         (assoc :extract id)
                         (assoc :relations relations)
                         (update :comments set-extract id)
-                        (update :history #(or % []))
                         (update :history
-                                conj
+                                (fnil conj [])
                                 {:history/previous-version prev
-                                 :time/created             (java.util.Date.)
-                                 :author                   editor}))]
+                                 :time/created             created
+                                 :author                   author}))]
       (set-meta index id new-meta))))
+
+(defn create-extract [[_ hash author created] content]
+  (if-let [previous (:history/previous-version content)]
+    (forward-metadata previous hash author)
+    (fn [index]
+      (set-meta index hash {:extract      hash
+                            :author       author
+                            :time/created created}))))
 
 ;;;;; Comments
 
@@ -139,7 +140,7 @@
         value (retract-1 value rel)]
     (comp entity value)))
 
-(defn update-relations-meta [rels m]
+#_(defn update-relations-meta [rels m]
   (let [old-rels (:relations m)
         add      (map util/immutable (remove #(contains? old-rels %) rels))
         ;; FIXME: This logic should be performed in the client, and the client
@@ -151,7 +152,7 @@
     (apply comp (concat (map add-relation add)
                         (map retract-relation retract)))))
 
-(defn update-relations [id rels]
+#_(defn update-relations [id rels]
   "Given an id and a set of rels, start a transaction in which you figure out
   which rels must be added and which removed from the existing metadata to bring
   it inline with the new set."

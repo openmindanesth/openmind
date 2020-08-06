@@ -2,8 +2,8 @@
   (:require [clojure.java.io :as io]
             [compojure.core :as c]
             [compojure.route :as route]
-            [openmind.datastore.indicies.metadata :as metadata-index]
             [openmind.datastore :as ds]
+            [openmind.datastore.indicies.metadata :as metadata-index]
             [openmind.elastic :as es]
             [openmind.env :as env]
             [openmind.notification :as notify]
@@ -117,13 +117,13 @@
 
 (defn stop-indicies! []
   (when (fn? @index-stop-fn)
-    (index-stop-fn)))
+    (@index-stop-fn)))
 
 (defn start-indicies! []
   (stop-indicies!)
   (reset! index-stop-fn
-          (juxt (ds/start-listener es/handler)
-                (ds/start-listener metadata-index/handler))))
+          (juxt (ds/start-listener #'es/handler)
+                (ds/start-listener #'metadata-index/handler))))
 
 (defn start-server! []
   (when env/dev-mode?

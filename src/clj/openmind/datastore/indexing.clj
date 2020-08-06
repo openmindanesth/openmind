@@ -36,7 +36,7 @@
   {:hash                     (h/hash content)
    :content                  content
    :history/previous-version prev
-   :time/created             (java.time.Instant/now)})
+   :time/created             (java.util.Date.)})
 
 (defn process-index-txs [txs]
   (fn [v0]

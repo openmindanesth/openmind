@@ -50,11 +50,6 @@
           (get @creation-listeners extract))
     (swap! creation-listeners dissoc extract)))
 
-(defn extract-edited [oldhash newhash]
-  ;; we don't really listen for changes, just for the creation of the new
-  ;; extract. That may change.
-  (extract-created (or newhash oldhash)))
-
 (def metadata-pub
   (async/pub metadata-chan first))
 

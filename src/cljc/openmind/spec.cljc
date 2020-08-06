@@ -16,16 +16,24 @@
       [openmind.spec.shared :as u])]))
 
 (s/def ::content ::content/content)
-
-(s/def :immutable/content
-  (s/or
-   :content ::content
-   :indexical ::indexical/indexical))
+(s/def ::indexical ::indexical/indexical)
 
 (s/def ::hash ::u/hash)
 
 (s/def ::extract ::extract/extract)
 
-(s/def ::immutable
-  (s/keys :req-un [::u/hash :immutable/content ::indexical/author]
+(s/def ::meta-indexical
+  (s/keys :req-un [::u/hash :indexical/content]
+          :req [:time/created]
+          :opt [:history/previous-version]))
+
+(s/def :indexical/content ::indexical)
+
+(s/def ::meta-content
+  (s/keys :req-un [::u/hash ::content ::indexical/author]
           :req [:time/created]))
+
+(s/def ::internable
+  (s/or
+   :indexical ::meta-indexical
+   :content ::meta-content))

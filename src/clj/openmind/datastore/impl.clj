@@ -26,18 +26,18 @@
 
 (defn- intern-from-queue [obj]
   (let [key (:hash obj)]
-      (if (s3/exists? key)
-        (if (not= (:content obj) (:content (lookup key)))
-          (log/error "Collision in data store! Failed to add" obj)
-          (log/info "Attempting to add data with hash:" key
-                    "which already exists. Doing nothing."))
-        (do
-          (log/trace "Interning object\n" obj)
-          ;; TODO: Write the whole queue to the backend in one operation
-          ;; whenever possible.
-          (s3/write! key obj)))
-      (swap! recently-added dissoc key)
-      nil))
+    (if (s3/exists? key)
+      (if (not= (:content obj) (:content (lookup key)))
+        (log/error "Collision in data store! Failed to add" obj)
+        (log/info "Attempting to add data with hash:" key
+                  "which already exists. Doing nothing."))
+      (do
+        (log/trace "Interning object\n" obj)
+        ;; TODO: Write the whole queue to the backend in one operation
+        ;; whenever possible.
+        (s3/write! key obj)))
+    (swap! recently-added dissoc key)
+    nil))
 
 (def running
   (atom #{}))
@@ -63,7 +63,7 @@
   "If obj is a valid :openmind.spec/immutable, then it is stored in S3 with key
   equal to its hash."
   [obj]
-  (if (s/valid? :openmind.spec/immutable obj)
+  (if (s/valid? :openmind.spec/internable obj)
     (do
       (swap! recently-added assoc (:hash obj) obj)
       (dosync

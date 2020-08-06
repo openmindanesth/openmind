@@ -3,12 +3,12 @@
             [clojure.spec.alpha :as s]
             [clojure.string :as string]
             [openmind.datastore :as ds]
+            [openmind.datastore.indicies.metadata :as meta-index]
             [openmind.elastic :as es]
             [openmind.env :as env]
-            [openmind.datastore.indicies.metadata :as meta-index]
             [openmind.notification :as notify]
             [openmind.sources :as sources]
-            [openmind.tags :as tags]
+            [openmind.spec.indexical :as indexical]
             [taoensso.timbre :as log]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -87,7 +87,7 @@
      [:openmind/article-details
       (assoc ev :source (async/<! (sources/lookup (string/trim term))))])))
 
-;;;;; Get metadata (data can't know its own metadata).
+;;;;; Get metadata (data can't contain its own metadata).
 
 (defmethod dispatch :openmind/extract-metadata
   [{[ev hash] :event :as req}]
@@ -110,7 +110,7 @@
 
 (defmethod dispatch :openmind/tx
   [{[ev tx] :event :keys [uid tokens] :as req}]
-  (when (s/valid? :openmind.spec.indexical/tx tx)
+  (when (s/valid? ::indexical/tx tx)
     (let [{:keys [author context assertions]} tx]
       (when (check-author tokens author)
         (run!
