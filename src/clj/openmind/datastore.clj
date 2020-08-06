@@ -22,18 +22,6 @@
 (def get-index indexing/get-index)
 
 (defn transact [{:keys [assertions context author created] :as tx}]
-  ;; 1) Intern context items in IHS
-
-  ;; 2) Commit the transaction to the tx-log
-
-  ;; 3) Return a channel that tells the caller the transaction has been
-  ;; logged. That's the best we can do at present since the centre doesn't
-  ;; know who is consuming transactions, let alone when they're done
-
-  ;; 4) Apply tx-rows to appropriate indicies
-  ;; I think the best way to accomplish that last step is simply to publish
-  ;; them to a pub-sub system.
-
   (async/go
     (let [tx-items     (mapv (fn [[type hash]]
                                [type hash author created])
