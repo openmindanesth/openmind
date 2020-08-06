@@ -1,5 +1,6 @@
 (ns openmind.util
   (:require [clojure.spec.alpha :as s]
+            [openmind.spec :as spec]
             [openmind.hash :as h]
             [taoensso.timbre :as log]))
 
@@ -7,7 +8,7 @@
   "Returns an immutable entry for content which can be added to the datastore."
   [content]
   (when content
-    (if (s/valid? :openmind.spec/content content)
+    (if (s/valid? ::spec/content content)
       (let [h (h/hash content)]
         {:hash         h
          :time/created #?(:clj (java.util.Date.) :cljs (js/Date.))
@@ -15,4 +16,4 @@
       (log/error "Can't parse immutable" content))))
 
 (defn immutable? [x]
-  (s/valid? :openmind.spec/immutable x))
+  (s/valid? ::spec/immutable x))

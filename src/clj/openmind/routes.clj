@@ -169,10 +169,10 @@
     (let [{:keys [author context assertions]} tx]
       (when (check-author tokens author)
         (run!
-         (fn [t id]
+         (fn [[t id]]
            (case t
-             :assert  (notify/notify-on-assertion id)
-             :retract (notify/notify-on-retraction id)))
+             :assert  (notify/notify-on-assertion uid id)
+             :retract (notify/notify-on-retraction uid id)))
          (:assertions tx))
         (ds/transact (assoc tx :created (java.util.Date.)))))))
 

@@ -115,16 +115,16 @@
 
 ;;;;; Init new index
 
+(defn create-index [index]
+  (assoc base-req
+         :url (str base-url "/" index)
+         :method :put))
+
 (defn set-mapping [index]
   (merge base-req
          {:method :put
           :url (str base-url "/" index "/_mapping")
           :body (json/write-str mapping)}))
-
-(defn create-index [index]
-  (assoc base-req
-         :url (str base-url "/" index)
-         :method :put))
 
 ;;;;; Searching
 
@@ -248,42 +248,43 @@
   (ds/swap-index! active-es-index (fn [i] (disj i id))))
 
 (defn index-extract!
-  "Given an immutable, index the contained extract in es."
-  [{{:keys [tags source]} :content :as imm}]
+  "Index extract in elastic and add it to the active-es-index."
+  [^ValueRef hash created author content]
   (async/go
-    (if (s/valid? :openmind.spec.extract/extract (:content imm))
-
-      (let [tag-names (map #(:name (get tags/tag-tree %)) tags)
-            date      (or (:publication/date source)
-                          (:observation/date source))
-            ext       (assoc (:content imm)
-                             :tag-names tag-names
-                             :es/pub-date date
-                             :hash (:hash imm)
-                             :time/created (:time/created imm))
-            key       (.-hash-string ^ValueRef (:hash imm))
-            res       (async/<! (send-off!
-                                 (index-req index ext key)))]
-        (add-to-index (:hash imm))
-        (log/trace "Indexed" (:hash imm) res)
-        res)
-      (log/error "Trying to index invalid extract:" imm))))
+    (if (s/valid? :openmind.spec.extract/extract content)
+      (let [{:keys [tags source]} content]
+        (add-to-index hash)
+        (let [tag-names (map #(:name (get tags/tag-tree %)) tags)
+              date      (or (:publication/date source)
+                            (:observation/date source))
+              ext       (merge content
+                               {:tag-names tag-names
+                                :es/pub-date date
+                                :hash hash
+                                :time/created created}
+                               (when author
+                                 {:author author}))
+              key       (.-hash-string hash)
+              res       (async/<! (send-off!
+                                   (index-req index ext key)))]
+          (log/trace "Indexed" hash res)
+          res))
+      (log/error "Trying to index invalid extract:" content))))
 
 (defn retract-extract! [^ValueRef hash]
   (async/go
-    (remove-from-index hash)
     (let [res (-> (delete-req index (.-hash-string hash))
                   send-off!
                   async/<!)]
+      (remove-from-index hash)
       (log/trace "Retracted " hash res)
       res)))
 
-(defn index [[assertion hash _ _ obj]]
-  (println "elastic!" obj)
-  (let [obj (or obj (:content (ds/lookup hash)))]
-    (when (s/valid? :openmind.spec/extract obj)
+(defn handle [[assertion hash author created obj]]
+  (let [content (or obj (:content (ds/lookup hash)))]
+    (when (s/valid? :openmind.spec/extract content)
       (case  assertion
-        :assert  (index-extract! {:hash hash :content obj})
+        :assert  (index-extract! hash created author content)
         :retract (retract-extract! hash)))))
 
 ;; TODO: This boilerplate is identical to the metadata index and will likely be
@@ -291,10 +292,12 @@
 (defonce tx-ch (atom nil))
 
 (defn start-indexing! []
+  (when-let [ch @tx-ch]
+    (async/close! ch))
   (reset! tx-ch (ds/tx-log))
   (async/go-loop []
-    (when-let [tx (async/<! @tx-ch)]
-      (index tx)
+    (when-let [assertion (async/<! @tx-ch)]
+      (handle assertion)
       (recur))))
 
 (defn stop-indexing! []

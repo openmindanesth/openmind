@@ -4,10 +4,10 @@
             [openmind.datastore.impl :as impl]
             [taoensso.timbre :as log]))
 
-(def tx-ch
+(defonce tx-ch
   (async/chan 128))
 
-(def multi-ch
+(defonce multi-ch
   (async/mult tx-ch))
 
 (defn tx-log
