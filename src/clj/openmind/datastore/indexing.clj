@@ -4,7 +4,7 @@
             [openmind.datastore.backends.s3 :as s3]
             [openmind.datastore.impl :as impl]
             [openmind.datastore.shared :refer [get-all]]
-            [openmind.util :as util]
+            [openmind.hash :as h]
             [taoensso.timbre :as log]))
 
 (def index-map
@@ -32,9 +32,16 @@
   [index]
   @(:current-value index))
 
+(defn wrap-meta [prev content]
+  {:hash                     (h/hash content)
+   :content                  content
+   :history/previous-version prev
+   :time/created             (java.time.Instant/now)})
+
 (defn process-index-txs [txs]
   (fn [v0]
-    (util/immutable
+    (wrap-meta
+     (:hash v0)
      (reduce (fn [v tx]
                (let [v' (tx v)]
                  (log/trace "applying\n" tx)
