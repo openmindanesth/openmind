@@ -4,6 +4,7 @@
             [openmind.datastore.impl :as impl]
             [openmind.datastore.indexing :as indexing]
             [openmind.datastore.routing :as routing]
+            [openmind.spec :as spec]
             [openmind.hash :as h]
             [taoensso.timbre :as log]))
 
@@ -21,8 +22,8 @@
 
 (def start-listener routing/start-listener)
 
-(defn transact [{:keys [assertions context author created] :as tx}]
-  (async/go
+(defn transact [{:keys [assertions context author time/created] :as tx}]
+  (if (s/valid? ::spec/tx tx)
     (let [tx-items     (mapv (fn [[type hash]]
                                [type hash author created])
                              assertions)
@@ -31,7 +32,7 @@
                               ;; they're wrong, the indicies will be corrupted, so
                               ;; we have to abort.
                               (when (= h (h/hash v))
-                                {:hash         (h/hash h)
+                                {:hash         h
                                  :time/created created
                                  :author       author
                                  :content      v}))
@@ -42,10 +43,14 @@
                      "client: " author "\n"
                      context "\n"
                      assertions)
-          {:status :failure
+          {:status  :error
            :message "invalid data received from client"})
         (when (impl/append-tx-log! tx-items)
           (run! impl/intern intern-items)
           (routing/publish-transaction! (assoc tx :assertions tx-items))
-          {:status :success
-           :message "transaction logged and awaiting processing."})))))
+          {:status  :success
+           :message "transaction logged and awaiting processing."})))
+    (do
+      (log/error "invalid transaction received:\n" tx)
+      {:status  :error
+       :message "invalid transaction"})))

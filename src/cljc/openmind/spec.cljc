@@ -18,6 +18,8 @@
 (s/def ::content ::content/content)
 (s/def ::indexical ::indexical/indexical)
 
+(s/def ::tx ::indexical/tx)
+
 (s/def ::hash ::u/hash)
 
 (s/def ::extract ::extract/extract)

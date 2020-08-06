@@ -2,6 +2,7 @@
   "This is a stub of the infinite hash set. Consider renaming it."
   (:refer-clojure :exclude [intern])
   (:require [clojure.spec.alpha :as s]
+            [openmind.spec :as spec]
             [openmind.datastore.backends.s3 :as s3]
             [openmind.datastore.shared :refer [get-all]]
             [openmind.hash :as h]
@@ -60,10 +61,10 @@
         (recur)))))
 
 (defn intern
-  "If obj is a valid :openmind.spec/immutable, then it is stored in S3 with key
+  "If obj is a valid :openmind.spec/internable, then it is stored in S3 with key
   equal to its hash."
   [obj]
-  (if (s/valid? :openmind.spec/internable obj)
+  (if (s/valid? ::spec/internable obj)
     (do
       (swap! recently-added assoc (:hash obj) obj)
       (dosync

@@ -8,7 +8,7 @@
             [openmind.env :as env]
             [openmind.notification :as notify]
             [openmind.sources :as sources]
-            [openmind.spec.indexical :as indexical]
+            [openmind.spec :as spec]
             [taoensso.timbre :as log]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -110,7 +110,7 @@
 
 (defmethod dispatch :openmind/tx
   [{[ev tx] :event :keys [uid tokens] :as req}]
-  (when (s/valid? ::indexical/tx tx)
+  (when (s/valid? ::spec/tx tx)
     (let [{:keys [author context assertions]} tx]
       (when (check-author tokens author)
         (run!
@@ -119,6 +119,6 @@
              :assert  (notify/notify-on-assertion uid id)
              :retract (notify/notify-on-retraction uid id)))
          (:assertions tx))
-        (ds/transact (assoc tx :created (java.util.Date.)))
+        (ds/transact (assoc tx :time/created (java.util.Date.)))
         #_(respond-with-fallback
          req (ds/transact (assoc tx :created (java.util.Date.))))))))
