@@ -77,7 +77,7 @@
 
 (defn create-extract [[_ hash author created] content]
   (if-let [previous (:history/previous-version content)]
-    (forward-metadata previous hash author)
+    (forward-metadata previous hash author created)
     (fn [index]
       (set-meta index hash {:extract      hash
                             :author       author
