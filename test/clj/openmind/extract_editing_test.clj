@@ -1,18 +1,20 @@
 (ns openmind.extract-editing-test
-  (:require [clojure.test :as t]
-            [clojure.core.async :as async]
-            [clojure.spec.alpha :as s]
+  (:require [clojure.core.async :as async]
+            [clojure.test :as t]
             [openmind.datastore :as ds]
-            [openmind.s3 :as s3]
-            [openmind.indexing :as indexing]
-            [openmind.elastic :as es]
-            [openmind.notification :as notify]
+            [openmind.test.common :as c]
+            [openmind.datastore.indicies.metadata :as mi]
             [openmind.routes :as routes]
-            [openmind.sources :as sources]
-            [openmind.util :as util]
-            [openmind.tags :as tags]))
+            [openmind.tags :as tags]
+            [openmind.hash :as h]))
 
 ;;;;; Dummy data
+
+(defn immutable [content author]
+  {:hash         (h/hash content)
+   :content      content
+   :author       author
+   :time/created (java.util.Date.)})
 
 (def pma
   {:pubmed/id        "26821826",
@@ -44,142 +46,133 @@
    :orcid-id "0000-NONE"})
 
 (def ex1
-  (util/immutable
+  (immutable
    {:text         "I am and extract"
     :extract/type :article
     :tags         #{}
-    :author       author
-    :source       pma}))
+    :source       pma}
+   author))
 
 (def ex2
-  (util/immutable
+  (immutable
    {:text         "I am another"
     :extract/type :article
     :tags         #{}
-    :author       author
-    :source       pma}))
+    :source       pma}
+   author))
 
 (def labnote
-  (util/immutable
+  (immutable
    {:text         "Nota bene"
-    :author       author
     :tags         #{}
     :extract/type :labnote
     :source       {:lab              "1"
                    :investigator     "yours truly"
                    :institution      "wub"
-                   :observation/date (java.util.Date.)}}))
+                   :observation/date (java.util.Date.)}}
+   author))
 
 (def trel
-  (util/immutable
+  (immutable
    {:entity (:hash ex1)
     :attribute :related-to
-    :value (:hash ex2)
-    :author author}))
+    :value (:hash ex2)}
+   author))
 
 (def labrel
-  (util/immutable {:entity    (:hash labnote)
-                   :value     (:hash ex1)
-                   :attribute :confirmed-by
-                   :author    author}))
+  (immutable {:entity    (:hash labnote)
+              :value     (:hash ex1)
+              :attribute :confirmed-by}
+             author))
 
 ;;;;; Stubs
 
-(def s3-mock (atom {}))
+(def notifications-ch (async/chan 256))
 
-(def notifications (atom []))
+(def notifications (atom {:created #{}
+                          :updated {}}))
 
-;;;;; tests
+(async/go-loop []
+  (when-let [[t v] (async/<! notifications-ch)]
+    (case t
+      :openmind.extract-created (swap! notifications
+                                       update :created
+                                       conj v)
+      :openmind.updated-metadata (swap! notifications
+                                        update :updated
+                                        #(if (contains? % v)
+                                           (update % v inc)
+                                           (assoc % v 1))))))
 
-(defn queues-cleared? []
-  (dosync
-   (and (empty? @ds/running)
-        (empty? (ensure @#'ds/intern-queue))
-        (every? empty? (map (comp ensure :tx-queue) @ds/index-map)))))
+;;;;; The Tests
 
-(defn wait-for-queues
-  "Polls intern and indexing queues until all writes are finished. good enough
-  for tests."
-  []
-  (loop []
-    (when-not (queues-cleared?)
-      (Thread/sleep 100)
-      (recur))))
+(t/deftest extract-creation
+  (let [tx1 {:context }]))
 
-(defn summarise-notifications []
-  {:created (->> @notifications
-                 (filter #(= (first %) :openmind/extract-created))
-                 (map second)
-                 (into #{}))
-   :updated (->> @notifications
-                 (filter #(= (first %) :openmind/updated-metadata))
-                 (map second)
-                 (map :extract)
-                 frequencies)})
-
-(t/deftest extract-lifecycle
+#_(t/deftest extract-creation
   (run! #(async/<!! (routes/write-extract! % [] "uid1"))
         [ex1 ex2 labnote])
 
-  (wait-for-queues)
+  (c/wait-for-queues)
 
   ;; Extracts added to datastore
   (t/is (every? #(contains? @s3-mock (:hash %)) [ex1 ex2 labnote]))
 
   ;; blank metadata was added to each extract
-  (t/is (every? #(= (indexing/extract-metadata (:hash %))
+  (t/is (every? #(= (mi/extract-metadata (:hash %))
                     {:extract (:hash %)})
                 [ex1 ex2 labnote]))
 
   ;; Creation notifications
-  (t/is (every? #(contains? (:created (summarise-notifications)) (:hash %))
+  (t/is (every? #(contains? (:created @notifications) (:hash %))
                 [ex1 ex2 labnote]))
 
   ;; Metadata creation (update is creation in this context) notifications
-  (t/is (every? #(contains? (:updated (summarise-notifications)) (:hash %))
+  (t/is (every? #(contains? (:updated @notifications) (:hash %))
                 [ex1 ex2 labnote]))
 
 
   (routes/intern-and-index trel)
 
-  (wait-for-queues)
+  (c/wait-for-queues)
 
   ;; Relation was added to both extracts
   (t/is (= #{(:content trel)}
-           (:relations (indexing/extract-metadata (:hash ex2)))
-           (:relations (indexing/extract-metadata (:hash ex1)))))
+           (:relations (mi/extract-metadata (:hash ex2)))
+           (:relations (mi/extract-metadata (:hash ex1)))))
 
   (async/<!! (routes/update-extract! {:editor      author
                                       :previous-id (:hash ex2)
                                       :relations   #{}}))
 
-  (wait-for-queues)
+  (c/wait-for-queues)
 
   ;; Relation was deleted from both extracts
   (t/is (= #{}
-           (:relations (indexing/extract-metadata (:hash ex2)))
-           (:relations (indexing/extract-metadata (:hash ex1)))))
+           (:relations (mi/extract-metadata (:hash ex2)))
+           (:relations (mi/extract-metadata (:hash ex1)))))
 
   (async/<!! (routes/update-extract!
               {:editor      author
                :previous-id (:hash labnote)
                :relations   #{(:content labrel)}}))
 
-  (wait-for-queues)
+  (c/wait-for-queues)
 
   (t/is (= #{(:content labrel)}
-           (:relations (indexing/extract-metadata (:hash labnote)))
-           (:relations (indexing/extract-metadata (:hash ex1)))))
+           (:relations (mi/extract-metadata (:hash labnote)))
+           (:relations (mi/extract-metadata (:hash ex1)))))
 
-  (let [figure (util/immutable
+  (let [figure (immutable
                 {:image-data "data::"
-                 :author     author
-                 :caption    "I'm not real."})
-        nl     (util/immutable
+                 :caption    "I'm not real."}
+                author)
+        nl     (immutable
                 (assoc (:content labnote)
                        :history/previous-version (:hash labnote)
                        :figure (:hash figure)
-                       :tags #{(key (first tags/tag-tree))}))]
+                       :tags #{(key (first tags/tag-tree))})
+                author)]
     (async/<!!
      (routes/update-extract!
       {:editor      author
@@ -187,14 +180,14 @@
        :new-extract nl
        :previous-id (:hash labnote)}))
 
-    (wait-for-queues)
+    (c/wait-for-queues)
 
     (t/is (= (get @s3-mock (:hash figure)) figure)
           "Figure was not interned during update.")
 
     (t/is (= (assoc (:content labrel)
                     :entity (:hash nl))
-             (first (:relations (indexing/extract-metadata (:hash nl)))))
+             (first (:relations (mi/extract-metadata (:hash nl)))))
           "relation entity was not updated during metadata migration.")
 
     ;; REVIEW: I don't think that this is the behaviour we want. But it is the
@@ -216,7 +209,7 @@
          :previous-id (:hash nl)
          :relations #{r3}}))
 
-      (wait-for-queues)
+      (c/wait-for-queues)
 
       ;; FIXME: This is one big reason why relations should change to reflect
       ;; new versions of extracts.
@@ -225,28 +218,26 @@
 
       (t/is (= #{r3}
                (:relations (indexing/extract-metadata (:hash ex2)))
-               (:relations (indexing/extract-metadata (:hash nl))))))
+               (:relations (indexing/extract-metadata (:hash nl))))))))
 
-    )
+(t/deftest edit-extract-content)
 
+(t/deftest edit-extract-relations)
 
-  )
+(t/deftest comment-on-extract)
 
-(defn isolate [f]
-  (with-redefs [s3/exists? #(contains? @s3-mock %)
-                s3/lookup  #(get @s3-mock % nil)
-                s3/write!  (fn [k o] (swap! s3-mock assoc k o))
+(t/deftest comment-reply)
 
-                notify/get-all-connections-fn (atom (fn [] ["uid1"]))
-                notify/send-fn                (atom
-                                               (fn [_ m]
-                                                 (swap! notifications conj m)))
-
-                es/index-extract!   (fn [_] (async/go {:status 200}))
-                es/add-to-index     (fn [_] (async/go {:status 200}))
-                es/retract-extract! (fn [_] (async/go {:status 200}))
-                es/replace-in-index (fn [_ _] (async/go {:status 200}))]
-    (f)))
+(t/deftest comment-voting)
 
 (defn test-ns-hook []
-  (isolate extract-lifecycle))
+  (->> (juxt extract-lifecycle
+             edit-extract-content
+             edit-extract-relations
+             comment-on-extract
+             comment-reply
+             comment-voting)
+       ()
+       c/stub-elastic
+       (c/redirect-notifications notifications-ch)
+       c/stub-s3))

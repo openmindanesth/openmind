@@ -1,7 +1,6 @@
 (ns openmind.s3-test
-  (:require [openmind.s3 :as s3]
+  (:require [openmind.datastore.backends.s3 :as s3]
             [openmind.hash :as h]
-            [openmind.util :as util]
             [clojure.test :as t]))
 
 (t/deftest no-nils

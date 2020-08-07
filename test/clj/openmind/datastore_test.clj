@@ -41,5 +41,5 @@
 ;; test that the order of transactions is respected.
 
 (defn test-ns-hook []
-  (c/stub-s3 get-what-you-save)
-  (c/stub-s3 transact))
+  (c/stub-s3 (get-what-you-save))
+  (c/stub-s3 (transact)))
