@@ -296,8 +296,8 @@
     (util/immutable
      (assoc new :history/previous-version (:hash old)))))
 
-(defn update-relations [oldid newid relations]
-  (if newid
+(defn update-relation-ids [oldid newid relations]
+  (if (and newid (not= oldid newid))
     (into #{}
           (map (fn [{:keys [entity value] :as rel}]
                  (if (= entity oldid)
@@ -318,33 +318,39 @@
         (empty? (rr meta))
         (empty? (nr meta)))))
 
+(defn update-relations [original ometa new new-meta]
+  (let [new-rels (imap (map util/immutable
+                            (update-relation-ids
+                             (:hash original) (:hash new) (nr new-meta))))
+        r-rels   (imap (map util/immutable
+                            (update-relation-ids
+                             (:hash original) (:hash new) (rr new-meta))))]
+    {:context    (merge new-rels r-rels)
+     :assertions (into [] (concat
+                           (map (fn [r] [:assert r]) (keys new-rels))
+                           (map (fn [r] [:retract r]) (keys r-rels))))}))
+
+(defn merge-txs [a b]
+  {:context    (merge (:context a) (:context b))
+   :assertions (reduce conj (:assertions a) (:assertions b))})
+
 (defn update-extract [original ometa new new-meta]
-  (let [core-change? (not= (:hash original) (:hash new))
-       ]
-    (if core-change?
-      (let [new' (util/immutable
-                  (assoc (:content new)
-                         :history/previous-version
-                         (:hash original)))
-            new-rels (imap (map util/immutable
-                                (update-relations
-                                 (:hash original) (:hash new') (nr new-meta))))
-            r-rels (imap (map util/immutable
-                              (update-relations
-                               (:hash original) (:hash new') (rr new-meta))))]
-        {:context (merge
-                   {(:hash new') (:content new')}
-                   (when-not (= (:figure (:content new'))
-                                (:figure (:content original)))
-                     {(:hash (:figure-data (:content new-meta)))
-                      (:content (:figure-data (:content new-meta)))})
-                   new-rels
-                   r-rels)
-         :assertions (into [[:retract (:hash original)]
-                            [:assert (:hash new')]]
-                           (concat
-                            (map (fn [r] [:assert r]) (keys new-rels))
-                            (map (fn [r] [:retract r]) (keys r-rels))))}))))
+  (if (not= (:hash original) (:hash new))
+    (let [new' (util/immutable
+                (assoc (:content new)
+                       :history/previous-version
+                       (:hash original)))]
+      (merge-txs
+       {:context    (merge
+                     {(:hash new') (:content new')}
+                     (when-not (= (:figure (:content new'))
+                                  (:figure (:content original)))
+                       {(:hash (:figure-data (:content new-meta)))
+                        (:content (:figure-data (:content new-meta)))}))
+        :assertions [[:retract (:hash original)]
+                     [:assert (:hash new')]]}
+       (update-relations original ometa new' new-meta)))
+    (update-relations original ometa new new-meta)))
 
 (re-frame/reg-event-fx
  ::update-extract
