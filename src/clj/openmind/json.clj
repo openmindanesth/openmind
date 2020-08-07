@@ -9,6 +9,12 @@
 (def ^SimpleDateFormat dateformat
   (SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss.SSSXXX"))
 
+(defn parse-date-string [^String s]
+  (when (seq s)
+    (try
+      (.parse dateformat s)
+      (catch Exception _ nil))))
+
 (extend-protocol json/JSONWriter
   ValueRef
   (-write [this out]
@@ -28,10 +34,10 @@
 (defn val-reader [k v]
   (case k
     :extract/type     (keyword v)
-    :publication/date (.parse dateformat v)
-    :observation/date (.parse dateformat v)
-    :es/pub-date      (.parse dateformat v)
-    :time/created     (.parse dateformat v)
+    :publication/date (parse-date-string v)
+    :observation/date (parse-date-string v)
+    :es/pub-date      (parse-date-string v)
+    :time/created     (parse-date-string v)
     v))
 
 (defn read-str [s]
