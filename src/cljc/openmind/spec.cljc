@@ -19,6 +19,7 @@
 (s/def ::indexical ::indexical/indexical)
 
 (s/def ::tx ::indexical/tx)
+(s/def ::metadata ::indexical/extract-metadata)
 
 (s/def ::hash ::u/hash)
 

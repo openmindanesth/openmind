@@ -6,6 +6,7 @@
             [openmind.datastore.indicies.metadata :as mi]
             [openmind.routes :as routes]
             [openmind.tags :as tags]
+            [openmind.server :as server]
             [openmind.hash :as h]))
 
 ;;;;; Dummy data
@@ -46,68 +47,101 @@
    :orcid-id "0000-NONE"})
 
 (def ex1
-  (immutable
-   {:text         "I am and extract"
-    :extract/type :article
-    :tags         #{}
-    :source       pma}
-   author))
+  {:text         "I am and extract"
+   :extract/type :article
+   :tags         #{}
+   :source       pma})
+
+(def c1
+  {:text "Look at this!"
+   :extract (h/hash ex1)})
+
+(def c2
+  {:text "first! oops"
+   :extract (h/hash ex1)})
 
 (def ex2
-  (immutable
-   {:text         "I am another"
-    :extract/type :article
-    :tags         #{}
-    :source       pma}
-   author))
+  {:text         "I am another"
+   :extract/type :article
+   :tags         #{}
+   :source       pma})
 
 (def labnote
-  (immutable
-   {:text         "Nota bene"
-    :tags         #{}
-    :extract/type :labnote
-    :source       {:lab              "1"
-                   :investigator     "yours truly"
-                   :institution      "wub"
-                   :observation/date (java.util.Date.)}}
-   author))
+  {:text         "Nota bene"
+   :tags         #{}
+   :extract/type :labnote
+   :source       {:lab              "1"
+                  :investigator     "yours truly"
+                  :institution      "wub"
+                  :observation/date (java.util.Date.)}})
 
 (def trel
-  (immutable
-   {:entity (:hash ex1)
-    :attribute :related-to
-    :value (:hash ex2)}
-   author))
+  {:entity    (h/hash ex1)
+   :attribute :related
+   :value     (h/hash ex2)})
 
 (def labrel
-  (immutable {:entity    (:hash labnote)
-              :value     (:hash ex1)
-              :attribute :confirmed-by}
-             author))
+  {:entity    (h/hash labnote)
+   :value     (h/hash ex1)
+   :attribute :confirmed})
+
+(defn cmap [& xs]
+  (into {} (map (fn [x] [(h/hash x) x])) xs))
 
 ;;;;; Stubs
-
-(def notifications-ch (async/chan 256))
 
 (def notifications (atom {:created #{}
                           :updated {}}))
 
-(async/go-loop []
-  (when-let [[t v] (async/<! notifications-ch)]
-    (case t
-      :openmind.extract-created (swap! notifications
-                                       update :created
-                                       conj v)
-      :openmind.updated-metadata (swap! notifications
-                                        update :updated
-                                        #(if (contains? % v)
-                                           (update % v inc)
-                                           (assoc % v 1))))))
+(defn start-notifier! [ch]
+  (async/go-loop []
+    (when-let [[t v] (async/<! notifications-ch)]
+      (println t)
+      (case t
+        :openmind/extract-created (swap! notifications
+                                         update :created
+                                         conj v)
+        :openmind/updated-metadata (swap! notifications
+                                          update :updated
+                                          #(if (contains? % v)
+                                             (update % v inc)
+                                             (assoc % v 1)))
+        nil))))
 
 ;;;;; The Tests
 
 (t/deftest extract-creation
-  (let [tx1 {:context }]))
+  (let [tx1 {:context      (cmap ex1 c1 c2 ex2 trel)
+             :author       author
+             :time/created (java.util.Date.)
+             :assertions   [[:assert (h/hash ex1)]
+                            [:assert (h/hash c1)]
+                            [:assert (h/hash c2)]
+                            [:assert (h/hash ex2)]
+                            [:assert (h/hash trel)]]}
+        tx2 {:context      (cmap labnote labrel)
+             :author       author
+             :time/created (java.util.Date.)
+             :assertions   [[:assert (h/hash labnote)]
+                            [:assert (h/hash labrel)]]}]
+    (t/is (= :success (:status (ds/transact tx1))))
+    (c/wait-for-queues)
+
+    (t/is (= ex1 (:content (ds/lookup (h/hash ex1)))))
+    (t/is (= (h/hash ex1) (:extract (mi/extract-metadata (h/hash ex1)))))
+
+    (t/is (= #{(assoc trel :author author)}
+             (:relations (mi/extract-metadata (h/hash ex1)))
+             (:relations (mi/extract-metadata (h/hash ex2)))))
+
+
+    (t/is (= (map :text [c1 c2])
+             (map :text (:comments (mi/extract-metadata (h/hash ex1))))))
+
+    (t/is (= :success (:status (ds/transact tx2))))
+    (c/wait-for-queues)
+
+    (t/is (= 2 (count (:relations (mi/extract-metadata (h/hash ex1))))))))
 
 #_(t/deftest extract-creation
   (run! #(async/<!! (routes/write-extract! % [] "uid1"))
@@ -231,13 +265,16 @@
 (t/deftest comment-voting)
 
 (defn test-ns-hook []
-  (->> (juxt extract-lifecycle
-             edit-extract-content
-             edit-extract-relations
-             comment-on-extract
-             comment-reply
-             comment-voting)
-       ()
-       c/stub-elastic
-       (c/redirect-notifications notifications-ch)
-       c/stub-s3))
+  (let [notifications-ch (async/chan 256)]
+    (start-notifier! notifications-ch)
+    (->> (do (server/start-indicies!)
+             ((juxt extract-creation
+                    edit-extract-content
+                    edit-extract-relations
+                    comment-on-extract
+                    comment-reply
+                    comment-voting)))
+         c/syncronise-publications
+         c/stub-elastic
+         (c/redirect-notifications notifications-ch)
+         c/stub-s3)))

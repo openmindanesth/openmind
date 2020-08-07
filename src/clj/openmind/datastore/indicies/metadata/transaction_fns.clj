@@ -17,10 +17,11 @@
       :content))
 
 (defn wrap-meta [content]
-  (when (s/valid? :openmind.spec/indexical content)
+  (if (s/valid? :openmind.spec/metadata content)
     {:hash         (h/hash content)
      :time/created (java.util.Date.)
-     :content      content}))
+     :content      content}
+    (log/error "Bad metadata:\n" content)))
 
 (defn set-meta [index id metadata]
   (if-let [imm (wrap-meta metadata)]
@@ -89,12 +90,8 @@
 ;;;;; Comments
 
 (defn insert-comment
-  [comment-tree hash {:keys [reply-to] :as comment}]
-  (let [c* (-> comment
-               :content
-               (dissoc :reply-to)
-               (assoc :hash hash
-                      :time/created (:time/created comment)))]
+  [comment-tree {:keys [reply-to] :as comment}]
+  (let [c* (dissoc comment :reply-to)]
     (if reply-to
       (walk/postwalk
        (fn [node]
@@ -106,21 +103,22 @@
         (conj comment-tree c*)
         [c*]))))
 
-(defn add-comment-to-meta [hash {:keys [extract] :as comment}]
-  (alter-meta extract (fn [m] (update m :comments insert-comment hash comment))))
+(defn add-comment-to-meta [[_ hash author created] {:keys [extract] :as c}]
+  (let [comment (assoc c :author author :time/created created :hash hash)]
+    (alter-meta extract (fn [m] (update m :comments insert-comment comment)))))
 
-(defn update-votes [comments {h :hash {:keys [vote author comment]} :content}]
+(defn update-votes [comments hash author {:keys [vote comment]}]
   (walk/postwalk
    (fn [node]
      (if (= (:hash node) comment)
        (-> node
            (update :rank (fnil + 0) vote)
-           (update :votes assoc author {:vote vote :hash h}))
+           (update :votes assoc author {:vote vote :hash hash}))
        node))
    comments))
 
-(defn comment-vote [{{:keys [extract]} :content :as vote}]
-  (alter-meta extract (fn [m] (update m :comments update-votes vote))))
+(defn comment-vote [[_ hash author] {:keys [extract] :as vote}]
+  (alter-meta extract (fn [m] (update m :comments update-votes hash author vote))))
 
 ;;;;; Relations
 
@@ -130,13 +128,16 @@
                                     (conj % rel)
                                     #{rel})))))
 
-(defn add-relation [_ {:keys [entity value] :as content}]
-  (let [update-entity (add-1 entity content)
-        update-value  (add-1 value content)]
+(defn add-relation [[_ _ author _] {:keys [entity value] :as content}]
+  (let [rel           (assoc content :author author)
+        update-entity (add-1 entity rel)
+        update-value  (add-1 value rel)]
     (comp update-entity update-value)))
 
 (defn- retract-1 [id rel]
-  (alter-meta id (fn [m] (update m :relations disj rel))))
+  (alter-meta id (fn [m]
+                   (let [arel (first (filter #(= rel (dissoc % :author))))]
+                     (update m :relations disj arel)))))
 
 (defn retract-relation [_ {:keys [entity value] :as rel}]
   (let [entity (retract-1 entity rel)

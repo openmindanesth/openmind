@@ -22,11 +22,13 @@
   (async/untap multi-ch ch)
   (async/close! ch))
 
-(defn- publish! [[t h _ _ :as tx] context]
-  (async/put! tx-ch (conj tx (get context h))))
+(defn- publish! [assertions]
+  (async/onto-chan! tx-ch assertions false))
 
 (defn publish-transaction! [{:keys [assertions context]}]
-  (run! #(publish! % context) assertions))
+  (publish! (mapv (fn [[_ h  _ _ :as tx]]
+                    (conj tx (get context h)))
+                  assertions)))
 
 (defn start-listener [handler]
   (let [tx-ch (tx-log)]
@@ -38,3 +40,10 @@
             (log/error "exception caught in indexer loop: " e)))
         (recur)))
     (fn [] (async/close! tx-ch))))
+
+;;;;; test mock
+
+(defn test-publish!
+  "Only use this from tests."
+  [assertions]
+  (run! #(async/>!! tx-ch %) assertions))

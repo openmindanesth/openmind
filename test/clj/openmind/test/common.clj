@@ -3,6 +3,7 @@
             [openmind.datastore.backends.s3 :as s3]
             [openmind.datastore.impl :as dsi]
             [openmind.datastore.indexing :as indexing]
+            [openmind.datastore.routing :as routing]
             [openmind.elastic :as es]
             [openmind.notification :as notify]))
 
@@ -17,6 +18,7 @@
   "Polls intern and indexing queues until all writes are finished. good enough
   for tests."
   []
+  (indexing/flush-queues!)
   (loop []
     (when-not (queues-cleared?)
       (Thread/sleep 100)
@@ -36,15 +38,21 @@
   [notification-ch f]
   `(with-redefs [notify/get-all-connections-fn (atom (fn [] ["uid1"]))
 
-                notify/send-fn (atom
-                                (fn [_ m#]
-                                  (async/put! ~notification-ch m#)))]
+                 notify/send-fn (atom
+                                 (fn [_# m#]
+                                   (async/put! ~notification-ch m#)))]
     ~f))
 
 (defmacro stub-elastic
   "Stubs out elasticsearch interaction with noops."
   [f]
-  `(with-redefs [es/index-extract!   (fn [_] (async/go {:status 200}))
-                es/add-to-index     (fn [_] (async/go {:status 200}))
-                es/retract-extract! (fn [_] (async/go {:status 200}))]
+  `(with-redefs [es/index-extract!   (fn [& _#] (async/go {:status 200}))
+                 es/add-to-index     (fn [& _#] (async/go {:status 200}))
+                 es/retract-extract! (fn [& _#] (async/go {:status 200}))]
     ~f))
+
+(defmacro syncronise-publications
+  "Replace async pub-sub system with syncronous message processing."
+  [f]
+  `(with-redefs [routing/publish! routing/test-publish!]
+     ~f))
