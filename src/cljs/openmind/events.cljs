@@ -299,4 +299,5 @@
 (re-frame/reg-event-fx
  :chsk/recv
  (fn [_ [_ e]]
-   (broadcast-dispatch e)))
+   (when (vector? e)
+     (broadcast-dispatch e))))

@@ -1,7 +1,7 @@
 (ns openmind.tags
   "This ns is only about search filtering. To see about creating tags in the
   fist place, go to `dev/tag_migration.clj`"
-  (:require [openmind.datastore.impl :as ds]))
+  (:require [openmind.datastore.backends.s3 :as ds]))
 
 (def tag-lookup-hash
   ;;FIXME: This should *not* be hardcoded

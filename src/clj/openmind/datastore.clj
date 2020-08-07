@@ -1,6 +1,7 @@
 (ns openmind.datastore
   (:refer-clojure :exclude [intern])
   (:require [clojure.core.async :as async]
+            [clojure.spec.alpha :as s]
             [openmind.datastore.impl :as impl]
             [openmind.datastore.indexing :as indexing]
             [openmind.datastore.routing :as routing]
