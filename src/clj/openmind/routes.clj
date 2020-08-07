@@ -119,6 +119,5 @@
              :assert  (notify/notify-on-assertion uid id)
              :retract (notify/notify-on-retraction uid id)))
          (:assertions tx))
-        (ds/transact (assoc tx :time/created (java.util.Date.)))
-        #_(respond-with-fallback
+        (respond-with-fallback
          req (ds/transact (assoc tx :created (java.util.Date.))))))))

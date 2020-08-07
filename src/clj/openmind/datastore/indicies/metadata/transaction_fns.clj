@@ -77,7 +77,10 @@
 
 (defn create-extract [[_ hash author created] content]
   (if-let [previous (:history/previous-version content)]
-    (forward-metadata previous hash author created)
+    (do
+      ;; TODO: Update other relations pointing at this one to reflect the new
+      ;; state.
+      (forward-metadata previous hash author created))
     (fn [index]
       (set-meta index hash {:extract      hash
                             :author       author
@@ -127,7 +130,7 @@
                                     (conj % rel)
                                     #{rel})))))
 
-(defn add-relation [{{:keys [entity value] :as content} :content}]
+(defn add-relation [_ {:keys [entity value] :as content}]
   (let [update-entity (add-1 entity content)
         update-value  (add-1 value content)]
     (comp update-entity update-value)))
@@ -135,7 +138,7 @@
 (defn- retract-1 [id rel]
   (alter-meta id (fn [m] (update m :relations disj rel))))
 
-(defn retract-relation [{:keys [entity value] :as rel}]
+(defn retract-relation [_ {:keys [entity value] :as rel}]
   (let [entity (retract-1 entity rel)
         value (retract-1 value rel)]
     (comp entity value)))

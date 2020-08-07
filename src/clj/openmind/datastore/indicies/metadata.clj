@@ -41,10 +41,11 @@
    [:retract :relation]     txfns/retract-relation})
 
 (defn handler [[assertion hash _ _ obj :as tx]]
-  (let [content (or obj (:content (ds/lookup hash)))]
+  (if-let [content (or obj (:content (ds/lookup hash)))]
     (when-let [t (first (s/conform :openmind.spec/content content))]
       (when-let [f (get index-methods [assertion t])]
-        (ds/swap-index! extract-metadata-index (f tx content))))))
+        (ds/swap-index! extract-metadata-index (f tx content))))
+    (log/error "received assertion referencing nonextant object:" tx)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Dev stuff
