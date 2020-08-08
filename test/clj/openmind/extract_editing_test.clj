@@ -2,12 +2,11 @@
   (:require [clojure.core.async :as async]
             [clojure.test :as t]
             [openmind.datastore :as ds]
-            [openmind.test.common :as c]
             [openmind.datastore.indicies.metadata :as mi]
-            [openmind.routes :as routes]
-            [openmind.tags :as tags]
+            [openmind.hash :as h]
             [openmind.server :as server]
-            [openmind.hash :as h]))
+            [openmind.tags :as tags]
+            [openmind.test.common :as c]))
 
 ;;;;; Dummy data
 
@@ -95,7 +94,7 @@
 
 (defn start-notifier! [ch]
   (async/go-loop []
-    (when-let [[t v] (async/<! notifications-ch)]
+    (when-let [[t v] (async/<! ch)]
       (println t)
       (case t
         :openmind/extract-created (swap! notifications
@@ -107,6 +106,18 @@
                                              (update % v inc)
                                              (assoc % v 1)))
         nil))))
+
+;;;;; Helpers
+
+(defn relations
+  "Returns all relations in metadata associated with x"
+  [x]
+  (:relations (mi/extract-metadata (h/hash x))))
+
+(defn comments
+  "Returns all comments associate with x via metadata"
+  [x]
+  (:comments (mi/extract-metadata (h/hash x))))
 
 ;;;;; The Tests
 
@@ -131,136 +142,119 @@
     (t/is (= (h/hash ex1) (:extract (mi/extract-metadata (h/hash ex1)))))
 
     (t/is (= #{(assoc trel :author author)}
-             (:relations (mi/extract-metadata (h/hash ex1)))
-             (:relations (mi/extract-metadata (h/hash ex2)))))
+             (relations ex1)
+             (relations ex2)))
 
 
     (t/is (= (map :text [c1 c2])
-             (map :text (:comments (mi/extract-metadata (h/hash ex1))))))
+             (map :text (comments ex1))))
 
     (t/is (= :success (:status (ds/transact tx2))))
     (c/wait-for-queues)
 
-    (t/is (= 2 (count (:relations (mi/extract-metadata (h/hash ex1))))))))
+    ;; TODO: Test for creation notifications
 
-#_(t/deftest extract-creation
-  (run! #(async/<!! (routes/write-extract! % [] "uid1"))
-        [ex1 ex2 labnote])
+    (t/is (= 2 (count (relations ex1))))))
 
-  (c/wait-for-queues)
+(def figure
+  {:image-data "data::"
+   :caption    "I'm not real."})
 
-  ;; Extracts added to datastore
-  (t/is (every? #(contains? @s3-mock (:hash %)) [ex1 ex2 labnote]))
+(def labnote'
+  (assoc labnote
+         :figure (h/hash figure)
+         :tags #{(key (first tags/tag-tree))}
+         :history/previous-version (h/hash labnote)))
 
-  ;; blank metadata was added to each extract
-  (t/is (every? #(= (mi/extract-metadata (:hash %))
-                    {:extract (:hash %)})
-                [ex1 ex2 labnote]))
-
-  ;; Creation notifications
-  (t/is (every? #(contains? (:created @notifications) (:hash %))
-                [ex1 ex2 labnote]))
-
-  ;; Metadata creation (update is creation in this context) notifications
-  (t/is (every? #(contains? (:updated @notifications) (:hash %))
-                [ex1 ex2 labnote]))
-
-
-  (routes/intern-and-index trel)
-
-  (c/wait-for-queues)
-
-  ;; Relation was added to both extracts
-  (t/is (= #{(:content trel)}
-           (:relations (mi/extract-metadata (:hash ex2)))
-           (:relations (mi/extract-metadata (:hash ex1)))))
-
-  (async/<!! (routes/update-extract! {:editor      author
-                                      :previous-id (:hash ex2)
-                                      :relations   #{}}))
-
-  (c/wait-for-queues)
-
-  ;; Relation was deleted from both extracts
-  (t/is (= #{}
-           (:relations (mi/extract-metadata (:hash ex2)))
-           (:relations (mi/extract-metadata (:hash ex1)))))
-
-  (async/<!! (routes/update-extract!
-              {:editor      author
-               :previous-id (:hash labnote)
-               :relations   #{(:content labrel)}}))
-
-  (c/wait-for-queues)
-
-  (t/is (= #{(:content labrel)}
-           (:relations (mi/extract-metadata (:hash labnote)))
-           (:relations (mi/extract-metadata (:hash ex1)))))
-
-  (let [figure (immutable
-                {:image-data "data::"
-                 :caption    "I'm not real."}
-                author)
-        nl     (immutable
-                (assoc (:content labnote)
-                       :history/previous-version (:hash labnote)
-                       :figure (:hash figure)
-                       :tags #{(key (first tags/tag-tree))})
-                author)]
-    (async/<!!
-     (routes/update-extract!
-      {:editor      author
-       :figure      figure
-       :new-extract nl
-       :previous-id (:hash labnote)}))
-
+(t/deftest edit-extract-content
+  (let [tx {:context      (cmap figure labnote')
+            :assertions   [[:retract (h/hash labnote)]
+                           [:assert (h/hash labnote')]]
+            :author       author
+            :time/created (java.util.Date.)}]
+    (t/is (= :success (:status (ds/transact tx))))
     (c/wait-for-queues)
 
-    (t/is (= (get @s3-mock (:hash figure)) figure)
-          "Figure was not interned during update.")
+    (t/is (= figure (:content (ds/lookup (h/hash figure)))))
 
-    (t/is (= (assoc (:content labrel)
-                    :entity (:hash nl))
-             (first (:relations (mi/extract-metadata (:hash nl)))))
-          "relation entity was not updated during metadata migration.")
+    (t/is (= (assoc labrel :entity (h/hash labnote') :author author)
+             (first (relations labnote'))
+             (first (relations ex1))))))
 
-    ;; REVIEW: I don't think that this is the behaviour we want. But it is the
-    ;; behaviour we have.
+(t/deftest retract-relations
+
+  (t/is (= :success (:status
+                     (ds/transact {:assertions   [[:retract (h/hash trel)]]
+                                   :author       author
+                                   :time/created (java.util.Date.)}))))
+  (c/wait-for-queues)
+
+  (t/is (= #{} (relations ex2)))
+  (t/is (= 1 (count (relations ex1))))
+
+  (let [rel {:entity    (h/hash labnote')
+             :attribute :contrast
+             :value     (h/hash ex2)}
+        tx  {:context      (cmap rel)
+             :assertions   [[:retract (h/hash labrel)]
+                            [:assert (h/hash rel)]]
+             :author       author
+             :time/created (java.util.Date.)}]
+    (t/is (= :success (:status (ds/transact tx))))
+    (c/wait-for-queues)
+
+    (t/is (= #{(assoc rel :author author)}
+             (relations ex2)
+             (relations labnote')))
+
+    ;; N.B.: labrel was added to labnote and remove from labnote'. This should
+    ;; also remove it from ex1 which never changed in the interim.
     ;;
-    ;; Instead the indexed relation in the metadata of ex1 should change to
-    ;; reflect the new version of labnote (nl).
-    (t/is (= (:content labrel)
-             (first (:relations (indexing/extract-metadata (:hash ex1))))))
+    ;; TODO: Write another test which changes both :entity and :value of a
+    ;; relation and check that it is removed properly from both.
+    (t/is (= #{} (relations ex1)))))
 
+(t/deftest comment-on-extract
+  (let [c  {:text    "hi mom!"
+            :extract (h/hash labnote')}
+        tx {:context      (cmap c)
+            :assertions   [[:assert (h/hash c)]]
+            :author       author
+            :time/created (java.util.Date.)}]
 
-    (let [r3 {:author author
-              :entity (:hash nl)
-              :attribute :contrast-to
-              :value (:hash ex2)}]
-      (async/<!!
-       (routes/update-extract!
-        {:editor author
-         :previous-id (:hash nl)
-         :relations #{r3}}))
+    (ds/transact tx)
+    (c/wait-for-queues)
 
-      (c/wait-for-queues)
+    (t/is (= c (select-keys (first (comments labnote')) [:text :extract])))))
 
-      ;; FIXME: This is one big reason why relations should change to reflect
-      ;; new versions of extracts.
-      (t/is (= (:content labrel)
-               (first (:relations (indexing/extract-metadata (:hash ex1))))))
+;; TODO:
+(t/deftest retract-comment
+  (t/is (= 2 (count (comments ex1))))
 
-      (t/is (= #{r3}
-               (:relations (indexing/extract-metadata (:hash ex2)))
-               (:relations (indexing/extract-metadata (:hash nl))))))))
+  (t/is (= :success (:status (ds/transact {:assertions   [[:retract (h/hash c1)]]
+                                           :author       author
+                                           :time/created (java.util.Date.)}))))
+  (c/wait-for-queues)
 
-(t/deftest edit-extract-content)
+  (t/is (= 1 (count (comments ex1)))))
 
-(t/deftest edit-extract-relations)
+(t/deftest comment-reply
+  (let [reply {:text     "I saw that"
+               :extract  (:extract c2)
+               :reply-to (h/hash c2)}
+        tx    {:context      (cmap reply)
+               :assertions   [[:assert (h/hash reply)]]
+               :author       author
+               :time/created (java.util.Date.)}]
+    (ds/transact tx)
+    (c/wait-for-queues)
 
-(t/deftest comment-on-extract)
+    (t/is (= 1 (count (comments ex1))))
 
-(t/deftest comment-reply)
+    ))
+
+;; TODO:
+(t/deftest edit-comment)
 
 (t/deftest comment-voting)
 
@@ -270,8 +264,10 @@
     (->> (do (server/start-indicies!)
              ((juxt extract-creation
                     edit-extract-content
-                    edit-extract-relations
+                    retract-relations
                     comment-on-extract
+                    retract-comment
+                    edit-comment
                     comment-reply
                     comment-voting)))
          c/syncronise-publications

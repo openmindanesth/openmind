@@ -136,33 +136,14 @@
 
 (defn- retract-1 [id rel]
   (alter-meta id (fn [m]
-                   (let [arel (first (filter #(= rel (dissoc % :author))))]
+                   (let [arel (first (filter #(= rel (dissoc % :author))
+                                             (:relations m)))]
                      (update m :relations disj arel)))))
 
 (defn retract-relation [_ {:keys [entity value] :as rel}]
   (let [entity (retract-1 entity rel)
         value (retract-1 value rel)]
     (comp entity value)))
-
-#_(defn update-relations-meta [rels m]
-  (let [old-rels (:relations m)
-        add      (map util/immutable (remove #(contains? old-rels %) rels))
-        ;; FIXME: This logic should be performed in the client, and the client
-        ;; should issue retractions for relations. Retractions should be values
-        ;; which get stored just like relations themselves (which are really
-        ;; assertions of realtions, not the relations themselves, whatever those
-        ;; are).
-        retract  (remove #(contains? rels %) old-rels)]
-    (apply comp (concat (map add-relation add)
-                        (map retract-relation retract)))))
-
-#_(defn update-relations [id rels]
-  "Given an id and a set of rels, start a transaction in which you figure out
-  which rels must be added and which removed from the existing metadata to bring
-  it inline with the new set."
-  (fn [index]
-    (let [m (metadata index id)]
-      ((update-relations-meta rels m) index))))
 
 (defn remove-other-relations
   "Intended soley for the exceptional deletion of extracts.

@@ -33,9 +33,9 @@
   "Indexing dispatch table. I know this should be a multi method, but openness
   isn't really an issue here and the rest is all just boilerplate."
   {[:assert :comment]       txfns/add-comment-to-meta
-   [:retract :comment]      #(throw (Exception. "Not implemented"))
+   [:retract :comment]      (fn [& _] (throw (Exception. "Not implemented")))
    [:assert :comment-vote]  txfns/comment-vote
-   [:retract :comment-vote] #(throw (Exception. "Not implemented"))
+   [:retract :comment-vote] (fn [& _] (throw (Exception. "Not implemented")))
    [:assert :extract]       txfns/create-extract
    [:assert :relation]      txfns/add-relation
    [:retract :relation]     txfns/retract-relation})

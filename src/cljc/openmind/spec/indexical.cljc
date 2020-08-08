@@ -88,8 +88,9 @@
   #{:assert :retract})
 
 (s/def ::tx
-  (s/keys :req-un [::author ::assertions ::context]
-          :opt [:time/created]))
+  (s/keys :req-un [::author ::assertions]
+          :req [:time/created]
+          :opt-un [::context]))
 
 (s/def ::assertions
   (s/coll-of ::assertion :kind vector?))
