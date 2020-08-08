@@ -133,10 +133,13 @@
    (str investigator " (" (date-year date) ")"))
 
 (defn source-link [type source]
-  (case type
-    :article [article-source-link source]
-    :labnote [labnote-source-link source]
-    nil))
+  [:div
+   {:style {:text-align :right
+            :min-width  "20ch"}}
+   (case type
+     :article (article-source-link source)
+     :labnote (labnote-source-link source)
+     nil)])
 
 (defn source-content [{:keys [authors publication/date journal url
                             abstract doi title volume issue]}]
@@ -346,17 +349,19 @@
   (let [{:keys [char]} (type-hack extract)]
     [:span.blue char]))
 
-(defn metadata [{:keys [time/created author extract/type] :as extract}]
-  [:div.flex.flex-column.p1.no-wrap
-   [:div.pbh
-    [:a.unlink {:href (str "https://orcid.org/" (:orcid-id author))}
-     [:span.text-black (:name author)]]]
-   [:div.pbh [:em (.format comment/dateformat created)]]
-   [:div.pbh
-    [:span "no voting yet"]]
-   [:div
-    [type-indicator extract]
-    [:span.plh.blue (:title (type-hack extract))]]])
+(defn metadata [{:keys [time/created author extract/type hash] :as extract}]
+  [:div
+   [:span.right [edit-link hash]]
+   [:div.flex.flex-column.p1.no-wrap
+    [:div.pbh
+     [:a.unlink {:href (str "https://orcid.org/" (:orcid-id author))}
+      [:span.text-black (:name author)]]]
+    [:div.pbh [:em (.format comment/dateformat created)]]
+    [:div.pbh
+     [:span "no voting yet"]]
+    [:div
+     [type-indicator extract]
+     [:span.plh.blue (:title (type-hack extract))]]]])
 
 (declare summary)
 
@@ -415,7 +420,7 @@
             (reverse history)))))
 
 (defn summary [{:keys [text author source figure tags hash resources]
-                :as extract}
+                :as   extract}
                & [{:keys [edit-link? controls pb0? c i] :as opts
                    :or   {edit-link? true}}]]
   [:div.search-result.flex.ph
@@ -427,8 +432,6 @@
    [thumbnail hash figure]
    [:div {:style {:flex       1
                   :min-height "100%"}}
-    (when edit-link?
-      [edit-link hash])
     [:div.flex.flex-column.space-between
      {:style {:height "100%"}}
      (when controls
