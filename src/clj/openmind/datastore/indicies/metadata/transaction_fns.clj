@@ -107,10 +107,24 @@
   (let [comment (assoc c :author author :time/created created :hash hash)]
     (alter-meta extract (fn [m] (update m :comments insert-comment comment)))))
 
+(defn remove-comment [comment-tree hash]
+  (walk/postwalk
+   (fn [node]
+     (cond
+       (and (vector? node) (every? map? node)) (into [] (remove empty? node))
+       (and (map? node) (= (:hash node) hash)) {}
+       :else node))
+   comment-tree))
+
+(defn remove-comment-from-meta [[_ hash _ _] {:keys [extract]}]
+  (println "#########" extract)
+  (alter-meta extract (fn [m] (update m :comments remove-comment hash))))
+
 (defn update-votes [comments hash author {:keys [vote comment]}]
   (walk/postwalk
    (fn [node]
-     (if (= (:hash node) comment)
+     (if (and (= (:hash node) comment)
+              (not (contains? (:votes node) author)))
        (-> node
            (update :rank (fnil + 0) vote)
            (update :votes assoc author {:vote vote :hash hash}))

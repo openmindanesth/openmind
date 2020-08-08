@@ -33,10 +33,11 @@
   "Indexing dispatch table. I know this should be a multi method, but openness
   isn't really an issue here and the rest is all just boilerplate."
   {[:assert :comment]       txfns/add-comment-to-meta
-   [:retract :comment]      (fn [& _] (throw (Exception. "Not implemented")))
+   [:retract :comment]      txfns/remove-comment-from-meta
    [:assert :comment-vote]  txfns/comment-vote
    [:retract :comment-vote] (fn [& _] (throw (Exception. "Not implemented")))
    [:assert :extract]       txfns/create-extract
+   ;; N.B.: retracting extracts is a noop as far as metadata is concerned.
    [:assert :relation]      txfns/add-relation
    [:retract :relation]     txfns/retract-relation})
 
