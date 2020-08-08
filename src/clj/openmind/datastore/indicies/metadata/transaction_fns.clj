@@ -43,50 +43,6 @@
         (log/error "extract" id "has no metadata!")
         index))))
 
-;;;;; Extract Creation
-
-(defn set-extract
-  "Recursively set `:extract` to `id` in every node of `comment-tree`."
-  [comment-tree id]
-  (if comment-tree
-    (walk/prewalk (fn [node]
-                    (if (and (map? node) (contains? node :extract))
-                      (assoc node :extract id)
-                      node))
-                  comment-tree)
-    []))
-
-(defn forward-metadata [prev id author created]
-  (fn [index]
-    (let [prev-meta (metadata index prev)
-          relations (into #{}
-                          (map (fn [{:keys [entity value] :as rel}]
-                                 (if (= entity prev)
-                                   (assoc rel :entity id)
-                                   (assoc rel :value id))))
-                          (:relations prev-meta))
-          new-meta  (-> prev-meta
-                        (assoc :extract id)
-                        (assoc :relations relations)
-                        (update :comments set-extract id)
-                        (update :history
-                                (fnil conj [])
-                                {:history/previous-version prev
-                                 :time/created             created
-                                 :author                   author}))]
-      (set-meta index id new-meta))))
-
-(defn create-extract [[_ hash author created] content]
-  (if-let [previous (:history/previous-version content)]
-    (do
-      ;; TODO: Update other relations pointing at this one to reflect the new
-      ;; state.
-      (forward-metadata previous hash author created))
-    (fn [index]
-      (set-meta index hash {:extract      hash
-                            :author       author
-                            :time/created created}))))
-
 ;;;;; Comments
 
 (defn insert-comment
@@ -117,7 +73,6 @@
    comment-tree))
 
 (defn remove-comment-from-meta [[_ hash _ _] {:keys [extract]}]
-  (println "#########" extract)
   (alter-meta extract (fn [m] (update m :comments remove-comment hash))))
 
 (defn update-votes [comments hash author {:keys [vote comment]}]
@@ -150,7 +105,8 @@
 
 (defn- retract-1 [id rel]
   (alter-meta id (fn [m]
-                   (let [arel (first (filter #(= rel (dissoc % :author))
+                   (let [arel (first (filter #(= (dissoc rel :author)
+                                                 (dissoc % :author))
                                              (:relations m)))]
                      (update m :relations disj arel)))))
 
@@ -175,3 +131,50 @@
                             (retract-1 entity rel)))
                         rels))
        index))))
+
+;;;;; Extract Creation
+
+(defn set-extract
+  "Recursively set `:extract` to `id` in every node of `comment-tree`."
+  [comment-tree id]
+  (if comment-tree
+    (walk/prewalk (fn [node]
+                    (if (and (map? node) (contains? node :extract))
+                      (assoc node :extract id)
+                      node))
+                  comment-tree)
+    []))
+
+(defn forward-metadata [prev id author created]
+  (fn [index]
+    (let [prev-meta (metadata index prev)
+          new-meta  (-> prev-meta
+                        (assoc :extract id)
+                        (assoc :relations #{})
+                        (update :comments set-extract id)
+                        (update :history
+                                (fnil conj [])
+                                {:history/previous-version prev
+                                 :time/created             created
+                                 :author                   author}))]
+      (reduce
+       (fn [index {:keys [author entity value] :as rel}]
+         ((comp
+           ;; Remove old relation from other side of triple
+           (if (= entity prev)
+             (retract-1 value rel)
+             (retract-1 entity rel))
+           ;; Add new relation with updated id
+           (let [rel' (assoc rel (if (= entity prev) :entity :value) id)]
+             (add-relation [nil nil author nil] rel')))
+          index))
+       (set-meta index id new-meta)
+       (:relations prev-meta)))))
+
+(defn create-extract [[_ hash author created] content]
+  (if-let [previous (:history/previous-version content)]
+    (forward-metadata previous hash author created)
+    (fn [index]
+      (set-meta index hash {:extract      hash
+                            :author       author
+                            :time/created created}))))

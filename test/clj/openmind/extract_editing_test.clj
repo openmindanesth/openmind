@@ -95,7 +95,6 @@
 (defn start-notifier! [ch]
   (async/go-loop []
     (when-let [[t v] (async/<! ch)]
-      (println t)
       (case t
         :openmind/extract-created (swap! notifications
                                          update :created
@@ -112,7 +111,9 @@
 (defn relations
   "Returns all relations in metadata associated with x"
   [x]
-  (:relations (mi/extract-metadata (h/hash x))))
+  (:relations (mi/extract-metadata (if (h/value-ref? x)
+                                     x
+                                     (h/hash x)))))
 
 (defn comments
   "Returns all comments associate with x via metadata"
@@ -145,7 +146,6 @@
              (relations ex1)
              (relations ex2)))
 
-
     (t/is (= (map :text [c1 c2])
              (map :text (comments ex1))))
 
@@ -177,9 +177,14 @@
 
     (t/is (= figure (:content (ds/lookup (h/hash figure)))))
 
-    (t/is (= (assoc labrel :entity (h/hash labnote') :author author)
-             (first (relations labnote'))
-             (first (relations ex1))))))
+    (let [r' (assoc labrel :entity (h/hash labnote') :author author)
+          oldr (assoc labrel :author author)]
+      (t/is (contains? (relations labnote') r'))
+      (t/is (contains? (relations ex1) r'))
+      ;; relations on the retracted metadata aren't touched
+      (t/is (contains? (relations labnote) oldr))
+      (t/is (not (contains? (relations labnote') oldr)))
+      (t/is (not (contains? (relations ex1) oldr))))))
 
 (t/deftest retract-relations
 
@@ -192,27 +197,30 @@
   (t/is (= #{} (relations ex2)))
   (t/is (= 1 (count (relations ex1))))
 
-  (let [rel {:entity    (h/hash labnote')
-             :attribute :contrast
-             :value     (h/hash ex2)}
-        tx  {:context      (cmap rel)
-             :assertions   [[:retract (h/hash labrel)]
-                            [:assert (h/hash rel)]]
-             :author       author
-             :time/created (java.util.Date.)}]
+  (let [rel     {:entity    (h/hash labnote')
+                 :attribute :contrast
+                 :value     (h/hash ex2)}
+        labrel' (assoc labrel :entity (h/hash labnote'))
+        tx      {:context      (cmap rel labrel')
+                 :assertions   [[:retract (h/hash labrel')]
+                                [:assert (h/hash rel)]]
+                 :author       author
+                 :time/created (java.util.Date.)}]
     (t/is (= :success (:status (ds/transact tx))))
     (c/wait-for-queues)
 
-    (t/is (= #{(assoc rel :author author)}
-             (relations ex2)
-             (relations labnote')))
+    (let [r' (assoc rel :author author)]
+      (t/is (contains? (relations ex2) r'))
+      (t/is (contains? (relations labnote') r')))
 
-    ;; N.B.: labrel was added to labnote and remove from labnote'. This should
-    ;; also remove it from ex1 which never changed in the interim.
+    ;; N.B.: labrel was added and labrel' was removed. This should remove it
+    ;; from labnote' and ex1, but not from labrel
     ;;
     ;; TODO: Write another test which changes both :entity and :value of a
     ;; relation and check that it is removed properly from both.
-    (t/is (= #{} (relations ex1)))))
+    (let [r' (assoc labrel' :author author)]
+      (t/is (not (contains? (relations labnote') r')))
+      (t/is (not (contains? (relations ex1) r'))))))
 
 (t/deftest comment-on-extract
   (let [c  {:text    "hi mom!"
