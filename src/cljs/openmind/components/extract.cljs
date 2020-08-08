@@ -230,7 +230,10 @@
         link-size  (reagent/atom false)]
     (fn [text float-content {:keys [orientation style]}]
       (if (and (fn? hide-if) (hide-if))
-        [:div]
+        [:div.text-grey
+         {:style {:height "100%"
+                  :cursor :default}}
+         text]
         (let [wrapper (size-reflector float-content float-size)
               link    (size-reflector [:div.link-blue
                                        {:style {:height "100%"}}
