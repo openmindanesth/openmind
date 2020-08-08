@@ -37,8 +37,7 @@
         (try
           (handler tx)
           (catch Exception e
-            (log/error "exception caught in indexer loop: " e
-                       "\n" (with-out-str (.printStackTrace e)))))
+            (log/error "exception caught in indexer loop: " e)))
         (recur)))
     (fn [] (async/close! tx-ch))))
 

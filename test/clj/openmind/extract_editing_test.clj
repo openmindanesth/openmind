@@ -239,9 +239,10 @@
   (t/is (= 1 (count (comments ex1)))))
 
 (t/deftest comment-reply
-  (let [reply {:text     "I saw that"
-               :extract  (:extract c2)
-               :reply-to (h/hash c2)}
+  (let [c     (first (comments labnote'))
+        reply {:text     "I saw that"
+               :extract  (:extract c)
+               :reply-to (:hash c)}
         tx    {:context      (cmap reply)
                :assertions   [[:assert (h/hash reply)]]
                :author       author
@@ -249,14 +250,56 @@
     (ds/transact tx)
     (c/wait-for-queues)
 
-    (t/is (= 1 (count (comments ex1))))
+    (t/is (= 1 (count (comments labnote'))))
 
-    ))
+    (t/is (= (:text (first (:replies (first (comments labnote'))))) "I saw that"))))
 
 ;; TODO:
 (t/deftest edit-comment)
 
-(t/deftest comment-voting)
+(t/deftest comment-voting
+  (let [c       (select-keys (first (comments labnote')) [:text :extract])
+        like    {:extract (:extract c)
+                 :comment (h/hash c)
+                 :vote    1}
+        dislike {:extract (:extract c)
+                 :comment (h/hash c)
+                 :vote    -1}
+        vote    (fn [v]
+                  (ds/transact
+                   {:context      (cmap v)
+                    :assertions   [[:assert (h/hash v)]]
+                    :author       {:name (str (gensym)) :orcid-id ""}
+                    :time/created (java.util.Date.)})
+                  (c/wait-for-queues))]
+
+    ;; Idempotency
+
+    (ds/transact {:context      (cmap like)
+                  :assertions   [[:assert (h/hash like)]
+                                 [:assert (h/hash like)]]
+                  :author       author
+                  :time/created (java.util.Date.)})
+    (c/wait-for-queues)
+    (t/is (= 1 (:rank (first (comments labnote')))))
+
+    (vote like)
+    (t/is (= 2 (:rank (first (comments labnote')))))
+
+    (vote dislike)
+    (vote like)
+    (vote dislike)
+
+    (t/is (= 1 (:rank (first (comments labnote')))))
+
+    ;; idempotency across transactions
+    (ds/transact {:context      (cmap dislike)
+                  :assertions   [[:assert (h/hash dislike)]]
+                  :author       author
+                  :time/created (java.util.Date.)})
+    (c/wait-for-queues)
+
+    (t/is (= 1 (:rank (first (comments labnote')))))))
 
 (defn test-ns-hook []
   (let [notifications-ch (async/chan 256)]
