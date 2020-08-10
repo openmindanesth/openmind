@@ -116,27 +116,33 @@
 
 
 (defn title-bar []
-  [:div
-   [:div.flex.space-between.mr2
-    [:button.border-round.menu-button
-     {:id       "menu-button"
-      :style    {:z-index      1000
-                 :border-width "2px"}
-      :on-click #(re-frame/dispatch (if @(re-frame/subscribe [::subs/menu-open?])
-                                      [::events/close-menu]
-                                      [::events/open-menu]))}
-     [:span
-      {:style {:padding         "0.2rem"
-               :text-decoration :underline}}
-      "menu"]]
-    [:a.ctext.grow-1.pl1.pr1.xxl.pth.plain
-     {:href  (href :search)
-      :style {:cursor :pointer}}
-     "open" [:b "mind"]]
-    [:div.grow-2
-     [search/search-box]]]
-   (when @(re-frame/subscribe [::subs/menu-open?])
-     [menu])])
+  (let [size   @(re-frame/subscribe [:screen-width])
+        mb     [:button.border-round.menu-button
+                {:id       "menu-button"
+                 :style    {:z-index      1000
+                            :border-width "2px"}
+                 :on-click #(re-frame/dispatch
+                             (if @(re-frame/subscribe [::subs/menu-open?])
+                               [::events/close-menu]
+                               [::events/open-menu]))}
+                [:span
+                 {:style {:padding         "0.2rem"
+                          :text-decoration :underline}}
+                 "menu"]]
+        om     [:a.ctext.grow-1.pl1.pr1.xxl.pth.plain
+                {:href  (href :search)
+                 :style {:cursor :pointer}}
+                "open" [:b "mind"]]
+        search [search/search-box]]
+    [:div
+     (if (< size 620)
+       [:div
+        [:div.flex.space-between.pb1.mr1 mb om]
+        search]
+       [:div.flex.space-between
+        mb om search])
+     (when @(re-frame/subscribe [::subs/menu-open?])
+       [menu])]))
 
 (re-frame/reg-sub
  ::status-message
@@ -201,6 +207,32 @@
  ::unspin
  (fn [db _]
    (dissoc db ::spinner)))
+
+(re-frame/reg-cofx
+ ::screen-width
+ (fn [cofx _]
+   (assoc cofx ::screen-width (.-innerWidth js/window))))
+
+(re-frame/reg-event-fx
+ ::resize-window
+ [(re-frame/inject-cofx ::screen-width)]
+ (fn [cofx _]
+   {:db (assoc (:db cofx) ::screen-width (::screen-width cofx))}))
+
+(re-frame/reg-sub
+ :screen-width
+ (fn [db]
+   (::screen-width db)))
+
+(re-frame/reg-sub
+ :responsive-size
+ (fn [_]
+   (re-frame/subscribe [:screen-width]))
+ (fn [width]
+   (cond
+     (< width 420) :mobile
+     ;; (< width 800) :tablet
+     :else         :desktop)))
 
 (defn main [content]
   (let [status-message @(re-frame/subscribe [::status-message])

@@ -159,9 +159,8 @@
 
 (defn search-box []
   (let [search-term @(re-frame/subscribe [::term])]
-    [:div.flex {:style {:height "100%"}}
+    [:div.flex.grow-2 {:style {:min-height "3rem"}}
      [:input.grow-2 (merge {:type      :text
-                            :style     {:height "100%"}
                             :on-change (fn [e]
                                          (let [v (-> e .-target .-value)]
                                            (re-frame/dispatch
@@ -179,8 +178,7 @@
                       {:value search-term}))]
      [:button.border-round.text-white.bg-blue.ph.mlh
       {:on-click (fn [_]
-                   (re-frame/dispatch [::search search-term]))
-       :style    {:height "100%"}}
+                   (re-frame/dispatch [::search search-term]))}
       "search"]]))
 
 (defn search-results []
