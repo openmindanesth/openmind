@@ -129,8 +129,15 @@
                (citation source))]
     text))
 
-(defn labnote-source-link [{:keys [investigator observation/date]}]
-   (str investigator " (" (date-year date) ")"))
+(defn labnote-source-link [{:keys [investigators observation/date investigator]}]
+  ;; FIXME: investigator and investigators. vestigial compatibility.
+  (if investigator
+   (str investigator
+        " (" (date-year date) ")")
+   (str (:name (first investigators))
+        (when (< 1 (count investigators))
+          " et al. ")
+        " (" (date-year date) ")")))
 
 (defn source-link [type source]
   [:div
@@ -158,14 +165,18 @@
                         (apply str))]]
    [:p abstract]])
 
-(defn labnote-source-content [{:keys [lab investigator institution
-                                      observation/date]}]
+(defn labnote-source-content [{:keys [lab investigators institution
+                                      investigator observation/date]}]
+  ;; FIXME: investigator and investigators. vestigial compatibility.
   [:div.pbh
    [:div.small.pbh
     [:span (str "(" (.format dateformat date) ")")]
     [:span.plh lab]
     [:b.plh institution]]
-   [:div.small "principle investigator: " [:em investigator]]])
+   [:div.small "investigators: "
+    (if investigator
+      [:em investigator]
+      [:em (apply str (interpose "; " (map :name investigators)))])]])
 
 (defn source-hover [type source]
   [:div.flex.flex-column.p1
