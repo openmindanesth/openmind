@@ -231,7 +231,7 @@
  (fn [width]
    (cond
      (< width 420) :mobile
-     ;; (< width 800) :tablet
+     (< width 850) :tablet
      :else         :desktop)))
 
 (defn main [content]
