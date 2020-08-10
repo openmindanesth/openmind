@@ -80,17 +80,17 @@
 (re-frame/reg-fx
  :storage/remove
  (fn [k]
-   (.removeItem (.-sessionStorage js/window) (str k)))
+   (.removeItem (.-sessionStorage js/window) (str k))))
 
- (re-frame/reg-cofx
-  :storage/get
-  (fn [cofx k]
-    (assoc cofx
-           :storage/get
-           (-> js/window
-               .-sessionStorage
-               (.getItem (str k))
-               edn/read-string)))))
+(re-frame/reg-cofx
+ :storage/get
+ (fn [cofx k]
+   (assoc cofx
+          :storage/get
+          (-> js/window
+              .-sessionStorage
+              (.getItem (str k))
+              edn/read-string))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Static datastore
