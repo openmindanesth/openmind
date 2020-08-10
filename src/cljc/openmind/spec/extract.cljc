@@ -108,7 +108,7 @@
   ::string)
 
 (s/def ::labnote-source
-  (s/keys :req-un [:labnote/lab :labnote/investigator :labnote/institution]
+  (s/keys :req-un [:labnote/lab :labnote/investigators :labnote/institution]
           :req [:observation/date]))
 
 (s/def :observation/date
@@ -117,8 +117,14 @@
 (s/def :labnote/lab
   ::string)
 
+(s/def :labnote/investigators
+  (s/coll-of :labnote/investigator :kind vector? :min-count 1))
+
 (s/def :labnote/investigator
-  ::string)
+  (s/keys :req-un [::name]))
+
+(s/def ::name
+  string?)
 
 (s/def :labnote/institution
   ::string)

@@ -69,7 +69,7 @@
 
 (def labnote-keys
   [:lab
-   :investigator
+   :investigators
    :institution
    :observation/date])
 
@@ -130,10 +130,12 @@
   {:selection []
    :content   {:tags      #{}
                :comments  [""]
-               :source    {:authors [{:full-name ""}]}
+               :source    {:authors [{:full-name ""}]
+                           :investigators [{:name ""}]}
                :resources [{:label "" :link ""}]
                :relations #{}}
    :errors    nil})
+
 
 (re-frame/reg-event-fx
  ::new-extract-init
@@ -855,10 +857,11 @@
     :placeholder "lab name"
     :key [:source :lab]
     :required? true}
-   {:component text
-    :label "investigator"
-    :placeholder "principle investigator"
-    :key [:source :investigator]
+   {:component text-input-list
+    :label "investigators"
+    :placeholder "investigator"
+    :sub-key :name
+    :key [:source :investigators]
     :required? true}
    {:component date
     :label "observation date"
