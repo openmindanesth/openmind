@@ -261,7 +261,8 @@
   [:div.flex.flex-column
    [tags/search-filter]
    [:div.flex.space-between.pt1
-    [extract-type-filter]
+    [:div.prh
+     [extract-type-filter]]
     [sort-order-selector]]])
 
 (defn search-view []
