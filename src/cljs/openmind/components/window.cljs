@@ -135,7 +135,7 @@
                 "open" [:b "mind"]]
         search [search/search-box]]
     [:div
-     (if (< size 620)
+     (if (and size (< size 620))
        [:div
         [:div.flex.space-between.pb1.mr1 mb om]
         search]
