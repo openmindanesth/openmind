@@ -258,7 +258,7 @@
             {:on-mouse-leave #(reset! open? false)}
             (if hover?
               {:on-mouse-over #(reset! open? true)}
-              {:on-click #(reset! open? true)
+              {:on-click #(swap! open? not)
                :style    {:cursor :pointer}}))
            [link]
            (when float-content
