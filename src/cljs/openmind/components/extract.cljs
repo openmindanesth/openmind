@@ -81,15 +81,18 @@
                      (when on-load
                        {:on-load on-load}))]))))
 
+(defn figure-caption [figure]
+  (let [{:keys [caption]} @(re-frame/subscribe [:content figure])]
+    (when (seq caption)
+      [:div.p1 caption])))
+
 (defn figure-hover [figure]
   (when figure
-    (let [{:keys [caption]} @(re-frame/subscribe [:content figure])]
-      [:div
-       [:div.p1
-        [figure-img figure {:style {:max-width  "90vw"
-                                    :max-height "50vh"}}]]
-       (when (seq caption)
-         [:div.p1 caption])])))
+    [:div
+     [:div.p1
+      [figure-img figure {:style {:max-width  "90vw"
+                                  :max-height "50vh"}}]]
+     [figure-caption figure]]))
 
 (defn edit-link [hash]
   ;; Users must be logged in to edit extracts
@@ -308,7 +311,8 @@
 (defn thumbnail [eid figure & [opts]]
   (let [id (name (gensym "thumbnail"))]
     (fn [eid figure]
-      (let [offset @(re-frame/subscribe [::offset id])]
+      (let [offset @(re-frame/subscribe [::offset id])
+            size   @(re-frame/subscribe [:responsive-size])]
         [hover-link
          [:div
           {:style {:height "100%"}}
@@ -323,7 +327,9 @@
                                                 {:transform (str "translateY("
                                                                  offset
                                                                  "px)")}))}]]
-         [figure-hover figure]
+         (if (contains? #{:mobile :tablet} size)
+           [figure-caption figure]
+           [figure-hover figure])
          {:orientation :left
           :thumb?      true
           :route       {:route :extract/figure :path {:id eid}}}]))))
