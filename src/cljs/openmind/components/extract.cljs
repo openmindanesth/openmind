@@ -34,7 +34,7 @@
                         "text-white flex flex-column flex-centre")}
       [:div
        (:name (tag-lookup k))]]
-     (into [:div.flex.flex-column]
+    (into [:div.flex.flex-column]
            (map (fn [b] [tag-display tag-lookup b]))
            children)]))
 
@@ -250,7 +250,6 @@
          text]
         (let [wrapper (size-reflector float-content float-size)
               link    (size-reflector [:div.link-blue
-                                       {:style {:height "100%"}}
                                        text]
                                       link-size)]
           [:div.plh.prh
@@ -423,10 +422,10 @@
                (let [pv @(re-frame/subscribe [:content previous-version])]
                  (with-meta
                    [summary pv {:edit-link? false
-                                :pb0? true
-                                :i i
-                                :c (count history)
-                                :controls (history-control author created)}]
+                                :pb0?       true
+                                :i          i
+                                :c          (count history)
+                                :controls   (history-control author created)}]
                    {:key (str "previous-" (.-hash-string previous-version))}))))
             (reverse history)))))
 
@@ -434,41 +433,71 @@
                 :as   extract}
                & [{:keys [edit-link? controls pb0? c i] :as opts
                    :or   {edit-link? true}}]]
-  [:div.search-result.flex.ph
-   {:style (merge {:height :min-content}
-                  (when pb0?
-                    {:margin-bottom "1px"})
-                  (when (and i c (= i c))
-                    {:margin-bottom 0}))}
-   [thumbnail hash figure]
-   [:div {:style {:flex       1
-                  :min-height "100%"}}
-    [:div.flex.flex-column.space-between
-     {:style {:height "100%"}}
-     (when controls
-      [controls extract])
-     [:div.break-wrap.ph
-      {:style {:margin      :auto
-               :margin-left 0}}
-      text]
-     [:div.pth.flex.full-width
-      [:div
-       [hover-link [type-indicator extract] [metadata extract]
-        {:orientation :left}]]
-      [:div.flex.flex-wrap.space-between.full-width
-       [hover-link "comments"
-        [comments-hover hash]
-        {:orientation :left}]
-       [hover-link "history" [edit-history hash]
-        {:hide-if
-         #(empty? (:history @(re-frame/subscribe [:extract-metadata hash])))}]
-       [hover-link "related" [related-extracts hash]
-        {:hide-if
-         #(empty? (:relations @(re-frame/subscribe [:extract-metadata hash])))}]
-       [hover-link "repos" [resource-hover resources]
-        {:hide-if #(empty? resources)}]
-       [hover-link "tags" [tag-hover tags]
-        {:hide-if #(empty? tags)}]
-       [hover-link [source-link (:extract/type extract) source]
-        [source-hover (:extract/type extract) source]
-        {:orientation :right}]]]]]])
+  (let [size @(re-frame/subscribe [:responsive-size])]
+    (if (contains? #{:mobile :tablet} size)
+      [:div.flex-column.search-result.ph
+       [:div.flex.space-around
+        [thumbnail hash figure]]
+       [:div.break-wrap.ph
+        {:style {:margin      :auto
+                 :margin-left 0}}
+          text]
+       [:div.pth.full-width.flex
+        {:style {:flex-wrap       :wrap
+                 :gap             "0.7rem"
+                 :justify-content :space-evenly}}
+        [hover-link [type-indicator extract] [metadata extract]]
+        [hover-link "comments"
+         [comments-hover hash]]
+        [hover-link "history" [edit-history hash]
+         {:hide-if
+          #(empty? (:history @(re-frame/subscribe [:extract-metadata hash])))}]
+        [hover-link "related" [related-extracts hash]
+         {:hide-if
+          #(empty? (:relations @(re-frame/subscribe [:extract-metadata hash])))}]
+        [hover-link "repos" [resource-hover resources]
+         {:hide-if #(empty? resources)}]
+        [hover-link "tags" [tag-hover tags]
+         {:hide-if #(empty? tags)}]
+        [hover-link [source-link (:extract/type extract) source]
+         [source-hover (:extract/type extract) source]]]]
+      [:div.search-result.flex.ph
+       {:style (merge {:height :min-content}
+                      (when pb0?
+                        {:margin-bottom "1px"})
+                      (when (and i c (= i c))
+                        {:margin-bottom 0}))}
+       [:div.flex-column.space-around
+        [thumbnail hash figure]]
+       [:div {:style {:flex       1
+                      :min-height "100%"}}
+        [:div.flex.flex-column.space-between
+         (when (= :desktop size)
+           {:style {:height "100%"}})
+         (when controls
+           [controls extract])
+         [:div.break-wrap.ph
+          {:style {:margin      :auto
+                   :margin-left 0}}
+          text]
+         [:div.pth.flex.full-width
+          [:div
+           [hover-link [type-indicator extract] [metadata extract]
+            {:orientation :left}]]
+          [:div.flex.flex-wrap.space-between.full-width
+           [hover-link "comments"
+            [comments-hover hash]
+            {:orientation :left}]
+           [hover-link "history" [edit-history hash]
+            {:hide-if
+             #(empty? (:history @(re-frame/subscribe [:extract-metadata hash])))}]
+           [hover-link "related" [related-extracts hash]
+            {:hide-if
+             #(empty? (:relations @(re-frame/subscribe [:extract-metadata hash])))}]
+           [hover-link "repos" [resource-hover resources]
+            {:hide-if #(empty? resources)}]
+           [hover-link "tags" [tag-hover tags]
+            {:hide-if #(empty? tags)}]
+           [hover-link [source-link (:extract/type extract) source]
+            [source-hover (:extract/type extract) source]
+            {:orientation :right}]]]]]])))
