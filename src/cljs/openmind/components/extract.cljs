@@ -305,20 +305,20 @@
  (fn [offsets [_ id]]
    (get offsets id)))
 
-(defn thumbnail [eid figure]
+(defn thumbnail [eid figure & [opts]]
   (let [id (name (gensym "thumbnail"))]
     (fn [eid figure]
       (let [offset @(re-frame/subscribe [::offset id])]
         [hover-link
          [:div
-          {:style {:width  "10rem"
-                   :height "100%"}}
+          {:style {:height "100%"}}
           [figure-img figure {:id      id
                               :on-load #(re-frame/dispatch [::recentre id])
                               :style   (merge {:max-width  "10rem"
                                                :max-height "10rem"
                                                :display    :block
                                                :margin     :auto}
+                                              opts
                                               (when offset
                                                 {:transform (str "translateY("
                                                                  offset
@@ -437,7 +437,8 @@
     (if (contains? #{:mobile :tablet} size)
       [:div.flex-column.search-result.ph
        [:div.flex.space-around
-        [thumbnail hash figure]]
+        [thumbnail hash figure {:max-height "100%"
+                                :max-width "100%"}]]
        [:div.break-wrap.ph
         {:style {:margin      :auto
                  :margin-left 0}}
@@ -468,6 +469,7 @@
                       (when (and i c (= i c))
                         {:margin-bottom 0}))}
        [:div.flex-column.space-around
+        {:style {:width "10rem"}}
         [thumbnail hash figure]]
        [:div {:style {:flex       1
                       :min-height "100%"}}
