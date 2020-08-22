@@ -70,7 +70,7 @@
    :tags         #{}
    :extract/type :labnote
    :source       {:lab              "1"
-                  :investigator     "yours truly"
+                  :investigators    [{:name "yours truly"}]
                   :institution      "wub"
                   :observation/date (java.util.Date.)}})
 

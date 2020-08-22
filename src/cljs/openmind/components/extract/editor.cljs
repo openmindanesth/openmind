@@ -70,7 +70,7 @@
 
 (def labnote-keys
   [:lab
-   :investigator
+   :investigators
    :institution
    :observation/date])
 
@@ -110,10 +110,12 @@
   {:selection []
    :content   {:tags      #{}
                :comments  [""]
-               :source    {:authors [{:full-name ""}]}
+               :source    {:authors [{:full-name ""}]
+                           :investigators [{:name ""}]}
                :resources [{:label "" :link ""}]
                :relations #{}}
    :errors    nil})
+
 
 (re-frame/reg-event-fx
  ::new-extract-init
@@ -352,6 +354,38 @@
        (update-relations original ometa new' new-meta)))
     (update-relations original ometa new new-meta)))
 
+(declare labnote-details-inputs)
+(declare source-details-inputs)
+(declare extract-creation-form)
+
+(defn get-label [list key]
+  (:label (first (filter #(= (:key %) key) list))))
+
+(defn humanise-errors [type errors]
+  (let [se (:source errors)
+        re (dissoc errors :source)]
+    (println re)
+    (->>
+     (into ["there are errors below:"]
+           (remove nil?)
+           (concat
+            (when (seq re)
+              (map (fn [[k v]]
+                     (when (and k (seq v))
+                       (str (get-label extract-creation-form k) ": \"" v "\"")))
+                   re))
+            (when (seq se)
+              (map (fn [[k v]]
+                     (when (and k (seq v))
+                       (str (get-label (if (= type :labnote)
+                                         labnote-details-inputs
+                                         source-details-inputs)
+                                       [:source k])
+                            ": \"" v "\"")))
+                   se))))
+     (interpose "\n")
+     (apply str))))
+
 (re-frame/reg-event-fx
  ::update-extract
  (fn [{:keys [db]} [_ id]]
@@ -360,7 +394,9 @@
          extract                (prepare-extract base)
          {:keys [valid errors]} (validate-extract extract)]
      (if errors
-       {:dispatch [::form-errors errors id]}
+       (let [mesg (humanise-errors (:extract/type base) errors)]
+         {:dispatch-n [[::form-errors errors id]
+                       [:notify {:status :error :message mesg}]]})
        (if (= id ::new)
          {:dispatch [:->server [:openmind/tx
                                 (assoc (new-extract extract base)
@@ -546,25 +582,26 @@
 (def labnote-details-inputs
   ;; For lab notes we want to get the PI, institution (corp), and date of
   ;; observation.
-  [{:component forms/text
-    :label "institution"
+  [{:component   forms/text
+    :label       "institution"
     :placeholder "university, company, etc."
-    :key [:source :institution]
-    :required? true}
-   {:component forms/text
-    :label "lab"
+    :key         [:source :institution]
+    :required?   true}
+   {:component   forms/text
+    :label       "lab"
     :placeholder "lab name"
-    :key [:source :lab]
-    :required? true}
-   {:component forms/text
-    :label "investigator"
-    :placeholder "principle investigator"
-    :key [:source :investigator]
-    :required? true}
+    :key         [:source :lab]
+    :required?   true}
+   {:component   forms/text-input-list
+    :label       "investigators"
+    :placeholder "investigator"
+    :sub-key     :name
+    :key         [:source :investigators]
+    :required?   true}
    {:component forms/date
-    :label "observation date"
+    :label     "observation date"
     :required? true
-    :key [:source :observation/date]}])
+    :key       [:source :observation/date]}])
 
 (defn article-search [{:keys [data-key key content] :as opts}]
   (let [waiting? @(re-frame/subscribe [:openmind.components.window/spinner])]

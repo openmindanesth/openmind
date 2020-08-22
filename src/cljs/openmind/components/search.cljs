@@ -159,7 +159,7 @@
 (defn search-box []
   (let [search-term @(re-frame/subscribe [::term])
         spinning?   @(re-frame/subscribe [:openmind.components.window/spinner])]
-    [:div.flex {:style {:height "100%"}}
+    [:div.flex.grow-2 {:style {:min-height "3rem"}}
      [:input.grow-2 (merge {:type         :text
                             :style        (merge
                                            {:height "100%"}
@@ -269,7 +269,8 @@
   [:div.flex.flex-column
    [tags/search-filter]
    [:div.flex.space-between.pt1
-    [extract-type-filter]
+    [:div.prh
+     [extract-type-filter]]
     [sort-order-selector]]])
 
 (defn search-view []

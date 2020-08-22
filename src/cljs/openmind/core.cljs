@@ -35,7 +35,12 @@
 
 
 (defn ^:export init []
+  (set! (.-onresize js/window)
+        ;; REVIEW: Do I need a rate limiter here?
+        (fn [_]
+          (re-frame/dispatch [::window/resize-window])))
   (re-frame/dispatch-sync [::events/initialise-db])
+  (re-frame/dispatch-sync [::window/resize-window])
   (re-frame/dispatch [::events/login-check])
   (dev-setup)
   (mount-root))

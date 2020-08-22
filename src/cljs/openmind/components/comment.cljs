@@ -69,6 +69,7 @@
 (defn comment-entry-box [{:keys [id on-save message cancel?]}]
   (let [{:keys [text errors]} @(re-frame/subscribe [::new-comment id])]
     [:div.flex.full-width
+     {:on-click #(.stopPropagation %)}
      [:div.full-width.pr1
       [:textarea.full-width-textarea
        (merge

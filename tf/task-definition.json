@@ -16,7 +16,7 @@
       "environment": [
         {
           "name": "JVM_OPTS",
-          "value": "-Xmx900m"
+          "value": "-Xmx900m -Xmx900m"
         },
         {
           "name": "PORT",
