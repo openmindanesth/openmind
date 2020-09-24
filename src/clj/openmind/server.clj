@@ -49,7 +49,7 @@
 
 (def index
   "The SP in SPA"
-  (io/resource "public/index.html"))
+  (io/resource "openmind/public/index.html"))
 
 (def logout-response
   {:status  200
@@ -63,7 +63,7 @@
           :stay-logged-in (-> req :query-params (get "stay"))))
 
 (c/defroutes routes
-  (route/resources "/")
+  (route/resources "/" {:root "/openmind/public"})
 
   (c/GET "/login/orcid" req (orcid-login req))
   (c/GET "/logout" req  logout-response)

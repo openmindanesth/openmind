@@ -1,7 +1,7 @@
 /*.log
 /target
 /*-init.clj
-/resources/public/js
+/resources/openmind/public/js
 out
 .cpcache
 .nrepl-port
