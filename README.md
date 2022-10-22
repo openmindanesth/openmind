@@ -1,6 +1,7 @@
 # Openmind
 
-[Try out the demo!](https://openmind.macroexpanse.com)
+~~[Try out the demo!](https://openmind.macroexpanse.com)~~
+Sadly, this project is on hiatus and the live demo has been mothballed.
 
 Note, to create extracts, you must have, or create, an
 [Orcid](https://orcid.org) account. No login is required to search.
