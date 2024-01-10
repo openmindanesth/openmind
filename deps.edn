@@ -1,32 +1,34 @@
-{:deps  {compojure                 {:mvn/version "1.6.1"}
+{:deps  {compojure/compojure       {:mvn/version "1.6.1"}
          software.amazon.awssdk/s3 {:mvn/version "2.13.59"}
          com.taoensso/sente        {:mvn/version "1.15.0"}
          com.taoensso/timbre       {:mvn/version "4.10.0"}
-         http-kit                  {:mvn/version "2.4.0-alpha6"}
+         http-kit/http-kit         {:mvn/version "2.4.0-alpha6"}
          org.clojure/data.xml      {:mvn/version "0.2.0-alpha6"}
          io.replikativ/hasch       {:mvn/version "0.3.6"}
          org.clojure/core.async    {:mvn/version "1.3.610"}
          org.clojure/clojure       {:mvn/version "1.10.1"}
          org.clojure/clojurescript {:mvn/version "1.10.740"}
          org.clojure/spec.alpha    {:mvn/version "0.2.187"}
-         reagent                   {:mvn/version "0.10.0"}
-         re-frame                  {:mvn/version "1.0.0"}
-         potemkin                  {:mvn/version "0.4.5"}
+         reagent/reagent           {:mvn/version "0.10.0"}
+         re-frame/re-frame         {:mvn/version "1.0.0"}
          metosin/reitit            {:mvn/version "0.3.9"}
          ring/ring-anti-forgery    {:mvn/version "1.3.0"}
          ring/ring-core            {:mvn/version "1.7.1"}
          ring/ring-defaults        {:mvn/version "0.3.2"}
-         ring-oauth2               {:mvn/version "0.1.4"}}
+         ring-oauth2/ring-oauth2   {:mvn/version "0.1.4"}}
  :paths ["src/clj" "src/cljs" "src/cljc" "resources"]
  :aliases
  {:uberjar
-  {:extra-deps {uberdeps {:mvn/version "0.1.4"}}
+  {:extra-deps {uberdeps/uberdeps {:mvn/version "0.1.4"}}
    :main-opts  ["-m" "uberdeps.uberjar" "--target" "target/openmind.jar"]}
 
-  :test {:extra-paths ["test/clj" "test/cljs"]
-         :extra-deps  {org.clojure/test.check {:mvn/version "1.1.0"}}}
+  :build {:main-opts
+          ["-m" "cljs.main" "-co" "dev.cljs.edn" "-v"]}
+
+  :test  {:extra-paths ["test/clj" "test/cljs"]
+          :extra-deps  {org.clojure/test.check {:mvn/version "1.1.0"}}}
   ;; REVIEW: Is there some way to make the dev alias depend on the test alias so
   ;; that I don't wind up with mismatched test.check versions again?
-  :dev  {:extra-paths ["dev/clj" "test/clj" "test/cljs"]
-         :extra-deps  {com.bhauman/figwheel-main  {:mvn/version "0.2.11"}
-                       org.clojure/test.check     {:mvn/version "1.1.0"}}}}}
+  :dev   {:extra-paths ["dev/clj" "test/clj" "test/cljs"]
+          :extra-deps  {com.bhauman/figwheel-main {:mvn/version "0.2.11"}
+                        org.clojure/test.check    {:mvn/version "1.1.0"}}}}}
