@@ -2,12 +2,12 @@
          software.amazon.awssdk/s3 {:mvn/version "2.13.59"}
          com.taoensso/sente        {:mvn/version "1.15.0"}
          com.taoensso/timbre       {:mvn/version "4.10.0"}
-         http-kit/http-kit         {:mvn/version "2.4.0-alpha6"}
-         org.clojure/data.xml      {:mvn/version "0.2.0-alpha6"}
+         http-kit/http-kit         {:mvn/version "2.7.0"}
+         org.clojure/data.xml      {:mvn/version "0.2.0-alpha8"}
          io.replikativ/hasch       {:mvn/version "0.3.6"}
-         org.clojure/core.async    {:mvn/version "1.3.610"}
-         org.clojure/clojure       {:mvn/version "1.10.1"}
-         org.clojure/clojurescript {:mvn/version "1.10.740"}
+         org.clojure/core.async    {:mvn/version "1.6.681"}
+         org.clojure/clojure       {:mvn/version "1.11.1"}
+         org.clojure/clojurescript {:mvn/version "1.11.60"}
          org.clojure/spec.alpha    {:mvn/version "0.2.187"}
          reagent/reagent           {:mvn/version "0.10.0"}
          re-frame/re-frame         {:mvn/version "1.0.0"}
@@ -30,5 +30,5 @@
   ;; REVIEW: Is there some way to make the dev alias depend on the test alias so
   ;; that I don't wind up with mismatched test.check versions again?
   :dev   {:extra-paths ["dev/clj" "test/clj" "test/cljs"]
-          :extra-deps  {com.bhauman/figwheel-main {:mvn/version "0.2.11"}
+          :extra-deps  {com.bhauman/figwheel-main {:mvn/version "0.2.18"}
                         org.clojure/test.check    {:mvn/version "1.1.0"}}}}}
