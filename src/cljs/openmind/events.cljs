@@ -1,8 +1,8 @@
 (ns openmind.events
   (:require [cljs.core.async :as async]
             [openmind.edn :as edn]
-            goog.net.XhrIo
             [openmind.config :as config]
+            [openmind.xhrio :as xhrio]
             [openmind.db :as db]
             [openmind.hash :as h]
             [re-frame.core :as re-frame]
@@ -10,6 +10,7 @@
             [taoensso.sente :as sente]
             [taoensso.timbre :as log])
   (:require-macros [cljs.core.async.macros :refer [go]]))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Other
@@ -59,11 +60,11 @@
 (re-frame/reg-fx
  ::server-logout
  (fn [_]
-   (goog.net.XhrIo/send "/logout"
-                        ;; TODO: Timeout and handle failure to logout.
-                        (fn [e]
-                          (when (= 200 (-> e .-target .getStatus))
-                            (re-frame/dispatch [::complete-logout]))))))
+   (xhrio/send! "/logout"
+                ;; TODO: Timeout and handle failure to logout.
+                (fn [e]
+                  (when (= 200 (-> e .-target .getStatus))
+                    (re-frame/dispatch [::complete-logout]))))))
 
 (re-frame/reg-event-db
  ::complete-logout
@@ -115,14 +116,14 @@
                      ".s3.eu-central-1.amazonaws.com/"
                      (url-encode hash))]
      (log/info "fetching" url)
-     (goog.net.XhrIo/send url
-                          (fn [e]
-                            (let [response (->> e
-                                                .-target
-                                                .getResponseText
-                                                edn/read-string)]
-                              (re-frame/dispatch
-                               [::s3-receive response])))))))
+     (xhrio/send! url
+                  (fn [e]
+                    (let [response (->> e
+                                        .-target
+                                        .getResponseText
+                                        edn/read-string)]
+                      (re-frame/dispatch
+                       [::s3-receive response])))))))
 
 (def waiting-rx
   (atom nil))
@@ -230,12 +231,12 @@
        (reset! connecting? true)
        (log/info "Connecting to server...")
        (let [csrf-ch (async/promise-chan)]
-         (goog.net.XhrIo/send "/elmyr"
-                              (fn [e]
-                                (->> e
-                                     .-target
-                                     .getResponseText
-                                     (async/put! csrf-ch))))
+         (xhrio/send! "/elmyr"
+                      (fn [e]
+                        (->> e
+                             .-target
+                             .getResponseText
+                             (async/put! csrf-ch))))
          ;; TODO: timeout, retry, backoff.
          (go
            (let [token (async/<! csrf-ch)
