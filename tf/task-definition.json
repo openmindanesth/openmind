@@ -28,7 +28,7 @@
         },
         {
           "name": "ELASTIC_URL",
-          "value": "https://vpc-openmind-production-ejir7d2pw6wnxbmyw56lohfjku.eu-central-1.es.amazonaws.com/"
+          "value": "https://vpc-openmind-production-ejir7d2pw6wnxbmyw56lohfjku.ca-central-1.es.amazonaws.com/"
         },
         {
           "name": "ELASTIC_EXTRACT_INDEX",
