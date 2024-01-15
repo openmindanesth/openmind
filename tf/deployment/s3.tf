@@ -5,9 +5,9 @@ resource "random_id" "data-bucket-id" {
 }
 
 module "openmind-data" {
-  source = "terraform-aws-modules/s3-bucket/aws"
+  source  = "terraform-aws-modules/s3-bucket/aws"
   version = "3.15.2"
-  bucket = "openmind-datastore-${var.env}-${random_id.data-bucket-id}"
+  bucket  = "openmind-datastore-${var.env}-${random_id.data-bucket-id}"
 
   versioning {
     enabled = true
@@ -15,8 +15,8 @@ module "openmind-data" {
 
   tags = {
     terraform = "true"
-    env     = var.env
-    name    = "extract-store"
+    env       = var.env
+    name      = "extract-store"
   }
 }
 
@@ -65,4 +65,25 @@ resource "aws_s3_bucket_policy" "alb-logs" {
 	]
 }
 POLICY
+}
+
+##### Cloudfront access logs
+
+resource "random_id" "cdn-log-bucket-id" {
+  byte_length = 4
+}
+
+resource "aws_s3_bucket" "cdn-logs" {
+  bucket = "openmind-${env}-cloudfront-logs-${random_id.cdn-log-bucket-id.dec}"
+  acl    = "private"
+
+  lifecycle_rule {
+    id      = "${env}-cdn-logs"
+    enabled = true
+
+    transition {
+      days          = 30
+      storage_class = "STANDARD_IA"
+    }
+  }
 }

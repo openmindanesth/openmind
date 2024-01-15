@@ -54,7 +54,7 @@ module "alb" {
       protocol = "HTTP"
 
       forward = {
-        target_group_key = "server-backend"
+        target_group_key = "openmind-service"
       }
     }
   }
