@@ -25,8 +25,3 @@ resource "aws_ecr_lifecycle_policy" "retention-policy" {
 }
 EOF
 }
-
-output "ECR-URL" {
-  value = aws_ecr_repository.openmind.repository_url
-}
-

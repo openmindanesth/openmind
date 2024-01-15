@@ -28,7 +28,7 @@
         },
         {
           "name": "ELASTIC_URL",
-          "value": "https://vpc-openmind-production-ejir7d2pw6wnxbmyw56lohfjku.ca-central-1.es.amazonaws.com/"
+          "value": "${ELASTIC_URL}"
         },
         {
           "name": "ELASTIC_EXTRACT_INDEX",
@@ -36,7 +36,7 @@
         },
         {
           "name": "S3_DATA_BUCKET",
-          "value": "openmind-datastore-bucket-1"
+          "value": "${S3_DATA_BUCKET}"
         },
         {
           "name": "ORCID_CLIENT_ID",
