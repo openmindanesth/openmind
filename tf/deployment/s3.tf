@@ -6,17 +6,43 @@ resource "random_id" "data-bucket-id" {
 
 module "openmind-data" {
   source  = "terraform-aws-modules/s3-bucket/aws"
-  version = "3.15.2"
-  bucket  = "openmind-datastore-${var.env}-${random_id.data-bucket-id}"
+  version = "4.0.1"
+  bucket  = "openmind-datastore-${var.env}-${random_id.data-bucket-id.dec}"
 
-  versioning {
+  versioning = {
     enabled = true
   }
+
+  acl = "private"
+
+  control_object_ownership = true
+  object_ownership         = "BucketOwnerPreferred"
 
   tags = {
     terraform = "true"
     env       = var.env
-    name      = "extract-store"
+  }
+}
+
+##### Front end static assets
+
+resource "random_id" "asset-bucket-id" {
+  byte_length = 4
+}
+
+module "openmind-assets" {
+  source  = "terraform-aws-modules/s3-bucket/aws"
+  version = "4.0.1"
+  bucket  = "openmind-assets-${var.env}-${random_id.asset-bucket-id.dec}"
+
+  acl = "private"
+
+  control_object_ownership = true
+  object_ownership         = "BucketOwnerPreferred"
+
+  tags = {
+    terraform = "true"
+    env       = var.env
   }
 }
 
@@ -26,23 +52,31 @@ resource "random_id" "log-bucket-id" {
   byte_length = 4
 }
 
-resource "aws_s3_bucket" "alb-logs" {
-  bucket = "openmind-${env}-lb-logs-${random_id.log-bucket-id.dec}"
-  acl    = "private"
+module "alb-logs" {
+  source  = "terraform-aws-modules/s3-bucket/aws"
+  version = "4.0.1"
+  bucket  = "openmind-${var.env}-lb-logs-${random_id.log-bucket-id.dec}"
 
-  lifecycle_rule {
-    id      = "${env}-alb-logs"
+  acl = "log-delivery-write"
+
+  control_object_ownership = true
+  object_ownership         = "BucketOwnerPreferred"
+
+  lifecycle_rule = [{
+    id      = "${var.env}-alb-logs"
     enabled = true
 
-    transition {
+    transition = {
       days          = 30
       storage_class = "STANDARD_IA"
     }
-  }
+  }]
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_s3_bucket_policy" "alb-logs" {
-  bucket = aws_s3_bucket.alb-logs.id
+  bucket = module.alb-logs.s3_bucket_id
 
   policy = <<POLICY
 {
@@ -55,7 +89,7 @@ resource "aws_s3_bucket_policy" "alb-logs" {
 				"s3:PutObject"
 			],
 			"Effect": "Allow",
-			"Resource": "arn:aws:s3:::${aws_s3_bucket.alb-logs.id}/*",
+			"Resource": "arn:aws:s3:::${module.alb-logs.s3_bucket_id}/*",
 			"Principal": {
 				"AWS": [
 					"${data.aws_caller_identity.current.account_id}"
@@ -73,17 +107,23 @@ resource "random_id" "cdn-log-bucket-id" {
   byte_length = 4
 }
 
-resource "aws_s3_bucket" "cdn-logs" {
-  bucket = "openmind-${env}-cloudfront-logs-${random_id.cdn-log-bucket-id.dec}"
-  acl    = "private"
+module "cdn-logs" {
+  source  = "terraform-aws-modules/s3-bucket/aws"
+  version = "4.0.1"
+  bucket  = "openmind-${var.env}-cloudfront-logs-${random_id.cdn-log-bucket-id.dec}"
 
-  lifecycle_rule {
-    id      = "${env}-cdn-logs"
+  acl = "log-delivery-write"
+
+  control_object_ownership = true
+  object_ownership         = "BucketOwnerPreferred"
+
+  lifecycle_rule = [{
+    id      = "${var.env}-cdn-logs"
     enabled = true
 
-    transition {
+    transition = {
       days          = 30
       storage_class = "STANDARD_IA"
     }
-  }
+  }]
 }

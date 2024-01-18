@@ -1,10 +1,11 @@
 resource "aws_ssm_parameter" "openmind-container-parameter" {
-  name = "openmind/${var.env}/container-id"
-  type = "String"
+  name  = "/openmind/${var.env}/container-id"
+  type  = "String"
+  value = ""
 }
 
 data "aws_ssm_parameter" "openmind-container-id" {
-  name = "openmind/${var.env}/container-id"
+  name = "/openmind/${var.env}/container-id"
 }
 
 locals {
@@ -41,6 +42,10 @@ module "autoscaling_sg" {
   }
 }
 
+data "aws_ssm_parameter" "ecs_optimized_ami" {
+  name = "/aws/service/ecs/optimized-ami/amazon-linux-2023/arm64/recommended"
+}
+
 module "spots" {
   source  = "terraform-aws-modules/autoscaling/aws"
   version = "7.3.1"
@@ -51,7 +56,7 @@ module "spots" {
   max_size          = 2
   health_check_type = "EC2"
 
-  credit_specification {
+  credit_specification = {
     cpu_credits = "standard"
   }
 
@@ -59,7 +64,8 @@ module "spots" {
   instance_type = "t4g.small"
 
   vpc_zone_identifier = module.vpc.private_subnets
-  image_id            = jsondecode(data.aws_ssm_parameter.ecs_optimized_ami.value)["image_id"]
+
+  image_id = jsondecode(data.aws_ssm_parameter.ecs_optimized_ami.value)["image_id"]
 
   autoscaling_group_tags = {
     AmazonECSManaged = true
@@ -76,14 +82,14 @@ module "spots" {
   security_groups = [module.autoscaling_sg.security_group_id]
 
   use_mixed_instances_policy = true
-  mixed_instances_policy {
-    instances_distribution {
+  mixed_instances_policy = {
+    instances_distribution = {
       on_demand_base_capacity                  = 0
       on_demand_percentage_above_base_capacity = 0
       spot_allocation_strategy                 = "price-capacity-optimized"
     }
 
-    override {
+    override = {
       instance_type     = "t4g.small"
       weighted_capacity = "1"
     }
@@ -114,7 +120,7 @@ module "ecs_cluster" {
 
   cluster_name = local.ecs-cluster-name
 
-  default_provider_use_fargate = false
+  default_capacity_provider_use_fargate = false
 
   cluster_configuration = {
     execute_command_configuration = {
@@ -127,7 +133,7 @@ module "ecs_cluster" {
 
   autoscaling_capacity_providers = {
     one = {
-      auto_scaling_group_arn = module.spots.autoscaling_groups_arn
+      auto_scaling_group_arn = module.spots.autoscaling_group_arn
 
       managed_scaling = {
         maximum_scaling_step_size = 1
@@ -162,7 +168,7 @@ module "elastic-service" {
       cpu       = 1024
       memory    = 2048
       essential = true
-      image     = local.elasic-container-id
+      image     = local.elastic-container-id
 
       port_mappings = [
         {

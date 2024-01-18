@@ -18,12 +18,12 @@ module "cdn" {
   }
 
   logging_config = {
-    bucket = module.cdn-logs.id
+    bucket = module.cdn-logs.s3_bucket_id
   }
 
   origin = {
     openmind_service = {
-      domain_name = module.alb.domain_name
+      domain_name = module.alb.dns_name
 
       custom_origin_config = {
         http_port              = 80
@@ -34,14 +34,14 @@ module "cdn" {
     }
 
     static_assets = {
-      domain_name = module.static-assets-bucket.id
+      domain_name = module.openmind-assets.s3_bucket_id
       s3_origin_config = {
         origin_access_identity = "static_assets"
       }
     }
 
     extract_store = {
-      domain_name = module.openmind-data.id
+      domain_name = module.openmind-data.s3_bucket_id
       s3_origin_config = {
         origin_access_identity = "datastore"
       }

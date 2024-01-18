@@ -2,7 +2,7 @@ module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "5.5.0"
 
-  name = "openmind-${env}-vpc"
+  name = "openmind-${var.env}-vpc"
 
   cidr            = var.cidr
   azs             = var.zones
@@ -26,7 +26,7 @@ module "alb" {
   vpc_id = module.vpc.vpc_id
 
   access_logs = {
-    bucket = aws_s3_bucket.alb-logs.id
+    bucket = module.alb-logs.s3_bucket_id
   }
 
   security_group_ingress_rules = {
