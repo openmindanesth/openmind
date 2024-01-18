@@ -11,13 +11,16 @@ resource "random_id" "tf-rmstate" {
 
 module "openmind-tf-state" {
   source  = "terraform-aws-modules/s3-bucket/aws"
-  version = "3.15.2"
+  version = "4.0.1"
 
   bucket = "openmind-terraform-state-${random_id.tf-rmstate.dec}"
 
   acl = "private"
 
-  versioning {
+  control_object_ownership = true
+  object_ownership = "BucketOwnerPreferred"
+
+  versioning = {
     enabled = true
   }
 
@@ -46,3 +49,13 @@ resource "aws_dynamodb_table" "openmind-terraform-lock" {
     name      = "tf-state-lock"
   }
 }
+
+# These are only needed to configure the S3 backend.
+#
+# output state_bucket {
+#   value = module.openmind-tf-state.s3_bucket_id
+# }
+
+# output state_table {
+#   value = aws_dynamodb_table.openmind-terraform-lock.id
+# }

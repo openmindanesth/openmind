@@ -1,9 +1,10 @@
 /*.log
 /target
 /*-init.clj
-/resources/public/js
+/resources/**/public
 out
 .cpcache
 .nrepl-port
 conf.edn
-.terraform
+.terraform*
+terraform.tfstate*
