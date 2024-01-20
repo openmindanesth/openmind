@@ -1,8 +1,8 @@
-resource "aws_ssm_parameter" "openmind-container-parameter" {
-  name  = "/openmind/${var.env}/container-id"
-  type  = "String"
-  value = ""
-}
+# resource "aws_ssm_parameter" "openmind-container-parameter" {
+#   name  = "/openmind/${var.env}/container-id"
+#   type  = "String"
+#   value = ""
+# }
 
 data "aws_ssm_parameter" "openmind-container-id" {
   name = "/openmind/${var.env}/container-id"
@@ -20,7 +20,7 @@ locals {
 
 module "autoscaling_sg" {
   source  = "terraform-aws-modules/security-group/aws"
-  version = "~> 5.0"
+  version = "5.1.0"
 
   name        = "${var.env}-asg-sg"
   description = "Autoscaling group security group"
@@ -29,7 +29,7 @@ module "autoscaling_sg" {
   computed_ingress_with_source_security_group_id = [
     {
       rule                     = "http-80-tcp"
-      source_security_group_id = module.alb.security_group_id
+      source_security_group_id = module.alb_sg.security_group_id
     }
   ]
   number_of_computed_ingress_with_source_security_group_id = 1
@@ -235,10 +235,11 @@ module "openmind-service" {
 
   load_balancer = {
     openmind-service = {
-      target_group_arn = module.alb.target_groups["openmind-service"].arn
-      container_name   = "openmind"
-      container_port   = 8080
+      target_group_arn = aws_lb_target_group.openmind.arn
+      container_name   = "openmind-service"
+      container_port   = var.container_port
     }
+
   }
 
   subnet_ids = module.vpc.private_subnets

@@ -23,10 +23,11 @@ module "cdn" {
 
   origin = {
     openmind_service = {
-      domain_name = module.alb.dns_name
+      domain_name = aws_lb.openmind.dns_name
 
       custom_origin_config = {
         http_port              = 80
+        # FIXME: No ssl to backend in current impl.
         https_port             = 443
         origin_protocol_policy = "match-viewer"
         origin_ssl_protocols   = ["TLSv1", "TLSv1.1", "TLSv1.2"]
