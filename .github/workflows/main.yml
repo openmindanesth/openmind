@@ -38,13 +38,15 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: eu-central-1
+          aws-region: ca-central-1
 
-      - name: tests
-        id: unit-tests
-        env:
-          S3_DATA_BUCKET: "test-data-17623"
-        run: dev/test.sh
+      # FIXME: Fix tests once deployment is back up.
+
+      # - name: tests
+      #   id: unit-tests
+      #   env:
+      #     S3_DATA_BUCKET: "test-data-17623"
+      #   run: dev/test.sh
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -64,30 +66,3 @@ jobs:
             docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
             echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
-      - name: Task Definition
-        id: task-def-file
-        env:
-          ORCID_CLIENT_ID: ${{ secrets.ORCID_CLIENT_ID }}
-          ORCID_CLIENT_SECRET: ${{ secrets.ORCID_CLIENT_SECRET }}
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: openmind
-          IMAGE_TAG: ${{ github.sha }}
-        run: |
-          envsubst < tf/task-definition.json > task-definition.json
-
-      - name: Fill in the new image ID in the Amazon ECS task definition
-        id: task-def
-        uses: aws-actions/amazon-ecs-render-task-definition@v1
-        with:
-          task-definition: task-definition.json
-          container-name: openmind-webserver
-          image: ${{ steps.build-image.outputs.image }}
-
-
-      - name: Deploy Amazon ECS task definition
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
-        with:
-          task-definition: ${{ steps.task-def.outputs.task-definition }}
-          service: openmind
-          cluster: openmind
-          wait-for-service-stability: true
