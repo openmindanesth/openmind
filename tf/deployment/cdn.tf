@@ -2,8 +2,6 @@ module "cdn" {
   source  = "terraform-aws-modules/cloudfront/aws"
   version = "3.2.1"
 
-  aliases = ["openmind.macroexpanse.com"]
-
   enabled             = true
   is_ipv6_enabled     = true
   price_class         = "PriceClass_All"
@@ -84,6 +82,8 @@ module "cdn" {
   ]
 
   # FIXME: Cert for openmind.macroexpanse.com
+
+  # aliases = ["openmind.macroexpanse.com"]
 
   # viewer_certificate = {
   #   acm_certificate_arn = "???"
