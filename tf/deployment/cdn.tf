@@ -18,7 +18,7 @@ module "cdn" {
   }
 
   logging_config = {
-    bucket = module.cdn-logs.s3_bucket_id
+    bucket = module.cdn-logs.s3_bucket_bucket_domain_name
   }
 
   origin = {
@@ -30,19 +30,19 @@ module "cdn" {
         # FIXME: No ssl to backend in current impl.
         https_port             = 443
         origin_protocol_policy = "match-viewer"
-        origin_ssl_protocols   = ["TLSv1", "TLSv1.1", "TLSv1.2"]
+        origin_ssl_protocols   = ["TLSv1.2"]
       }
     }
 
     static_assets = {
-      domain_name = module.openmind-assets.s3_bucket_id
+      domain_name = module.openmind-assets.s3_bucket_bucket_domain_name
       s3_origin_config = {
         origin_access_identity = "static_assets"
       }
     }
 
     extract_store = {
-      domain_name = module.openmind-data.s3_bucket_id
+      domain_name = module.openmind-data.s3_bucket_bucket_domain_name
       s3_origin_config = {
         origin_access_identity = "datastore"
       }
@@ -53,9 +53,9 @@ module "cdn" {
     target_origin_id           = "openmind_service"
     viewer_protocol_policy     = "allow-all"
 
-    # TODO: Set methods
-    # allowed_methods = ["GET", "HEAD", "OPTIONS", "POST"]
-    cached_methods  = []
+    allowed_methods = ["GET", "HEAD", "OPTIONS", "POST", "PUT", "DELETE", "PATCH"]
+    # FIXME: This is wrong. How do I disable caching for an origin?
+    cached_methods  = ["GET", "HEAD"]
     compress        = true
     query_string    = true
   }

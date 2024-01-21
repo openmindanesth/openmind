@@ -1,9 +1,3 @@
-# resource "aws_ssm_parameter" "openmind-container-parameter" {
-#   name  = "/openmind/${var.env}/container-id"
-#   type  = "String"
-#   value = ""
-# }
-
 data "aws_ssm_parameter" "openmind-container-id" {
   name = "/openmind/${var.env}/container-id"
 }
