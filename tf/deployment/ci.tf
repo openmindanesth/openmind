@@ -26,7 +26,14 @@ resource "aws_iam_policy" "ci" {
       },
       {
         Action = [
-          "ecr:GetAuthorizationToken",
+          "ecr:GetAuthorizationToken"
+        ],
+        Resource = ["*"],
+        Effect   = "Allow",
+        Sid      = "ECRGetToken"
+      },
+      {
+        Action = [
           "ecr:BatchCheckLayerAvailability",
           "ecr:GetDownloadUrlForLayer",
           "ecr:GetRepositoryPolicy",
@@ -52,6 +59,6 @@ resource "aws_iam_policy" "ci" {
 }
 
 resource "aws_iam_user_policy_attachment" "ci" {
-  user = aws_iam_user.ci.name
+  user       = aws_iam_user.ci.name
   policy_arn = aws_iam_policy.ci.arn
 }
