@@ -5,104 +5,12 @@ data "aws_ssm_parameter" "openmind-container-id" {
 locals {
   ecs-cluster-name     = "ecs-${var.env}"
   elastic-container-id = "elasticsearch:7.4.0"
-  ecs-instance-tags    = {}
   internal-ns          = "${var.env}.openmind.local"
 }
 
 # This is mostly just ripped out of
 # https://github.com/terraform-aws-modules/terraform-aws-ecs/blob/master/examples/ec2-autoscaling/main.tf
 # without complete understanding.
-
-module "autoscaling_sg" {
-  source  = "terraform-aws-modules/security-group/aws"
-  version = "5.1.0"
-
-  name        = "${var.env}-asg-sg"
-  description = "Autoscaling group security group"
-  vpc_id      = module.vpc.vpc_id
-
-  computed_ingress_with_source_security_group_id = [
-    {
-      rule                     = "http-80-tcp"
-      source_security_group_id = module.alb_sg.security_group_id
-    }
-  ]
-  number_of_computed_ingress_with_source_security_group_id = 1
-
-  egress_rules = ["all-all"]
-
-  tags = {
-    terraform = true
-    env       = var.env
-  }
-}
-
-data "aws_ssm_parameter" "ecs_optimized_ami" {
-  name = "/aws/service/ecs/optimized-ami/amazon-linux-2023/arm64/recommended"
-}
-
-module "spots" {
-  source  = "terraform-aws-modules/autoscaling/aws"
-  version = "7.3.1"
-
-  name = "${var.env}-asg"
-
-  min_size          = 0
-  max_size          = 2
-  health_check_type = "EC2"
-
-  credit_specification = {
-    cpu_credits = "standard"
-  }
-
-  ebs_optimized = false
-  instance_type = "t4g.small"
-
-  vpc_zone_identifier = module.vpc.private_subnets
-
-  image_id = jsondecode(data.aws_ssm_parameter.ecs_optimized_ami.value)["image_id"]
-
-  autoscaling_group_tags = {
-    AmazonECSManaged = true
-  }
-
-  create_iam_instance_profile = true
-  iam_role_name               = local.ecs-cluster-name
-  iam_role_description        = "ECS role for ${local.ecs-cluster-name}"
-  iam_role_policies = {
-    AmazonEC2ContainerServiceforEC2Role = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
-    AmazonSSMManagedInstanceCore        = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
-  }
-
-  security_groups = [module.autoscaling_sg.security_group_id]
-
-  use_mixed_instances_policy = true
-  mixed_instances_policy = {
-    instances_distribution = {
-      on_demand_base_capacity                  = 0
-      on_demand_percentage_above_base_capacity = 0
-      spot_allocation_strategy                 = "price-capacity-optimized"
-    }
-  }
-
-  user_data = base64encode(<<-EOT
-        #!/bin/bash
-
-        cat <<'EOF' >> /etc/ecs/ecs.config
-        ECS_CLUSTER=${local.ecs-cluster-name}
-        ECS_LOGLEVEL=debug
-        ECS_CONTAINER_INSTANCE_TAGS=${jsonencode(local.ecs-instance-tags)}
-        ECS_ENABLE_TASK_IAM_ROLE=true
-        ECS_ENABLE_SPOT_INSTANCE_DRAINING=true
-        EOF
-      EOT
-  )
-
-  tags = {
-    terraform = true
-    env       = var.env
-  }
-}
 
 module "ecs_cluster" {
   source  = "terraform-aws-modules/ecs/aws//modules/cluster"
@@ -119,22 +27,13 @@ module "ecs_cluster" {
     }
   }
 
-  default_capacity_provider_use_fargate = false
+  default_capacity_provider_use_fargate = true
 
-  autoscaling_capacity_providers = {
-    default = {
-      auto_scaling_group_arn = module.spots.autoscaling_group_arn
-
-      managed_scaling = {
-        maximum_scaling_step_size = 1
-        minimum_scaling_step_size = 1
-        status                    = "ENABLED"
-      }
-
+  fargate_capacity_providers = {
+    FARGATE_SPOT = {
       default_capacity_provider_strategy = {
         weight = 1
-        # REVIEW: What does `base` do?
-        base = 1
+        base   = 1
       }
     }
   }
@@ -174,15 +73,12 @@ module "elastic-service" {
   name        = "elastic"
   cluster_arn = module.ecs_cluster.arn
 
-  cpu    = 1024
+  cpu    = 256
   memory = 2048
-
-  # launch_type = "EC2"
-  requires_compatibilities = ["EC2"]
 
   container_definitions = {
     elasticsearch = {
-      cpu       = 1024
+      cpu       = 256
       memory    = 2048
       essential = true
       image     = local.elastic-container-id
@@ -199,14 +95,6 @@ module "elastic-service" {
           protocol      = "tcp"
         }
       ]
-    }
-  }
-
-  capacity_provider_strategy = {
-    default = {
-      capacity_provider = module.ecs_cluster.autoscaling_capacity_providers["default"].name
-      weight            = 1
-      base              = 1
     }
   }
 
@@ -258,36 +146,45 @@ module "openmind-service" {
   name        = "openmind-backend"
   cluster_arn = module.ecs_cluster.arn
 
-  cpu    = 1024
-  memory = 1800
-
-  # launch_type = "EC2"
-  requires_compatibilities = ["EC2"]
+  cpu    = 256
+  memory = 1024
 
   service_connect_configuration = {
     namespace = local.internal-ns
   }
 
-  capacity_provider_strategy = {
-    default = {
-      capacity_provider = module.ecs_cluster.autoscaling_capacity_providers["default"].name
-      weight            = 1
-      base              = 1
-    }
-  }
 
   container_definitions = {
     openmind-service = {
       cpu       = 1024
-      memory    = 1800
+      memory    = 900
       essential = true
       image     = "${aws_ecr_repository.openmind.repository_url}:${data.aws_ssm_parameter.openmind-container-id.value}"
 
       port_mappings = [
         {
           name          = "http"
-          containerPort = 8080
+          containerPort = var.container_port
           protocol      = "tcp"
+        }
+      ]
+
+      environment = [
+        {
+          name  = "PORT"
+          value = var.container_port
+        },
+        {
+          name  = "ELASTIC_URL"
+          value = "elasticsearch.${var.env}.openmind.local"
+        },
+        {
+          name  = "ELASTIC_EXTRACT_INDEX"
+          value = "extracts"
+        },
+        {
+          name  = "JVM_OPTS"
+          value = "-Xms900m -Xmx900m"
         }
       ]
     }
