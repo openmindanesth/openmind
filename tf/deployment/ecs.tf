@@ -259,7 +259,7 @@ module "openmind-service" {
   cluster_arn = module.ecs_cluster.arn
 
   cpu    = 1024
-  memory = 2048
+  memory = 1800
 
   # launch_type = "EC2"
   requires_compatibilities = ["EC2"]
@@ -278,8 +278,8 @@ module "openmind-service" {
 
   container_definitions = {
     openmind-service = {
-      cpu       = 1000
-      memory    = 1900
+      cpu       = 1024
+      memory    = 1800
       essential = true
       image     = "${aws_ecr_repository.openmind.repository_url}:${data.aws_ssm_parameter.openmind-container-id.value}"
 
