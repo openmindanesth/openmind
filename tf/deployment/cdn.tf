@@ -12,7 +12,7 @@ module "cdn" {
 
   origin_access_identities = {
     static_assets = "static assets for site"
-    datastore = "extract data"
+    datastore     = "extract data"
   }
 
   logging_config = {
@@ -24,7 +24,7 @@ module "cdn" {
       domain_name = aws_lb.openmind.dns_name
 
       custom_origin_config = {
-        http_port              = 80
+        http_port = 80
         # FIXME: No ssl to backend in current impl.
         https_port             = 443
         origin_protocol_policy = "match-viewer"
@@ -48,14 +48,18 @@ module "cdn" {
   }
 
   default_cache_behavior = {
-    target_origin_id           = "openmind_service"
-    viewer_protocol_policy     = "allow-all"
+    target_origin_id       = "openmind_service"
+    viewer_protocol_policy = "redirect-to-https"
 
+    cache_policy_id          = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+    origin_request_policy_id = "216adef6-5c7f-47e4-b989-5492eafa07d3"
+
+    # Pass all methods back to origin
     allowed_methods = ["GET", "HEAD", "OPTIONS", "POST", "PUT", "DELETE", "PATCH"]
-    # FIXME: This is wrong. How do I disable caching for an origin?
-    cached_methods  = ["GET", "HEAD"]
-    compress        = true
-    query_string    = true
+
+    compress = true
+
+    use_forwarded_values = false
   }
 
   ordered_cache_behavior = [
@@ -81,12 +85,24 @@ module "cdn" {
     }
   ]
 
-  # FIXME: Cert for openmind.macroexpanse.com
+  aliases = ["openmind.macroexpanse.com"]
 
-  # aliases = ["openmind.macroexpanse.com"]
+  viewer_certificate = {
+    minimum_protocol_version = "TLSv1.2_2021"
+    acm_certificate_arn      = var.cdn_cert_arn
+    ssl_support_method       = "sni-only"
+  }
+}
 
-  # viewer_certificate = {
-  #   acm_certificate_arn = "???"
-  #   ssl_support_method  = "sni-only"
-  # }
+resource "aws_route53_record" "openmind" {
+  zone_id = var.dns_zone
+  name    = "openmind.macroexpanse.com"
+  type    = "A"
+
+  alias {
+    name    = module.cdn.cloudfront_distribution_domain_name
+    zone_id = module.cdn.cloudfront_distribution_hosted_zone_id
+
+    evaluate_target_health = false
+  }
 }

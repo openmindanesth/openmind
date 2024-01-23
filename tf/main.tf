@@ -17,6 +17,9 @@ module "dev" {
 
   container_port = 8080
 
+  dns_zone     = aws_route53_zone.openmind.id
+  cdn_cert_arn = aws_acm_certificate.main.arn
+
   cidr            = "10.0.0.0/16"
   zones           = ["ca-central-1a", "ca-central-1b", "ca-central-1d"]
   public_subnets  = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]

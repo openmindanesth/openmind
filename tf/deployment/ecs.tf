@@ -156,8 +156,8 @@ module "openmind-service" {
 
   container_definitions = {
     openmind-service = {
-      cpu       = 1024
-      memory    = 900
+      cpu       = 256
+      memory    = 1024
       essential = true
       image     = "${aws_ecr_repository.openmind.repository_url}:${data.aws_ssm_parameter.openmind-container-id.value}"
 
