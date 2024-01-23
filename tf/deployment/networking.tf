@@ -109,7 +109,7 @@ module "alb_sg" {
   ingress_with_prefix_list_ids = [
     {
       from_port = 80
-      to_port   = 80
+      to_port   = var.container_port
       protocol  = "tcp"
     }
   ]
@@ -125,7 +125,7 @@ resource "aws_lb" "openmind" {
   internal           = true
   load_balancer_type = "application"
   subnets            = module.vpc.private_subnets
-  security_groups    = [module.vpc.default_security_group_id]
+  security_groups    = [module.alb_sg.security_group_id]
 
   tags = {
     terraform = true
