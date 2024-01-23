@@ -82,11 +82,6 @@ module "spots" {
       on_demand_percentage_above_base_capacity = 0
       spot_allocation_strategy                 = "price-capacity-optimized"
     }
-
-    override = {
-      instance_type     = "t4g.small"
-      weighted_capacity = "1"
-    }
   }
 
   user_data = base64encode(<<-EOT
@@ -147,15 +142,27 @@ module "ecs_cluster" {
   }
 }
 
+locals {
+  internal_ns = "${var.env}.openmind.local"
+}
+
+resource "aws_service_discovery_private_dns_namespace" "openmind" {
+  name        = local.internal_ns
+  description = "Internal ECS service discovery domain"
+  vpc         = module.vpc.vpc_id
+}
+
 module "elastic-service" {
   source  = "terraform-aws-modules/ecs/aws//modules/service"
   version = "5.7.4"
 
-  name        = "${var.env}-elasticsearch"
+  name        = "elastic-${var.env}"
   cluster_arn = module.ecs_cluster.arn
 
   cpu    = 1024
   memory = 2048
+
+  launch_type = "EC2"
 
   container_definitions = {
     elasticsearch = {
@@ -182,7 +189,7 @@ module "elastic-service" {
   subnet_ids = module.vpc.private_subnets
 
   service_connect_configuration = {
-    namespace = "openmind-${var.env}"
+    namespace = local.internal_ns
 
     service = {
       client_alias = {
@@ -210,12 +217,18 @@ module "openmind-service" {
   cpu    = 1024
   memory = 2048
 
+  launch_type = "EC2"
+
+  service_connect_configuration = {
+    namespace = local.internal_ns
+  }
+
   container_definitions = {
-    openmind = {
+    openmind-service = {
       cpu       = 1024
       memory    = 2048
       essential = true
-      image     = data.aws_ssm_parameter.openmind-container-id.value
+      image     = "${aws_ecr_repository.openmind.repository_url}:${data.aws_ssm_parameter.openmind-container-id.value}"
 
       port_mappings = [
         {
