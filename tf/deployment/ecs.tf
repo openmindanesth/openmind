@@ -3,7 +3,6 @@ data "aws_ssm_parameter" "openmind-container-id" {
 }
 
 locals {
-  ecs-cluster-name     = "ecs-${var.env}"
   elastic-container-id = "elasticsearch:7.4.0"
   internal-ns          = "${var.env}.openmind.local"
 }
@@ -16,7 +15,7 @@ module "ecs_cluster" {
   source  = "terraform-aws-modules/ecs/aws//modules/cluster"
   version = "5.7.4"
 
-  cluster_name = local.ecs-cluster-name
+  cluster_name = "ecs-${var.env}"
 
   cluster_configuration = {
     execute_command_configuration = {
@@ -75,6 +74,8 @@ module "elastic-service" {
 
   cpu    = 256
   memory = 2048
+
+  enable_autoscaling = false
 
   container_definitions = {
     elasticsearch = {
@@ -149,10 +150,11 @@ module "openmind-service" {
   cpu    = 256
   memory = 1024
 
+  enable_autoscaling = false
+
   service_connect_configuration = {
     namespace = local.internal-ns
   }
-
 
   container_definitions = {
     openmind-service = {
