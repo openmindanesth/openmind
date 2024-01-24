@@ -24,6 +24,30 @@ module "openmind-data" {
   }
 }
 
+resource "aws_s3_bucket_policy" "data" {
+  bucket = module.openmind-data.s3_bucket_id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "AllowCloudFrontServicePrincipalReadOnly"
+        Effect = "Allow"
+        Action = "s3:GetObject"
+        Principal = {
+          Service = "cloudfront.amazonaws.com"
+        }
+        Resource = "${module.openmind-data.s3_bucket_arn}/*"
+        Condition = {
+          StringEquals = {
+            "AWS:SourceArn" = "${module.cdn.cloudfront_distribution_arn}"
+          }
+        }
+      }
+    ]
+  })
+}
+
 ##### Front end static assets
 
 resource "random_id" "asset-bucket-id" {
