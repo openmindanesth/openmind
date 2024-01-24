@@ -123,6 +123,14 @@ module "elastic-service" {
       description              = "elasticsearch"
       source_security_group_id = aws_security_group.internal-services.id
     }
+    # We need to be able to fetch the docker container.
+    out = {
+      type        = "egress"
+      from_port   = 0
+      to_port     = 0
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+    }
     # ES instances need to talk to each other
     # REVIEW: Do I need to open 9300 as well?
     outbound = {
@@ -210,6 +218,13 @@ module "openmind-service" {
       protocol                 = "tcp"
       description              = "openmind service port"
       source_security_group_id = module.alb_sg.security_group_id
+    }
+    out = {
+      type        = "egress"
+      from_port   = 0
+      to_port     = 0
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
     }
     elastic = {
       type                     = "egress"
