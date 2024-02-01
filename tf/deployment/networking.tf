@@ -4,13 +4,13 @@ module "vpc" {
 
   name = "openmind-${var.env}-vpc"
 
-  cidr            = var.cidr
-  azs             = var.zones
-  private_subnets = var.public_subnets
-  public_subnets  = var.private_subnets
+  cidr = var.cidr
+  azs  = var.zones
+  # private_subnets = var.private_subnets
+  public_subnets = var.public_subnets
 
-  enable_nat_gateway = true
-  single_nat_gateway = true
+  enable_nat_gateway = false
+  # single_nat_gateway = true
 
   tags = {
     terraform   = "true"
@@ -114,6 +114,15 @@ module "alb_sg" {
     }
   ]
 
+  egress_with_cidr_blocks = [
+    {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "tcp"
+    cidr_blocks = "0.0.0.0/0"
+  }
+  ]
+
   tags = {
     terraform = true
     env       = var.env
@@ -122,9 +131,9 @@ module "alb_sg" {
 
 resource "aws_lb" "openmind" {
   name               = "openmind-${var.env}"
-  internal           = true
+  internal           = false
   load_balancer_type = "application"
-  subnets            = module.vpc.private_subnets
+  subnets            = module.vpc.public_subnets
   security_groups    = [module.alb_sg.security_group_id]
 
   tags = {
@@ -140,16 +149,16 @@ resource "aws_lb_target_group" "openmind" {
   target_type = "ip"
   vpc_id      = module.vpc.vpc_id
   # TODO: Implement health check in server.
-  # health_check {
-  #     path                  = "/health"
-  #     protocol              = "HTTP"
-  #     matcher               = "200"
-  #     port                  = "traffic-port"
-  #     healthy_threshold     = 2
-  #     unhealthy_threshold   = 2
-  #     timeout               = 10
-  #     interval              = 30
-  # }
+  health_check {
+    path                = "/"
+    protocol            = "HTTP"
+    matcher             = "200"
+    port                = "traffic-port"
+    healthy_threshold   = 2
+    unhealthy_threshold = 10
+    timeout             = 10
+    interval            = 30
+  }
 
   tags = {
     terraform = true
@@ -157,20 +166,20 @@ resource "aws_lb_target_group" "openmind" {
   }
 }
 
-resource "aws_lb_listener" "listener" {
-  load_balancer_arn = aws_lb.openmind.arn
-  # SSL handled by CDN for the time being
-  port     = "80"
-  protocol = "HTTP"
+# resource "aws_lb_listener" "listener" {
+#   load_balancer_arn = aws_lb.openmind.arn
+#   # SSL handled by CDN for the time being
+#   port     = "80"
+#   protocol = "HTTP"
 
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.openmind.arn
-  }
+#   default_action {
+#     type             = "forward"
+#     target_group_arn = aws_lb_target_group.openmind.arn
+#   }
 
-  tags = {
-    terraform = true
-    env       = var.env
-  }
+#   tags = {
+#     terraform = true
+#     env       = var.env
+#   }
 
-}
+# }

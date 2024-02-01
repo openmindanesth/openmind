@@ -24,6 +24,7 @@ module "cdn" {
       domain_name = aws_lb.openmind.dns_name
 
       custom_origin_config = {
+        origin_protocol_policy = "http-only"
         http_port = 80
         # FIXME: No ssl to backend in current impl.
         https_port             = 443
